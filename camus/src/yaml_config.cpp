@@ -420,6 +420,11 @@ namespace camus::config
 			if (const YAML::Node copy_pdf = node["copy_pdf"]; copy_pdf && copy_pdf.IsScalar()) {
 				camus_.html.copy_pdf = copy_pdf.as<bool>();
 			}
+
+			if (const YAML::Node download_cover = node["download_cover"];
+				download_cover && download_cover.IsScalar()) {
+				camus_.html.download_cover = download_cover.as<bool>();
+			}
 		};
 
 		const auto parse_pdf_node = [&](const YAML::Node &node) {
@@ -702,6 +707,10 @@ namespace camus::config
 			camus_.html.copy_pdf = parse_bool_override(*value).value_or(camus_.html.copy_pdf);
 		}
 
+		if (const auto value = env_override("html.download_cover"); value.has_value()) {
+			camus_.html.download_cover = parse_bool_override(*value).value_or(camus_.html.download_cover);
+		}
+
 		// 监听模式由本地服务访问，公网地址无意义，按未配置处理
 		if (watch_mode_) {
 			camus_.public_url = {};
@@ -974,6 +983,18 @@ namespace camus::config
 	nlohmann::json yaml_config::json() const
 	{
 		return public_config_;
+	}
+
+	void yaml_config::set_cover_display_path(const std::string &path)
+	{
+		if (public_config_.contains("site") && public_config_["site"].is_object()) {
+			public_config_["site"]["cover_image"] = path;
+		}
+
+		if (public_config_.contains("camus") && public_config_["camus"].is_object() &&
+			public_config_["camus"].contains("site") && public_config_["camus"]["site"].is_object()) {
+			public_config_["camus"]["site"]["cover_image"] = path;
+		}
 	}
 
 	static void

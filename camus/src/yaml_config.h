@@ -117,8 +117,10 @@ namespace camus::config
 		std::vector<std::string> build;
 		// 为 true 时把生成的 PDF 复制到 HTML 输出根目录
 		bool copy_pdf = false;
+		// 为 true 时在构建前下载 URL 封面到本地，并让 HTML/PDF 使用本地副本
+		bool download_cover = false;
 
-		NLOHMANN_DEFINE_TYPE_INTRUSIVE(html_conf, build, copy_pdf);
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(html_conf, build, copy_pdf, download_cover);
 	};
 
 	struct render_conf {
@@ -216,6 +218,8 @@ namespace camus::config
 
 		[[nodiscard]] camus_conf camus() const;
 		[[nodiscard]] nlohmann::json json() const;
+		// 覆盖模板中的 site.cover_image（用于下载后的本地封面路径）
+		void set_cover_display_path(const std::string &path);
 		[[nodiscard]] std::map<std::string, std::string> map() const;
 		[[nodiscard]] std::string render_var(const std::string &data) const;
 		[[nodiscard]] std::expected<route_conf, std::string> match_route(const std::filesystem::path &path) const;

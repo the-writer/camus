@@ -236,6 +236,101 @@ namespace
 		return true;
 	}
 
+	// 是否为 http(s) 远程地址。
+	bool is_remote_url(const std::string &value)
+	{
+		const std::string lower = strings::to_lower(value);
+		return lower.starts_with("http://") || lower.starts_with("https://");
+	}
+
+	// 将 URL 拆为 origin（含协议与域名）与 path 两部分。
+	bool split_remote_url(const std::string &url, std::string &origin, std::string &path)
+	{
+		const auto scheme_end = url.find("://");
+		if (scheme_end == std::string::npos) {
+			return false;
+		}
+
+		const auto host_start = scheme_end + 3;
+		const auto path_start = url.find('/', host_start);
+		origin = url.substr(0, path_start);
+		path = path_start == std::string::npos ? "/" : url.substr(path_start);
+		return !origin.empty();
+	}
+
+	// 从 URL 路径推断图片扩展名，无法判断时回退 .png。
+	std::string remote_image_extension(const std::string &url)
+	{
+		std::string value = url;
+		if (const auto pos = value.find_first_of("?#"); pos != std::string::npos) {
+			value = value.substr(0, pos);
+		}
+
+		const auto slash = value.find_last_of('/');
+		const std::string name = slash == std::string::npos ? value : value.substr(slash + 1);
+		const auto dot = name.find_last_of('.');
+		if (dot == std::string::npos) {
+			return ".png";
+		}
+
+		const std::string ext = name.substr(dot);
+		if (ext.size() < 2 || ext.size() > 6) {
+			return ".png";
+		}
+
+		for (std::size_t i = 1; i < ext.size(); ++i) {
+			if (std::isalnum(static_cast<unsigned char>(ext[i])) == 0) {
+				return ".png";
+			}
+		}
+
+		return ext;
+	}
+
+	// 下载远程图片到本地文件；失败返回 false 并清理残留文件。
+	bool download_remote_image(const std::string &url, const std::filesystem::path &dest)
+	{
+		std::string origin;
+		std::string path;
+		if (!split_remote_url(url, origin, path)) {
+			return false;
+		}
+
+		httplib::Client client(origin);
+		client.set_connection_timeout(10);
+		client.set_read_timeout(60);
+		client.set_follow_location(true);
+		client.set_default_headers({
+			{"Accept", "image/*"},
+			{"User-Agent", "camus"},
+		});
+
+		std::error_code ec;
+		std::filesystem::create_directories(dest.parent_path(), ec);
+		std::ofstream out(dest, std::ios::binary | std::ios::trunc);
+		if (!out) {
+			return false;
+		}
+
+		const auto response = client.Get(
+			path,
+			[&](const char *data, const std::size_t length) -> bool {
+				out.write(data, static_cast<std::streamsize>(length));
+				return static_cast<bool>(out);
+			}
+		);
+
+		out.close();
+
+		if (!response || response->status != 200 || !out || !std::filesystem::exists(dest, ec) ||
+			std::filesystem::file_size(dest, ec) == 0) {
+			std::filesystem::remove(dest, ec);
+			return false;
+		}
+
+		return true;
+	}
+
 	// 解析 PDF 封面图：绝对路径直接使用；相对路径依次按 camus.yaml 所在目录（workdir）、
 	// 源目录与站点 assets 目录尝试，命中第一个普通文件。返回空表示未找到。
 	std::filesystem::path resolve_cover_image(
@@ -1145,6 +1240,41 @@ namespace camus
 		);
 	}
 
+	void writer::prepare_remote_cover()
+	{
+		if (cmd_.dryrun) {
+			return;
+		}
+
+		const std::string cover = strings::trim_space(conf_.camus().site.cover_image);
+		if (!is_remote_url(cover)) {
+			return;
+		}
+
+		const bool download_html = conf_.camus().html.download_cover;
+		const std::string engine = strings::to_lower(strings::trim_space(conf_.camus().pdf.engine));
+		const bool pdf_enabled = !engine.empty() && engine != "disable";
+		if (!pdf_enabled && !download_html) {
+			return;
+		}
+
+		const std::string extension = remote_image_extension(cover);
+		const std::filesystem::path temp =
+			std::filesystem::temp_directory_path() / std::format("camus-cover-{}{}", getpid(), extension);
+
+		logging::info("downloading cover image url={}", cover);
+
+		if (!download_remote_image(cover, temp)) {
+			error::panic("cover image download failed url={}", cover);
+		}
+
+		remote_cover_path_ = temp;
+		if (download_html) {
+			// 让 HTML 模板改用本地封面，避免产物依赖远程地址。
+			conf_.set_cover_display_path("cover" + extension);
+		}
+	}
+
 	void writer::emit_pdf()
 	{
 		const std::string pdf_engine = strings::trim_space(conf_.camus().pdf.engine);
@@ -1378,25 +1508,44 @@ namespace camus
 		if (const std::string cover_image = strings::trim_space(conf_.camus().site.cover_image);
 			!cover_image.empty()) {
 			std::vector<std::filesystem::path> attempted;
-			const std::filesystem::path cover_path = resolve_cover_image(
-				cmd_.workdir,
-				conf_.camus().source_dir,
-				conf_.camus().assets_dir,
-				cover_image,
-				&attempted
-			);
+			std::filesystem::path cover_path;
 
-			if (cover_path.empty()) {
-				std::string tried;
-				for (const auto &path : attempted) {
-					if (!tried.empty()) {
-						tried += ", ";
+			if (is_remote_url(cover_image)) {
+				// PDF 封面默认强制下载远程图片；正常情况下构建开始前已下载，此处兜底。
+				if (remote_cover_path_.empty()) {
+					const std::filesystem::path temp =
+						std::filesystem::temp_directory_path() /
+						std::format("camus-cover-{}{}", getpid(), remote_image_extension(cover_image));
+					if (!download_remote_image(cover_image, temp)) {
+						error::panic("cover image download failed url={}", cover_image);
 					}
-
-					tried += path.string();
+					remote_cover_path_ = temp;
 				}
 
-				logging::warn("pdf cover image not found path={} tried=[{}]", cover_image, tried);
+				cover_path = remote_cover_path_;
+			} else {
+				cover_path = resolve_cover_image(
+					cmd_.workdir,
+					conf_.camus().source_dir,
+					conf_.camus().assets_dir,
+					cover_image,
+					&attempted
+				);
+			}
+
+			if (cover_path.empty()) {
+				if (!is_remote_url(cover_image)) {
+					std::string tried;
+					for (const auto &path : attempted) {
+						if (!tried.empty()) {
+							tried += ", ";
+						}
+
+						tried += path.string();
+					}
+
+					logging::warn("pdf cover image not found path={} tried=[{}]", cover_image, tried);
+				}
 			} else {
 				const std::string extension = cover_path.extension().string();
 				const std::string target_name = "cover" + (extension.empty() ? ".png" : extension);
@@ -1905,28 +2054,33 @@ namespace camus
 			);
 
 			if (const std::string cover = strings::trim_space(camus.site.cover_image); !cover.empty()) {
-				std::vector<std::filesystem::path> attempted;
-				const std::filesystem::path cover_path = resolve_cover_image(
-					cmd_.workdir,
-					camus.source_dir,
-					camus.assets_dir,
-					cover,
-					&attempted
-				);
+				if (is_remote_url(cover)) {
+					// --check 不下载远程封面，仅记录地址；实际构建时再下载。
+					pdf_state += " cover=" + cover;
+				} else {
+					std::vector<std::filesystem::path> attempted;
+					const std::filesystem::path cover_path = resolve_cover_image(
+						cmd_.workdir,
+						camus.source_dir,
+						camus.assets_dir,
+						cover,
+						&attempted
+					);
 
-				if (cover_path.empty()) {
-					std::string tried;
-					for (const auto &path : attempted) {
-						if (!tried.empty()) {
-							tried += ", ";
+					if (cover_path.empty()) {
+						std::string tried;
+						for (const auto &path : attempted) {
+							if (!tried.empty()) {
+								tried += ", ";
+							}
+
+							tried += path.string();
 						}
 
-						tried += path.string();
+						report_issue(false, std::format("pdf cover image not found path={} tried=[{}]", cover, tried));
+					} else {
+						pdf_state += " cover=" + cover_path.string();
 					}
-
-					report_issue(false, std::format("pdf cover image not found path={} tried=[{}]", cover, tried));
-				} else {
-					pdf_state += " cover=" + cover_path.string();
 				}
 			}
 		}
@@ -2041,6 +2195,8 @@ namespace camus
 			return 1;
 		}
 
+		prepare_remote_cover();
+
 		emit_article();
 		emit_toc();
 		emit_friends();
@@ -2048,7 +2204,35 @@ namespace camus
 		emit_assets();
 
 		flush_writes();
+
+		// html.download_cover：把下载后的封面写入 HTML 输出根目录，供模板本地引用。
+		if (conf_.camus().html.download_cover && !remote_cover_path_.empty()) {
+			const std::filesystem::path target =
+				conf_.camus().dest_dir() / ("cover" + remote_cover_path_.extension().string());
+			std::error_code ec;
+			std::filesystem::create_directories(target.parent_path(), ec);
+			if (!std::filesystem::copy_file(
+					remote_cover_path_,
+					target,
+					std::filesystem::copy_options::overwrite_existing,
+					ec
+				)) {
+				logging::warn(
+					"cover image copy to html failed source={} target={} error={}",
+					remote_cover_path_.string(),
+					target.string(),
+					ec.message()
+				);
+			}
+		}
+
 		emit_pdf();
+
+		if (!remote_cover_path_.empty()) {
+			std::error_code ec;
+			std::filesystem::remove(remote_cover_path_, ec);
+			remote_cover_path_.clear();
+		}
 
 		logging::info("build complete articles={} output={}", catalog_.size(), conf_.camus().dest_dir().string());
 		return 0;

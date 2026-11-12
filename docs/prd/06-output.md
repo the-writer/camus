@@ -42,7 +42,7 @@ dist/
     ├── index.pdf                   # 最终 PDF（可由 pdf.build 的自定义路径）
     ├── assets.css                  # 站点 css/style.css 存在时复制（不覆盖 PDF 主题样式）
     ├── assets/fonts/               # 站点 assets/fonts 复制到 PDF（fonts.css 以 assets/fonts/... 引用）
-    └── cover.<ext>                 # cover_image 有效时复制为封面（保留原扩展名）
+    └── cover.<ext>                 # cover_image 有效时复制/下载为封面（保留原扩展名）
 ```
 
 | 产物 | 触发条件 | 代码位置 |
@@ -190,7 +190,7 @@ flowchart TD
     C --> D[合并为单个 Markdown]
     D --> E[写 dist/pdf/index.md]
     E --> F[逐篇 cmark-gfm 渲染为 HTML, 组装 pdf.toc / pdf.articles / 封面等数据]
-    F --> CV[解析根 SUMMARY.md 的 cover_image, 复制为 dist/pdf/cover.<ext>]
+    F --> CV[解析根 SUMMARY.md 的 cover_image（URL 构建前先下载）, 复制为 dist/pdf/cover.<ext>]
     CV --> CA[复制 dist/html/css/style.css -> dist/pdf/assets.css]
     CA --> G[读取 theme/pdf/page.html / style.css / fonts.css, 用 inja 渲染完整文档]
     G --> H[复制 dist/html/fonts -> dist/pdf/assets/fonts, 写 dist/pdf/index.html（内联样式与字体样式）]
@@ -214,7 +214,7 @@ flowchart TD
 
   | 页面 | 模板数据 | 说明 |
   |---|---|---|
-  | 封面页 | `pdf.cover` | 使用根目录 `SUMMARY.md` Front Matter 的 `cover_image`：绝对路径直接使用；相对路径先按 `camus.yaml` 所在目录解析，找不到时依次回退到源目录与站点 `assets` 目录（解析顺序见 `resolve_cover_image()`）。有效时复制为 `dist/pdf/cover.<ext>` 并设置 `has_image=true`，整页铺满（`@page cover` 四边 0 边距、尺寸跟随 `pdf.page.size`、`object-fit: cover`）；未配置或文件不存在时 `has_image=false`，回退文字封面：站点标题（为空时 `Camus`）与 `site.subtitle`（空串在 inja 中为真值，模板用 `has_image` 判断而不是 `image`） |
+  | 封面页 | `pdf.cover` | 使用根目录 `SUMMARY.md` Front Matter 的 `cover_image`：`http(s)://` URL 在构建开始前强制下载到本地临时文件（不受 `html.download_cover` 影响；下载失败 `error::panic` 中止构建，退出 127）；绝对路径直接使用；相对路径先按 `camus.yaml` 所在目录解析，找不到时依次回退到源目录与站点 `assets` 目录（解析顺序见 `resolve_cover_image()`）。有效时复制为 `dist/pdf/cover.<ext>` 并设置 `has_image=true`，整页铺满（`@page cover` 四边 0 边距、尺寸跟随 `pdf.page.size`、`object-fit: cover`）；未配置或文件不存在时 `has_image=false`，回退文字封面：站点标题（为空时 `Camus`）与 `site.subtitle`（空串在 inja 中为真值，模板用 `has_image` 判断而不是 `image`） |
   | 扉页 | `pdf.title_page`、`pdf.meta` | 站点标题、副标题、站点描述（`site.description`）与元信息，元信息按站点（`public_url.domain_name`）→ 生成时间 → 编译器（`Camus v{version}`，链接到 GitHub release）顺序输出；标签文案取自 `pdf.labels`（按中文占比自动选择中英文）；站点为空（`has_domain=false`）时省略该行；不输出文章数；内容区占满可用宽度并靠上排布，标题等字号已缩小以避免与封面重复 |
   | 目录页 | `pdf.toc` | 标题 `Contents` + 按真实目录树多级缩进的分组标题（目录名）与文章显示名；不显示序号与标签，条目不画虚线下划线；文章条目显示正文起始页码（与页脚一致）并链接到 `#pdf-article-{n}` |
 
@@ -225,6 +225,7 @@ flowchart TD
 - 默认模板为每篇文章输出 `<section id="pdf-article-{n}" class="pdf-article">`，并以 `page-break-before: always` 从新页开始；不再渲染独立引导页，正文第一篇文章即正文第 1 页（页码 `001`）。
 - 程序写入模板的站点字段（标题、副标题、描述、域名、目录标题/标签）均做 HTML 转义（`html_escape`）；文章正文为已渲染 HTML，原样插入。
 - 文章正文使用 Front Matter 解析后的内容；`hidden` 文章不参与，`hidden_in_toc` 参与。
+- 远程封面（URL）在构建开始前（`prepare_remote_cover()`）下载到系统临时目录，构建结束删除临时文件；下载会自动跟随 301 / 302 跳转（含跨域、跨协议，受 cpp-httplib 默认重定向上限约束）。PDF 阶段复制为 `dist/pdf/cover.<ext>`；PDF 始终强制下载远程封面（不受 `html.download_cover` 影响），下载失败直接中止构建（退出 127）。`html.download_cover: true` 时还会生成 `dist/html/cover.<ext>` 供 HTML 使用（模板 `site.cover_image` 改写为本地文件名）；默认 `false` 时 HTML 直接引用 URL。`--dryrun` 与 PDF 禁用且 `html.download_cover=false` 时不下载。
 - PDF 输出路径默认 `dist/pdf/index.pdf`；`--print-to-pdf` 中可用 `{{dest_dir}}` 占位符自定义（占位符代表 `dist/pdf`），如 `--print-to-pdf={{dest_dir}}/docs/book.pdf`（相对路径按 `dist/pdf` 解析）。
 - PDF 中间产物 `index.md`、`index.html` 与最终 `index.pdf` 均位于 `dist/pdf`，与 HTML 站点目录分离；站点字体 `assets/fonts/` 会复制为 `dist/pdf/assets/fonts/`。
 - 浏览器的 stderr（含 macOS `CVDisplayLinkCreateWithCGDisplay failed` 等噪声日志）不直接输出到终端，而是重定向到临时日志 `camus-pdf-<pid>.log`（位于系统临时目录）；构建成功且两遍打印均正常时删除该文件，命令失败或未产出 PDF 时保留，并在告警中给出 `log=<绝对路径>` 便于排查。

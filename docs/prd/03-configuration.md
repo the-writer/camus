@@ -29,7 +29,7 @@
   - HTML 输出固定为 `./dist/html`，PDF 输出固定为 `./dist/pdf`。
 - `html_engine` 固定为 `default`，`markdown_engine` 固定为 `cmark-gfm`，均不从配置读取。
 - 路径在解析后转为绝对路径供内部使用；模板 JSON 中保留解析后的值（见 §3.7）。
-- **环境变量注入**：所有标量配置项都可用环境变量覆盖，变量名为 `CAMUS_` + 配置路径（大写、层级与非法字符转为 `_`），例如 `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`、`pdf.engine` → `CAMUS_PDF_ENGINE`、`pdf.sort` → `CAMUS_PDF_SORT`、`html.copy_pdf` → `CAMUS_HTML_COPY_PDF`、`theme` → `CAMUS_THEME`、`meta` → `CAMUS_META`。环境变量优先于 `camus.yaml` 中的值；即使配置文件中没有该键，也可注入已知标量项（`meta`、`sitemap`、`filename_case`、`auto_check_update`、`public_url`、`cdn_url`、`theme`、`pdf.engine`、`pdf.page.size`、`pdf.page.margin`、`pdf.page.font_size`、`pdf.sort`、`html.copy_pdf`）。为兼容旧配置，仍接受 `CAMUS_PDF_ENGINE`（对应旧 `pdf_engine`，与 `pdf.engine` 同名）与 `CAMUS_PDF_OPTIONS_PAGE_SIZE` / `CAMUS_PDF_OPTIONS_PAGE_MARGIN`（旧 `pdf_options.page.*`），新键优先。数组 / 列表字段（`html.build`、`pdf.build`、`friends`、`build` / `transfer` 及其元素字段）**不支持**注入。`-W` 监听模式仍会清空 `public_url` / `cdn_url`。
+- **环境变量注入**：所有标量配置项都可用环境变量覆盖，变量名为 `CAMUS_` + 配置路径（大写、层级与非法字符转为 `_`），例如 `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`、`pdf.engine` → `CAMUS_PDF_ENGINE`、`pdf.sort` → `CAMUS_PDF_SORT`、`html.copy_pdf` → `CAMUS_HTML_COPY_PDF`、`html.download_cover` → `CAMUS_HTML_DOWNLOAD_COVER`、`theme` → `CAMUS_THEME`、`meta` → `CAMUS_META`。环境变量优先于 `camus.yaml` 中的值；即使配置文件中没有该键，也可注入已知标量项（`meta`、`sitemap`、`filename_case`、`auto_check_update`、`public_url`、`cdn_url`、`theme`、`pdf.engine`、`pdf.page.size`、`pdf.page.margin`、`pdf.page.font_size`、`pdf.sort`、`html.copy_pdf`、`html.download_cover`）。为兼容旧配置，仍接受 `CAMUS_PDF_ENGINE`（对应旧 `pdf_engine`，与 `pdf.engine` 同名）与 `CAMUS_PDF_OPTIONS_PAGE_SIZE` / `CAMUS_PDF_OPTIONS_PAGE_MARGIN`（旧 `pdf_options.page.*`），新键优先。数组 / 列表字段（`html.build`、`pdf.build`、`friends`、`build` / `transfer` 及其元素字段）**不支持**注入。`-W` 监听模式仍会清空 `public_url` / `cdn_url`。
 
 ## 3.3 顶层配置字段
 
@@ -45,7 +45,7 @@
 | `path_prefix` | 字符串（只读派生） | 空 | `public_url` 的路径部分，以 `/` 开头且不带尾斜杠 | 同上 |
 | `cdn_url` | 字符串 | 空 | `with_cdn()` 使用的 CDN 基地址；为空时 `with_cdn(path)` 返回 `with_prefix(path)`（包含 `path_prefix`），末尾多余 `/` 会被去除；`-W` 监听模式下忽略（按空处理） | `yaml_config.cpp` |
 | `theme` | 字符串 | 默认 `default` | 主题目录名 | `yaml_config.cpp` |
-| `html` | 对象 | 可选 | HTML 渲染配置：`build`（cmark-gfm 选项名数组，见 §3.4）、`copy_pdf`（bool，默认 `false`）；`copy_pdf` 为 `true` 时把最终 PDF 复制到 HTML 输出根目录（`./dist/html`） | `yaml_config.cpp`、`writer.cpp` |
+| `html` | 对象 | 可选 | HTML 输出配置：`build`（cmark-gfm 选项名数组，见 §3.4）、`copy_pdf`（bool，默认 `false`，为 `true` 时把最终 PDF 复制到 HTML 输出根目录）、`download_cover`（bool，默认 `false`，仅控制 HTML：为 `true` 时 HTML 使用下载到本地的封面；PDF 不受该项影响，始终在构建前强制下载远程封面，下载失败中止构建） | `yaml_config.cpp`、`writer.cpp` |
 | `markdown` | 字符串数组 | 可选（已弃用） | 兼容旧配置：等价于 `html.build`；存在 `html.build` 时被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
 | `markdown_options` | 旧键 | 可选（已弃用） | 兼容旧配置：等价于 `html.build`；存在 `html` 或顶层 `markdown` 时被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
 | `pdf` | 对象 | 可选 | PDF 配置：`engine`（字符串）、`build`（字符串数组）、`page`（`size` / `margin` / `font_size`）、`sort`（`file_first` / `dir_first` / `mixed`，默认 `file_first`），见 §3.3.1 | `yaml_config.cpp` |
@@ -116,7 +116,7 @@ Markdown 引擎固定为 `cmark-gfm`，顶层 `html.build` 始终按本表解析
 | `TABLE_PREFER_STYLE_ATTRIBUTES` | `CMARK_OPT_TABLE_PREFER_STYLE_ATTRIBUTES` |
 | `FULL_INFO_STRING` | `CMARK_OPT_FULL_INFO_STRING` |
 
-顶层配置 `html.build` 在模板 JSON 的 `camus.render.options` 会显示为 `"{数值}({名称1,名称2,...})"`（`yaml_config.cpp`），同时以 `camus.html.build` / `camus.html.copy_pdf` 暴露。
+顶层配置 `html.build` 在模板 JSON 的 `camus.render.options` 会显示为 `"{数值}({名称1,名称2,...})"`（`yaml_config.cpp`），同时以 `camus.html.build` / `camus.html.copy_pdf` / `camus.html.download_cover` 暴露。
 
 ## 3.5 `transfer`（目录搬运）与 `SUMMARY.md`（目录元信息）
 
@@ -129,7 +129,7 @@ Markdown 引擎固定为 `cmark-gfm`，顶层 `html.build` 始终按本表解析
 | Front Matter `title` | 目录显示名 / 页面标题 |
 | Front Matter `subtitle` | 目录副标题 |
 | Front Matter `description` | 目录描述 |
-| Front Matter `cover_image` | 封面图片路径（仅根目录 `SUMMARY.md` 生效；支持 `http://` / `https://` 等绝对 URL，HTML 主题（如 `tomato`）直接使用；相对路径以 `camus.yaml` 所在目录为起点，找不到时依次回退到源目录与站点 `assets` 目录，供 PDF 封面使用） |
+| Front Matter `cover_image` | 封面图片路径（仅根目录 `SUMMARY.md` 生效）；支持 `http://` / `https://` 绝对 URL：HTML 主题直接引用，PDF 在构建开始前下载到本地（失败则中止构建，退出 127）；相对路径以 `camus.yaml` 所在目录为起点，找不到时依次回退到源目录与站点 `assets` 目录，供 PDF 封面使用 |
 | 正文第一个 `# 标题` | `title` 缺失时的回退值 |
 | 正文剩余内容 | `description` 缺失时的回退值 |
 
