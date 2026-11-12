@@ -1598,6 +1598,27 @@ namespace camus
 
 		logging::info("pdf generated dest={}", pdf_path.string());
 		logging::debug("make pdf dest={} engine={}", pdf_path.string(), engine);
+
+		if (conf_.camus().html.copy_pdf) {
+			const std::filesystem::path target = conf_.camus().dest_dir() / pdf_path.filename();
+			std::error_code copy_ec;
+			std::filesystem::create_directories(target.parent_path(), copy_ec);
+			if (std::filesystem::copy_file(
+					pdf_path,
+					target,
+					std::filesystem::copy_options::overwrite_existing,
+					copy_ec
+				)) {
+				logging::info("pdf copied to html dest={}", target.string());
+			} else {
+				logging::warn(
+					"pdf copy to html failed source={} target={} error={}",
+					pdf_path.string(),
+					target.string(),
+					copy_ec.message()
+				);
+			}
+		}
 	}
 
 	writer::writer(const cmdline &cmd) : conf_(CAMUS_CONF_NAME), cmd_(cmd)

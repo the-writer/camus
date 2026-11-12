@@ -229,5 +229,6 @@ flowchart TD
 - PDF 中间产物 `index.md`、`index.html` 与最终 `index.pdf` 均位于 `dist/pdf`，与 HTML 站点目录分离；站点字体 `assets/fonts/` 会复制为 `dist/pdf/assets/fonts/`。
 - 浏览器的 stderr（含 macOS `CVDisplayLinkCreateWithCGDisplay failed` 等噪声日志）不直接输出到终端，而是重定向到临时日志 `camus-pdf-<pid>.log`（位于系统临时目录）；构建成功且两遍打印均正常时删除该文件，命令失败或未产出 PDF 时保留，并在告警中给出 `log=<绝对路径>` 便于排查。
 - PDF 生成成功后以 **info** 级别输出 `pdf generated dest=<绝对路径>`，提示产物位置（浏览器自身日志仍按上述规则隐藏）。
+- `html.copy_pdf` 为 `true` 时，PDF 生成成功后会再把最终 PDF（`pdf_path`，含自定义 `--print-to-pdf` 路径）以原文件名复制到 HTML 输出根目录 `./dist/html`（覆盖已存在文件），并输出 `pdf copied to html dest=<绝对路径>`；复制失败仅告警，不影响构建结果。默认为 `false`，不产生复制。
 - 浏览器缺失、命令失败或未产出 PDF 只告警，不影响 HTML 站点构建结果与退出码；`theme/pdf` 模板/样式缺失属配置错误，会以致命错误退出（退出码 127）。
 - `dryrun` 下整个阶段跳过。

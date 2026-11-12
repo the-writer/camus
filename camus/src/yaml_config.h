@@ -112,6 +112,15 @@ namespace camus::config
 		CAMUS_THEME_TYPE_FRIENDS,
 	};
 
+	struct html_conf {
+		// cmark-gfm 选项名列表，对应旧顶层 markdown / markdown_options
+		std::vector<std::string> build;
+		// 为 true 时把生成的 PDF 复制到 HTML 输出根目录
+		bool copy_pdf = false;
+
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(html_conf, build, copy_pdf);
+	};
+
 	struct render_conf {
 		std::string theme_name = "default";
 		std::string html_engine = "default";
@@ -159,6 +168,8 @@ namespace camus::config
 		std::string cdn_url;
 		// 渲染
 		render_conf render;
+		// HTML 渲染选项（build）与 PDF 回拷开关（copy_pdf）
+		html_conf html;
 		// PDF 引擎、参数与排序
 		pdf_conf pdf;
 		// 启动时自动更新策略：auto（下载并安装）/ check-only（仅检测）/ disable

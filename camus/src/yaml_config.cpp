@@ -371,6 +371,57 @@ namespace camus::config
 			camus_.render.markdown_options |= CMARK_OPT_SOURCEPOS;
 		}
 
+		// 解析 cmark-gfm 选项名列表，同时记录到 html.build，供模板与配置回显。
+		const auto apply_markdown_options = [&](const YAML::Node &options) {
+			for (const auto &opt : options) {
+				const auto name = opt.as<std::string>();
+				markdown_options.push_back(name);
+				camus_.html.build.push_back(name);
+
+				if (name == "SOURCEPOS") {
+					camus_.render.markdown_options |= CMARK_OPT_SOURCEPOS;
+				} else if (name == "HARDBREAKS") {
+					camus_.render.markdown_options |= CMARK_OPT_HARDBREAKS;
+				} else if (name == "UNSAFE") {
+					camus_.render.markdown_options |= CMARK_OPT_UNSAFE;
+				} else if (name == "NOBREAKS") {
+					camus_.render.markdown_options |= CMARK_OPT_NOBREAKS;
+				} else if (name == "NORMALIZE") {
+					camus_.render.markdown_options |= CMARK_OPT_NORMALIZE;
+				} else if (name == "VALIDATE_UTF8") {
+					camus_.render.markdown_options |= CMARK_OPT_VALIDATE_UTF8;
+				} else if (name == "SMART") {
+					camus_.render.markdown_options |= CMARK_OPT_SMART;
+				} else if (name == "GITHUB_PRE_LANG") {
+					camus_.render.markdown_options |= CMARK_OPT_GITHUB_PRE_LANG;
+				} else if (name == "LIBERAL_HTML_TAG") {
+					camus_.render.markdown_options |= CMARK_OPT_LIBERAL_HTML_TAG;
+				} else if (name == "FOOTNOTES") {
+					camus_.render.markdown_options |= CMARK_OPT_FOOTNOTES;
+				} else if (name == "STRIKETHROUGH_DOUBLE_TILDE") {
+					camus_.render.markdown_options |= CMARK_OPT_STRIKETHROUGH_DOUBLE_TILDE;
+				} else if (name == "TABLE_PREFER_STYLE_ATTRIBUTES") {
+					camus_.render.markdown_options |= CMARK_OPT_TABLE_PREFER_STYLE_ATTRIBUTES;
+				} else if (name == "FULL_INFO_STRING") {
+					camus_.render.markdown_options |= CMARK_OPT_FULL_INFO_STRING;
+				}
+			}
+		};
+
+		const auto parse_html_node = [&](const YAML::Node &node) {
+			if (!node || !node.IsMap()) {
+				return;
+			}
+
+			if (const YAML::Node build = node["build"]; build && build.IsSequence()) {
+				apply_markdown_options(build);
+			}
+
+			if (const YAML::Node copy_pdf = node["copy_pdf"]; copy_pdf && copy_pdf.IsScalar()) {
+				camus_.html.copy_pdf = copy_pdf.as<bool>();
+			}
+		};
+
 		const auto parse_pdf_node = [&](const YAML::Node &node) {
 			if (!node || !node.IsMap()) {
 				return;
@@ -408,6 +459,18 @@ namespace camus::config
 		const YAML::Node markdown_node = root["markdown"];
 		const bool has_markdown_config = markdown_node && !markdown_node.IsNull();
 
+		const YAML::Node html_node = root["html"];
+		const bool has_html_config = html_node && !html_node.IsNull();
+		bool html_build_parsed = false;
+		if (has_html_config) {
+			if (!html_node.IsMap()) {
+				logging::warn("ignore invalid html config reason=not a map");
+			} else {
+				html_build_parsed = html_node["build"] && html_node["build"].IsSequence();
+				parse_html_node(html_node);
+			}
+		}
+
 		const YAML::Node pdf_node = root["pdf"];
 		const bool has_pdf_config = pdf_node && !pdf_node.IsNull();
 		if (has_pdf_config) {
@@ -434,6 +497,11 @@ namespace camus::config
 			}
 
 			if (key == "pdf") {
+				// 已在循环前解析，避免与旧键重复处理。
+				continue;
+			}
+
+			if (key == "html") {
 				// 已在循环前解析，避免与旧键重复处理。
 				continue;
 			}
@@ -489,47 +557,28 @@ namespace camus::config
 
 			if (key == "markdown" || key == "markdown_options") {
 				if (key == "markdown_options") {
+					if (has_html_config) {
+						logging::warn("config key 'markdown_options' ignored because 'html' is set");
+						continue;
+					}
+
 					if (has_markdown_config) {
 						logging::warn("config key 'markdown_options' ignored because 'markdown' is set");
 						continue;
 					}
 
-					logging::warn("config key 'markdown_options' is deprecated, use 'markdown'");
+					logging::warn("config key 'markdown_options' is deprecated, use 'html.build'");
+				} else {
+					if (html_build_parsed) {
+						logging::warn("config key 'markdown' ignored because 'html.build' is set");
+						continue;
+					}
+
+					logging::warn("config key 'markdown' is deprecated, use 'html.build'");
 				}
 
 				if (it.second && it.second.IsSequence()) {
-					for (const auto &opt : it.second) {
-						const auto name = opt.as<std::string>();
-						markdown_options.push_back(name);
-
-						if (name == "SOURCEPOS") {
-							camus_.render.markdown_options |= CMARK_OPT_SOURCEPOS;
-						} else if (name == "HARDBREAKS") {
-							camus_.render.markdown_options |= CMARK_OPT_HARDBREAKS;
-						} else if (name == "UNSAFE") {
-							camus_.render.markdown_options |= CMARK_OPT_UNSAFE;
-						} else if (name == "NOBREAKS") {
-							camus_.render.markdown_options |= CMARK_OPT_NOBREAKS;
-						} else if (name == "NORMALIZE") {
-							camus_.render.markdown_options |= CMARK_OPT_NORMALIZE;
-						} else if (name == "VALIDATE_UTF8") {
-							camus_.render.markdown_options |= CMARK_OPT_VALIDATE_UTF8;
-						} else if (name == "SMART") {
-							camus_.render.markdown_options |= CMARK_OPT_SMART;
-						} else if (name == "GITHUB_PRE_LANG") {
-							camus_.render.markdown_options |= CMARK_OPT_GITHUB_PRE_LANG;
-						} else if (name == "LIBERAL_HTML_TAG") {
-							camus_.render.markdown_options |= CMARK_OPT_LIBERAL_HTML_TAG;
-						} else if (name == "FOOTNOTES") {
-							camus_.render.markdown_options |= CMARK_OPT_FOOTNOTES;
-						} else if (name == "STRIKETHROUGH_DOUBLE_TILDE") {
-							camus_.render.markdown_options |= CMARK_OPT_STRIKETHROUGH_DOUBLE_TILDE;
-						} else if (name == "TABLE_PREFER_STYLE_ATTRIBUTES") {
-							camus_.render.markdown_options |= CMARK_OPT_TABLE_PREFER_STYLE_ATTRIBUTES;
-						} else if (name == "FULL_INFO_STRING") {
-							camus_.render.markdown_options |= CMARK_OPT_FULL_INFO_STRING;
-						}
-					}
+					apply_markdown_options(it.second);
 				}
 				continue;
 			}
@@ -647,6 +696,10 @@ namespace camus::config
 
 		if (const auto value = env_override("pdf.sort"); value.has_value()) {
 			camus_.pdf.sort = parse_pdf_sort(*value);
+		}
+
+		if (const auto value = env_override("html.copy_pdf"); value.has_value()) {
+			camus_.html.copy_pdf = parse_bool_override(*value).value_or(camus_.html.copy_pdf);
 		}
 
 		// 监听模式由本地服务访问，公网地址无意义，按未配置处理
@@ -903,6 +956,7 @@ namespace camus::config
 		camus_json["path_prefix"] = camus_.public_url.path_prefix;
 		camus_json["cdn_url"] = camus_.cdn_url;
 		camus_json["render"] = camus_.render;
+		camus_json["html"] = camus_.html;
 		camus_json["pdf"] = camus_.pdf;
 		camus_json["friends"] = camus_.friends;
 		camus_json["render"]["options"] =
