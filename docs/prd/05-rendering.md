@@ -31,7 +31,7 @@
 
 `pixel` 主题在 `assets/css/pixel-inja.css` 中设置 `html { font-size: 85%; }`，字体与基于 rem 的元素尺寸整体约缩小 15%。
 
-`tomato` 是小说阅读主题：左侧为章节目录（桌面端可点击折叠，移动端默认隐藏并以遮罩抽屉展开），右侧为正文；上一章 / 下一章仅显示按钮文案。目录支持按分卷筛选（`分卷` 下拉，含「全部分卷」「无分卷」与各不重复分卷）、倒序（`倒序`）与数字序号（`序号`，右对齐，数字后带 `.`；列宽至少两位数字，并随全书章节数增长），分卷标题在目录中以单独一行的小标题展示；章节名过长时单行省略（`...`），副标题与章节名在内容被截断时，悬浮/聚焦会通过主题自绘的深色提示框（非系统原生 `title`）显示完整文本。提供字号调节（默认 `16px`，范围 `16–40px`）与主题模式（自动 / 白天 / 夜间，自动模式跟随系统深浅色），均通过 `localStorage` 持久化并在下次访问时自动恢复（键 `tomato-font-size`、`tomato-theme`（`auto` / `light` / `dark`）、`tomato-reverse`、`tomato-index`、`tomato-sidebar-collapsed`（桌面端目录折叠，`1` / `0`；移动端目录仍默认隐藏））。当根路由设置了非空 `cover_image` 时，目录顶部标题区分为左右两栏：标题区默认由内容与封面共同撑开，最高限制为 150px（`max-height`，含内边距）；左侧封面始终 70px 宽并按原图比例展示（不拉伸高度），且不会因标题/简介为空而被裁切；右侧显示标题与副标题，副标题超出可用高度时自动省略（`...`）。未设置封面时保持单栏。封面地址支持绝对 URL 原样使用，相对路径会去除 `assets/` 前缀并按输出根目录拼上 `path_prefix`（`assets/` 内容构建时提升到输出根目录），加载失败时回退为单栏。页面数据使用文章页的 `chapters` 扁平章节列表；目录页（首页）使用 `lead` 直接展示目录子树的第一篇文章正文，不渲染文章列表；侧边栏底部右侧显示 `v{{ build.version }}` 版本信息。样式位于 `assets/css/tomato.css`，交互位于 `assets/js/tomato.js`。
+`tomato` 是小说阅读主题：左侧为章节目录（桌面端可点击折叠，移动端默认隐藏并以遮罩抽屉展开），右侧为正文；上一章 / 下一章仅显示按钮文案。目录支持按分卷筛选（`分卷` 下拉，含「全部分卷」「无分卷」与各不重复分卷）、倒序（`倒序`）与数字序号（`序号`，右对齐，数字后带 `.`；列宽至少两位数字，并随全书章节数增长），分卷标题在目录中以单独一行的小标题展示；章节名过长时单行省略（`...`），副标题与章节名在内容被截断时，悬浮/聚焦会通过主题自绘的深色提示框（非系统原生 `title`）显示完整文本。提供字号调节（默认 `16px`，范围 `16–40px`）与主题模式（自动 / 白天 / 夜间，自动模式跟随系统深浅色），均通过 `localStorage` 持久化并在下次访问时自动恢复（键 `tomato-font-size`、`tomato-theme`（`auto` / `light` / `dark`）、`tomato-reverse`、`tomato-index`、`tomato-sidebar-collapsed`（桌面端目录折叠，`1` / `0`；移动端目录仍默认隐藏））。当根路由设置了非空 `cover_image` 时，目录顶部标题区分为左右两栏：标题区默认由内容与封面共同撑开，最高限制为 150px（`max-height`，含内边距）；左侧封面始终 70px 宽并按原图比例展示（不拉伸高度），且不会因标题/简介为空而被裁切；右侧显示标题与副标题，副标题超出可用高度时自动省略（`...`）。未设置封面时保持单栏。封面地址支持绝对 URL 原样使用，相对路径会去除 `assets/` 前缀并按输出根目录拼上 `path_prefix`（`assets/` 内容构建时提升到输出根目录），加载失败时回退为单栏。页面数据使用文章页的 `chapters` 扁平章节列表；目录页（首页）使用 `lead` 直接展示目录子树的第一篇文章正文（含上一章/下一章），侧栏使用 `chapters` 渲染与文章页一致的目录（分卷/倒序/序号），结构与文章页相同；侧边栏底部右侧显示 `v{{ build.version }}` 版本信息。样式位于 `assets/css/tomato.css`，交互位于 `assets/js/tomato.js`。
 
 ## 5.2 Markdown 渲染
 
@@ -111,7 +111,8 @@ flowchart TD
 | `parent.label` | 字符串 | 父目录显示名；父目录为根时固定为 `/` |
 | `items` | 数组 | 当前目录直接子节点（过滤 `hidden` 与 `hidden_in_toc`；目录优先，再按时间降序、`path` 升序） |
 | `current` | 对象 | 当前目录节点 JSON（含 `render_data`）；其中 `current.path` 被覆盖为相对目录树路径（根为 `/`） |
-| `lead` | 对象 | 当前目录子树中按路径升序的第一篇非 `hidden` 文章（无则不存在）：`title`、`path`、`write_time`、`contents`（已渲染正文 HTML）、`word_count`、`read_min` |
+| `lead` | 对象 | 当前目录子树中按路径升序的第一篇非 `hidden` 文章（无则不存在）：`title`、`path`、`write_time`、`contents`（已渲染正文 HTML）、`word_count`、`read_min`、`nav`（上一章/下一章）；目录页由 `tomato` 用于直接展示正文 |
+| `chapters` | 数组 | 与文章页相同的扁平章节列表（含 `volume` / `volume_key`）；`tomato` 的目录页侧栏据此渲染分卷、倒序、序号等，并把 `lead` 标记为当前章节 |
 | 其余键 | — | `conf_.json()` 的顶层键（`camus/source_dir/assets_dir/meta/sitemap/filename_case/public_url/protocol/domain_name/path_prefix/render/friends/site/route/git/build`）被合并进来 |
 
 `meta.json` 的 `catalog` 数组按目录树的先序顺序输出，保证结果稳定。

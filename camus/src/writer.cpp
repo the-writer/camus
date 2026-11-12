@@ -554,20 +554,6 @@ namespace camus
 		auto articles = collect_articles();
 		fill_article_nav(articles);
 
-		// 阅读主题使用的章节列表：按源路径升序，最接近小说的自然章节顺序。
-		std::vector<catalog::catalog_node *> ordered_articles = articles;
-		std::ranges::sort(ordered_articles, [](const catalog::catalog_node *a, const catalog::catalog_node *b) {
-			return a->path.string() < b->path.string();
-		});
-
-		// 目录路径 -> 显示名，供章节列表标注所属分卷。
-		std::unordered_map<std::string, std::string> dir_titles;
-		catalog::traverse_catalog_tree(catalog_, [&](catalog::catalog_node &node, int) {
-			if (node.is_directory()) {
-				dir_titles[node.path.string()] = node.property.display_name;
-			}
-		});
-
 		const std::filesystem::path out_dir = std::filesystem::relative(conf_.camus().dest_dir(), cmd_.workdir);
 		auto toc_items = build_toc_items();
 
@@ -577,7 +563,7 @@ namespace camus
 		stats["all"] = all_stats;
 
 		for (auto *article : articles) {
-			render_single_article(*article, toc_items, ordered_articles, dir_titles, stats, out_dir);
+			render_single_article(*article, toc_items, stats, out_dir);
 		}
 
 		render_stats_page(stats, toc_items);
@@ -816,6 +802,47 @@ namespace camus
 		return items;
 	}
 
+	std::vector<nlohmann::json> writer::build_chapter_items()
+	{
+		std::vector<const catalog::catalog_node *> articles;
+		std::unordered_map<std::string, std::string> dir_titles;
+
+		catalog::traverse_catalog_tree(catalog_, [&](catalog::catalog_node &node, int) {
+			if (node.is_directory()) {
+				dir_titles[node.path.string()] = node.property.display_name;
+				return;
+			}
+
+			if (node.property.visibility != catalog::hidden) {
+				articles.push_back(&node);
+			}
+		});
+
+		std::ranges::sort(articles, [](const catalog::catalog_node *a, const catalog::catalog_node *b) {
+			return a->path.string() < b->path.string();
+		});
+
+		std::vector<nlohmann::json> items;
+		items.reserve(articles.size());
+
+		for (const auto *article : articles) {
+			nlohmann::json item;
+			item["title"] = article->property.display_name;
+			item["path"] = filesystem::clean_path(article->link_url(), conf_.camus().public_url.path_prefix);
+			item["write_time"] = article->property.write_time;
+			item["current"] = false;
+
+			// volume_key 用于分组（目录路径），volume 为展示用标题。
+			const std::string volume_key = article->path.parent_path().string();
+			item["volume_key"] = volume_key;
+			item["volume"] = dir_titles.contains(volume_key) ? dir_titles.at(volume_key) : "";
+
+			items.push_back(std::move(item));
+		}
+
+		return items;
+	}
+
 	void writer::accumulate_article_stats(
 		const catalog::catalog_node &node, const size_t word_count, const double read_mins,
 		std::unordered_map<std::string, article_stats> &stats
@@ -850,8 +877,6 @@ namespace camus
 
 	void writer::render_single_article(
 		catalog::catalog_node &node, const std::vector<nlohmann::json> &toc_items,
-		const std::vector<catalog::catalog_node *> &ordered_articles,
-		const std::unordered_map<std::string, std::string> &dir_titles,
 		std::unordered_map<std::string, article_stats> &stats, const std::filesystem::path &out_dir
 	)
 	{
@@ -899,25 +924,13 @@ namespace camus
 		j["nav"] = node.render_data_.nav;
 
 		// 供小说阅读主题使用的扁平章节列表（按源路径升序，标记当前章节与所属分卷）。
-		nlohmann::json chapters = nlohmann::json::array();
-		for (const auto *article : ordered_articles) {
-			nlohmann::json item;
-			item["title"] = article->property.display_name;
-			item["path"] = filesystem::clean_path(article->link_url(), conf_.camus().public_url.path_prefix);
-			item["write_time"] = article->property.write_time;
-			item["current"] = article == &node;
-
-			// volume_key 用于分组（目录路径），volume 为展示用标题。
-			const std::string volume_key = article->path.parent_path().string();
-			item["volume_key"] = volume_key;
-
-			if (const auto it = dir_titles.find(volume_key); it != dir_titles.end()) {
-				item["volume"] = it->second;
-			} else {
-				item["volume"] = "";
+		auto chapters = build_chapter_items();
+		const std::string current_path =
+			filesystem::clean_path(node.link_url(), conf_.camus().public_url.path_prefix);
+		for (auto &item : chapters) {
+			if (item.value("path", "") == current_path) {
+				item["current"] = true;
 			}
-
-			chapters.push_back(std::move(item));
 		}
 
 		j["chapters"] = std::move(chapters);
@@ -1080,6 +1093,8 @@ namespace camus
 			return nullptr;
 		};
 
+		const auto chapter_items = build_chapter_items();
+
 		nlohmann::json toc_full;
 		toc_full["config"] = conf_.json();
 
@@ -1117,16 +1132,28 @@ namespace camus
 			});
 
 			toc_item["items"] = items;
+			toc_item["chapters"] = chapter_items;
 
 			if (const auto *lead = find_lead(dir_node); lead != nullptr) {
+				const std::string lead_path =
+					filesystem::clean_path(lead->link_url(), conf_.camus().public_url.path_prefix);
+
 				toc_item["lead"] = {
 					{"title", lead->property.display_name},
-					{"path", filesystem::clean_path(lead->link_url(), conf_.camus().public_url.path_prefix)},
+					{"path", lead_path},
 					{"write_time", lead->property.write_time},
 					{"contents", lead->render_data_.page.contents},
 					{"word_count", lead->render_data_.stats.word_count},
 					{"read_min", lead->render_data_.stats.read_min},
+					{"nav", lead->render_data_.nav},
 				};
+
+				// 首页展示第一篇文章时，目录中同步高亮该文章。
+				for (auto &chapter : toc_item["chapters"]) {
+					if (chapter.value("path", "") == lead_path) {
+						chapter["current"] = true;
+					}
+				}
 			}
 
 			toc_item["current"] = *dir_node;

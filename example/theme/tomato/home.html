@@ -43,17 +43,24 @@
     </header>
 
     <div class="tm-toc-head">
-        <span>目录</span>
-        <span class="tm-count">{{ length(items) }}</span>
+        <span class="tm-toc-title">目录 <span class="tm-count">{{ length(chapters) }}</span></span>
+        <div class="tm-toc-actions">
+            <button id="tm-volume-btn" class="tm-toc-action" type="button" aria-haspopup="true" aria-expanded="false" hidden>
+                分卷 <span class="tm-caret" aria-hidden="true">⌄</span>
+            </button>
+            <button id="tm-reverse-btn" class="tm-toc-action" type="button" aria-pressed="false">倒序</button>
+            <button id="tm-index-btn" class="tm-toc-action" type="button" aria-pressed="false">序号</button>
+        </div>
+        <div id="tm-volume-menu" class="tm-volume-menu" hidden></div>
     </div>
 
-    <nav class="tm-chapters" aria-label="章节列表">
-        {% for item in items %}
-        {% if item.is_dir %}
-        <a class="tm-chapter tm-dir" href="{{ item.path }}" data-tip="{{ item.title }}"><span class="tm-chapter-title">{{ item.title }}</span></a>
-        {% else %}
-        <a class="tm-chapter" href="{% if item.link_path != "" %}{{ item.link_path }}{% else %}{{ item.path }}{% endif %}" data-tip="{{ item.title }}"><span class="tm-chapter-title">{{ item.title }}</span></a>
-        {% endif %}
+    <nav class="tm-chapters" id="tm-chapters" aria-label="章节列表">
+        {% for chapter in chapters %}
+        <a class="tm-chapter{% if chapter.current %} tm-current{% endif %}"
+           href="{{ chapter.path }}"
+           data-volume="{{ chapter.volume }}"
+           data-volume-key="{{ chapter.volume_key }}"
+           data-tip="{{ chapter.title }}"><span class="tm-chapter-title">{{ chapter.title }}</span></a>
         {% endfor %}
     </nav>
 
@@ -94,6 +101,23 @@
             </div>
         </header>
         <article class="tm-content">{{ lead.contents }}</article>
+
+        <nav class="tm-pager" aria-label="章节导航">
+            {% if lead.nav.prev_path != "" %}
+            <a href="{{ lead.nav.prev_path }}">
+                <span class="tm-pager-label">上一章</span>
+            </a>
+            {% else %}
+            <span class="tm-pager-placeholder"></span>
+            {% endif %}
+            {% if lead.nav.next_path != "" %}
+            <a class="tm-pager-next" href="{{ lead.nav.next_path }}">
+                <span class="tm-pager-label">下一章</span>
+            </a>
+            {% else %}
+            <span class="tm-pager-placeholder"></span>
+            {% endif %}
+        </nav>
         {% else %}
         <header class="tm-home-head">
             <h1>{% if current.path == "/" %}{{ site.title }}{% else %}{{ current.title }}{% endif %}</h1>

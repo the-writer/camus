@@ -60,14 +60,14 @@ namespace camus
 		std::vector<catalog::catalog_node *> collect_articles();
 		void fill_article_nav(std::vector<catalog::catalog_node *> &articles) const;
 		std::vector<nlohmann::json> build_toc_items() const;
+		// 扁平章节列表（按源路径升序，含分卷信息），current 统一为 false。
+		std::vector<nlohmann::json> build_chapter_items();
 		void accumulate_article_stats(
 			const catalog::catalog_node &node, size_t word_count, double read_mins,
 			std::unordered_map<std::string, article_stats> &stats
 		);
 		void render_single_article(
 			catalog::catalog_node &node, const std::vector<nlohmann::json> &toc_items,
-			const std::vector<catalog::catalog_node *> &ordered_articles,
-			const std::unordered_map<std::string, std::string> &dir_titles,
 			std::unordered_map<std::string, article_stats> &stats, const std::filesystem::path &out_dir
 		);
 		void render_stats_page(
