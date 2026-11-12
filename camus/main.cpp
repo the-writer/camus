@@ -218,10 +218,12 @@ int main(const int argc, char **argv)
 		}
 
 		if (!arg.exist("watch")) {
+			camus::wait_update();
 			return code;
 		}
 
 		c->watch();
+		camus::wait_update();
 	} catch (const std::exception &e) {
 		logging::fatal("exception exit error={}", e.what());
 

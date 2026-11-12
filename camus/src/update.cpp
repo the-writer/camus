@@ -1,6 +1,7 @@
 #include "update.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdlib>
 #include <filesystem>
 #include <format>
@@ -9,6 +10,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 #include <build/build.h>
@@ -348,6 +350,22 @@ namespace
 		return {};
 #endif
 	}
+
+	// 后台更新线程与运行状态（程序生命周期内只启动一次）。
+	// 正常退出路径由 wait_update() 提前 join；析构仅作兜底，不再使用日志。
+	struct background_update_state {
+		std::thread worker;
+		std::atomic_bool running = false;
+
+		~background_update_state()
+		{
+			if (worker.joinable()) {
+				worker.join();
+			}
+		}
+	};
+
+	background_update_state background_update;
 } // namespace
 
 namespace camus
@@ -410,5 +428,31 @@ namespace camus
 		std::filesystem::remove(dest, ec);
 		logging::info("update installed: {}", result.version);
 		return 0;
+	}
+
+	void run_update_detached(const bool install)
+	{
+		if (background_update.worker.joinable()) {
+			return;
+		}
+
+		background_update.running = true;
+		background_update.worker = std::thread([install] {
+			std::ignore = install ? run_update() : check_update();
+			background_update.running = false;
+		});
+	}
+
+	void wait_update()
+	{
+		if (!background_update.worker.joinable()) {
+			return;
+		}
+
+		if (background_update.running.load()) {
+			logging::info("waiting for background update to finish...");
+		}
+
+		background_update.worker.join();
 	}
 } // namespace camus
