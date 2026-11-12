@@ -132,6 +132,10 @@
     var menuBtn = document.getElementById("tm-menu");
     var overlay = document.getElementById("tm-overlay");
     var media = window.matchMedia("(max-width: 900px)");
+    var SIDEBAR_KEY = "tomato-sidebar-collapsed";
+
+    // 恢复上次的目录折叠状态（仅桌面端生效，移动端仍默认隐藏）
+    body.classList.toggle("tm-collapsed", read(SIDEBAR_KEY) === "1");
 
     function isMobile() {
         return media.matches;
@@ -142,7 +146,8 @@
             body.classList.toggle("tm-open");
             return;
         }
-        body.classList.toggle("tm-collapsed");
+        var collapsed = body.classList.toggle("tm-collapsed");
+        write(SIDEBAR_KEY, collapsed ? "1" : "0");
     }
 
     function closeMobileSidebar() {
@@ -164,18 +169,242 @@
         });
     }
 
-    // 点击章节后关闭移动端侧边栏
-    document.querySelectorAll(".tm-chapters .tm-chapter").forEach(function (link) {
-        link.addEventListener("click", closeMobileSidebar);
-    });
+    // ── 章节目录：分卷 / 倒序 / 序号 ──
+    var chaptersNav = document.getElementById("tm-chapters");
+    var volumeBtn = document.getElementById("tm-volume-btn");
+    var volumeMenu = document.getElementById("tm-volume-menu");
+    var reverseBtn = document.getElementById("tm-reverse-btn");
+    var indexBtn = document.getElementById("tm-index-btn");
 
-    // 当前章节滚动到可见区域
-    var current = document.querySelector(".tm-chapter.tm-current");
-    if (current) {
-        var container = current.closest(".tm-chapters");
-        if (container) {
-            var offset = current.offsetTop - container.clientHeight / 2;
-            container.scrollTop = Math.max(0, offset);
+    if (chaptersNav) {
+        var items = [];
+        chaptersNav.querySelectorAll(".tm-chapter").forEach(function (link, i) {
+            items.push({
+                title: link.textContent.trim(),
+                href: link.getAttribute("href"),
+                volume: link.getAttribute("data-volume") || "",
+                volumeKey: link.getAttribute("data-volume-key") || "",
+                current: link.classList.contains("tm-current"),
+                index: i + 1
+            });
+        });
+
+        var REVERSE_KEY = "tomato-reverse";
+        var INDEX_KEY = "tomato-index";
+        var NONE_VOLUME = "__none__";
+        var reverse = read(REVERSE_KEY) === "1";
+        var showIndex = read(INDEX_KEY) === "1";
+        var volumeFilter = "";
+
+        var volumes = [];
+        var hasNoVolume = false;
+        items.forEach(function (item) {
+            if (!item.volumeKey) {
+                hasNoVolume = true;
+                return;
+            }
+            var exists = volumes.some(function (volume) {
+                return volume.key === item.volumeKey;
+            });
+            if (!exists) {
+                volumes.push({ key: item.volumeKey, label: item.volume });
+            }
+        });
+
+        if (volumeBtn) {
+            volumeBtn.hidden = volumes.length === 0 && !hasNoVolume;
         }
+
+        function closeVolumeMenu() {
+            if (!volumeMenu) {
+                return;
+            }
+            volumeMenu.hidden = true;
+            if (volumeBtn) {
+                volumeBtn.setAttribute("aria-expanded", "false");
+            }
+        }
+
+        function selectVolume(volume) {
+            volumeFilter = volume;
+            buildVolumeMenu();
+            renderChapters();
+            closeVolumeMenu();
+            chaptersNav.scrollTop = 0;
+        }
+
+        function buildVolumeMenu() {
+            if (!volumeMenu) {
+                return;
+            }
+
+            volumeMenu.innerHTML = "";
+
+            var all = document.createElement("a");
+            all.className = "tm-volume-item" + (volumeFilter === "" ? " is-active" : "");
+            all.textContent = "全部分卷";
+            all.addEventListener("click", function () {
+                selectVolume("");
+            });
+            volumeMenu.appendChild(all);
+
+            if (hasNoVolume) {
+                var none = document.createElement("a");
+                none.className = "tm-volume-item" + (volumeFilter === NONE_VOLUME ? " is-active" : "");
+                none.textContent = "无分卷";
+                none.addEventListener("click", function () {
+                    selectVolume(NONE_VOLUME);
+                });
+                volumeMenu.appendChild(none);
+            }
+
+            volumes.forEach(function (volume) {
+                var item = document.createElement("a");
+                item.className = "tm-volume-item" + (volumeFilter === volume.key ? " is-active" : "");
+                item.textContent = volume.label;
+                item.addEventListener("click", function () {
+                    selectVolume(volume.key);
+                });
+                volumeMenu.appendChild(item);
+            });
+        }
+
+        function renderChapters() {
+            var list = items.filter(function (item) {
+                if (volumeFilter === "") {
+                    return true;
+                }
+                if (volumeFilter === NONE_VOLUME) {
+                    return item.volumeKey === "";
+                }
+                return item.volumeKey === volumeFilter;
+            });
+
+            if (reverse) {
+                list = list.slice().reverse();
+            }
+
+            chaptersNav.innerHTML = "";
+
+            // 序号列宽：至少两位数字，随全书章节数增长，并预留 "." 的宽度。
+            var indexDigits = Math.max(2, String(items.length).length);
+            chaptersNav.style.setProperty("--tm-index-width", indexDigits + 1 + "ch");
+
+            var lastVolume = null;
+            list.forEach(function (item) {
+                if (item.volumeKey && item.volumeKey !== lastVolume) {
+                    var heading = document.createElement("div");
+                    heading.className = "tm-volume-title";
+                    heading.textContent = item.volume;
+                    chaptersNav.appendChild(heading);
+                }
+                lastVolume = item.volumeKey;
+
+                var link = document.createElement("a");
+                link.className = "tm-chapter" + (item.current ? " tm-current" : "");
+                link.href = item.href;
+                link.setAttribute("data-volume", item.volume);
+                link.setAttribute("data-volume-key", item.volumeKey);
+
+                if (showIndex) {
+                    var number = document.createElement("span");
+                    number.className = "tm-index";
+                    number.textContent = String(item.index) + ".";
+                    link.appendChild(number);
+                }
+
+                var title = document.createElement("span");
+                title.className = "tm-chapter-title";
+                title.textContent = item.title;
+                link.appendChild(title);
+
+                chaptersNav.appendChild(link);
+            });
+
+            if (volumeFilter === "") {
+                var current = chaptersNav.querySelector(".tm-chapter.tm-current");
+                if (current) {
+                    var navRect = chaptersNav.getBoundingClientRect();
+                    var curRect = current.getBoundingClientRect();
+                    if (curRect.top < navRect.top || curRect.bottom > navRect.bottom) {
+                        var delta = (curRect.top - navRect.top) + chaptersNav.scrollTop;
+                        chaptersNav.scrollTop = Math.max(
+                            0,
+                            delta - chaptersNav.clientHeight / 2 + current.offsetHeight / 2
+                        );
+                    }
+                }
+            }
+        }
+
+        function syncButtons() {
+            if (reverseBtn) {
+                reverseBtn.classList.toggle("is-active", reverse);
+                reverseBtn.setAttribute("aria-pressed", reverse ? "true" : "false");
+            }
+            if (indexBtn) {
+                indexBtn.classList.toggle("is-active", showIndex);
+                indexBtn.setAttribute("aria-pressed", showIndex ? "true" : "false");
+            }
+        }
+
+        if (volumeBtn) {
+            volumeBtn.addEventListener("click", function (event) {
+                event.stopPropagation();
+                if (!volumeMenu) {
+                    return;
+                }
+                if (volumeMenu.hidden) {
+                    buildVolumeMenu();
+                    volumeMenu.hidden = false;
+                    volumeBtn.setAttribute("aria-expanded", "true");
+                } else {
+                    closeVolumeMenu();
+                }
+            });
+        }
+
+        document.addEventListener("click", function (event) {
+            if (!volumeMenu || volumeMenu.hidden) {
+                return;
+            }
+            if (volumeMenu.contains(event.target) || (volumeBtn && volumeBtn.contains(event.target))) {
+                return;
+            }
+            closeVolumeMenu();
+        });
+
+        if (reverseBtn) {
+            reverseBtn.addEventListener("click", function () {
+                reverse = !reverse;
+                write(REVERSE_KEY, reverse ? "1" : "0");
+                syncButtons();
+                renderChapters();
+            });
+        }
+
+        if (indexBtn) {
+            indexBtn.addEventListener("click", function () {
+                showIndex = !showIndex;
+                write(INDEX_KEY, showIndex ? "1" : "0");
+                syncButtons();
+                renderChapters();
+            });
+        }
+
+        chaptersNav.addEventListener("click", function (event) {
+            if (event.target.closest(".tm-chapter")) {
+                closeMobileSidebar();
+            }
+        });
+
+        syncButtons();
+        buildVolumeMenu();
+        renderChapters();
+    } else {
+        // 点击章节后关闭移动端侧边栏
+        document.querySelectorAll(".tm-chapters .tm-chapter").forEach(function (link) {
+            link.addEventListener("click", closeMobileSidebar);
+        });
     }
 })();

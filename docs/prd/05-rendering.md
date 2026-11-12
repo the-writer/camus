@@ -31,7 +31,7 @@
 
 `pixel` 主题在 `assets/css/pixel-inja.css` 中设置 `html { font-size: 85%; }`，字体与基于 rem 的元素尺寸整体约缩小 15%。
 
-`tomato` 是小说阅读主题：左侧为章节目录（桌面端可点击折叠，移动端默认隐藏并以遮罩抽屉展开），右侧为正文；提供字号调节（默认 `16px`，范围 `16–40px`）与主题模式（自动 / 白天 / 夜间，自动模式跟随系统深浅色），二者通过 `localStorage` 持久化（键 `tomato-font-size`、`tomato-theme`，主题值可为 `auto` / `light` / `dark`）。页面数据使用文章页的 `chapters` 扁平章节列表，样式位于 `assets/css/tomato.css`，交互位于 `assets/js/tomato.js`。
+`tomato` 是小说阅读主题：左侧为章节目录（桌面端可点击折叠，移动端默认隐藏并以遮罩抽屉展开），右侧为正文；上一章 / 下一章仅显示按钮文案。目录支持按分卷筛选（`分卷` 下拉，含「全部分卷」「无分卷」与各不重复分卷）、倒序（`倒序`）与数字序号（`序号`，右对齐，数字后带 `.`；列宽至少两位数字，并随全书章节数增长），分卷标题在目录中以单独一行的小标题展示。提供字号调节（默认 `16px`，范围 `16–40px`）与主题模式（自动 / 白天 / 夜间，自动模式跟随系统深浅色），均通过 `localStorage` 持久化并在下次访问时自动恢复（键 `tomato-font-size`、`tomato-theme`（`auto` / `light` / `dark`）、`tomato-reverse`、`tomato-index`、`tomato-sidebar-collapsed`（桌面端目录折叠，`1` / `0`；移动端目录仍默认隐藏））。页面数据使用文章页的 `chapters` 扁平章节列表，样式位于 `assets/css/tomato.css`，交互位于 `assets/js/tomato.js`。
 
 ## 5.2 Markdown 渲染
 
@@ -94,7 +94,7 @@ flowchart TD
 | `stats.read_min` | 数字 | 阅读分钟数 |
 | `nav.next_path` / `nav.next_title` | 字符串 | 下一篇（更旧） |
 | `nav.prev_path` / `nav.prev_title` | 字符串 | 上一篇（更新） |
-| `chapters` | 数组 | 全部非 `hidden` 文章的扁平章节列表，按源路径升序；每项含 `title`、`path`、`write_time`、`current`（是否为当前文章）。供 `tomato` 等阅读主题渲染章节目录 |
+| `chapters` | 数组 | 全部非 `hidden` 文章的扁平章节列表，按源路径升序；每项含 `title`、`path`、`write_time`、`current`（是否为当前文章）、`volume`（所属目录显示名）与 `volume_key`（所属目录路径，用于分组；根目录下的文章均为空串）。供 `tomato` 等阅读主题渲染章节目录 |
 | `render_data.stats/page/nav` | 对象 | 节点自带的渲染数据（与顶层 `stats/page/nav` 同源） |
 
 `page.html` 渲染后还会做 HTML 后处理（见 §5.8）。

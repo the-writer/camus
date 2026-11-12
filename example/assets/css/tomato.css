@@ -91,19 +91,122 @@ body.tomato {
 }
 
 .tm-toc-head {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 16px 26px 10px;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding: 16px 18px 10px;
     font-size: 0.86rem;
     font-weight: 600;
     color: var(--tm-text);
 }
 
+.tm-toc-title {
+    white-space: nowrap;
+}
+
 .tm-toc-head .tm-count {
     color: var(--tm-text-faint);
     font-weight: 400;
+}
+
+.tm-toc-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+}
+
+.tm-toc-action {
+    padding: 4px 7px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--tm-text-secondary);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.tm-toc-action:hover {
+    color: var(--tm-accent);
+    background: var(--tm-accent-soft);
+}
+
+.tm-toc-action.is-active {
+    color: var(--tm-accent);
+}
+
+.tm-caret {
+    font-size: 0.72em;
+}
+
+.tm-volume-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 12px;
+    right: 12px;
+    z-index: 60;
+    max-height: 60vh;
+    padding: 8px;
+    overflow-y: auto;
+    background: var(--tm-panel);
+    border: 1px solid var(--tm-border);
+    border-radius: 12px;
+    box-shadow: var(--tm-shadow);
+}
+
+.tm-volume-item {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: var(--tm-text-secondary);
+    font-size: 0.86rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.tm-volume-item:hover {
+    color: var(--tm-text);
+    background: var(--tm-panel-soft);
+}
+
+.tm-volume-item.is-active {
+    color: var(--tm-accent);
+    background: var(--tm-accent-soft);
+}
+
+.tm-volume-title {
+    margin: 10px 12px 4px;
+    padding-top: 12px;
+    border-top: 1px solid var(--tm-border);
+    color: var(--tm-text-faint);
+    font-size: 0.76rem;
+    font-weight: 600;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+}
+
+.tm-chapters .tm-volume-title:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.tm-index {
+    display: inline-block;
+    width: var(--tm-index-width, 3ch);
+    margin-right: 8px;
+    text-align: right;
+    color: var(--tm-text-faint);
+    font-variant-numeric: tabular-nums;
 }
 
 .tm-chapters {
@@ -340,12 +443,12 @@ body.tomato {
     border-top: 1px solid var(--tm-border);
 }
 
-.tm-pager a,
-.tm-pager span {
+.tm-pager > a,
+.tm-pager > span {
     flex: 1;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    justify-content: center;
     padding: 14px 18px;
     border: 1px solid var(--tm-border);
     border-radius: var(--tm-radius);
@@ -354,14 +457,14 @@ body.tomato {
     min-width: 0;
 }
 
-.tm-pager a:hover {
+.tm-pager > a:hover {
     border-color: var(--tm-accent);
     color: var(--tm-accent);
 }
 
 .tm-pager .tm-pager-label {
-    font-size: 0.72rem;
-    color: var(--tm-text-faint);
+    font-size: 0.86rem;
+    color: var(--tm-text-secondary);
     letter-spacing: 0.08em;
 }
 
@@ -374,8 +477,8 @@ body.tomato {
 }
 
 .tm-pager .tm-pager-next {
-    text-align: right;
-    align-items: flex-end;
+    text-align: center;
+    align-items: center;
 }
 
 .tm-pager .tm-pager-placeholder {
@@ -752,7 +855,7 @@ body.tomato {
     }
 
     .tm-pager .tm-pager-next {
-        text-align: left;
-        align-items: flex-start;
+        text-align: center;
+        align-items: center;
     }
 }
