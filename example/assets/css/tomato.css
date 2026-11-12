@@ -273,7 +273,7 @@ body.tomato {
 .tm-index {
     flex: none;
     display: inline-block;
-    width: var(--tm-index-width, 3ch);
+    width: var(--tm-index-width);
     margin-right: 8px;
     text-align: right;
     color: var(--tm-text-faint);
