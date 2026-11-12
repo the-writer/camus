@@ -1060,6 +1060,26 @@ namespace camus
 			}
 		});
 
+		// 按目录树顺序（路径升序）查找子目录中的第一篇文章，用于首页直接展示正文。
+		std::function<const catalog::catalog_node *(const catalog::catalog_node *)> find_lead =
+			[&](const catalog::catalog_node *node) -> const catalog::catalog_node * {
+			for (const auto &child : node->children) {
+				if (child.property.visibility == catalog::hidden) {
+					continue;
+				}
+
+				if (!child.is_directory()) {
+					return &child;
+				}
+
+				if (const auto *found = find_lead(&child); found != nullptr) {
+					return found;
+				}
+			}
+
+			return nullptr;
+		};
+
 		nlohmann::json toc_full;
 		toc_full["config"] = conf_.json();
 
@@ -1097,6 +1117,18 @@ namespace camus
 			});
 
 			toc_item["items"] = items;
+
+			if (const auto *lead = find_lead(dir_node); lead != nullptr) {
+				toc_item["lead"] = {
+					{"title", lead->property.display_name},
+					{"path", filesystem::clean_path(lead->link_url(), conf_.camus().public_url.path_prefix)},
+					{"write_time", lead->property.write_time},
+					{"contents", lead->render_data_.page.contents},
+					{"word_count", lead->render_data_.stats.word_count},
+					{"read_min", lead->render_data_.stats.read_min},
+				};
+			}
+
 			toc_item["current"] = *dir_node;
 			// current.path 供主题判断是否根目录（如 current.path != "/"），
 			// 使用相对目录树的原始路径，而不是带 public_url 前缀的 URL。

@@ -58,9 +58,12 @@
     </nav>
 
     <footer class="tm-sidebar-footer">
-        <a href="{{ path_prefix }}/">首页</a> /
-        <a href="{{ path_prefix }}/stats.html">统计</a> /
-        <a href="{{ path_prefix }}/friends.html">友链</a>
+        <span class="tm-footer-links">
+            <a href="{{ path_prefix }}/">首页</a> /
+            <a href="{{ path_prefix }}/stats.html">统计</a> /
+            <a href="{{ path_prefix }}/friends.html">友链</a>
+        </span>
+        <span class="tm-footer-version">v{{ build.version }}</span>
     </footer>
 </aside>
 
@@ -81,32 +84,27 @@
 
 <main class="tm-main">
     <div class="tm-reader">
+        {% if lead %}
+        <header class="tm-reader-head">
+            <h1>{{ lead.title }}</h1>
+            <div class="tm-meta">
+                <span>{{ lead.word_count }} 字</span>
+                <span>约 {{ lead.read_min }} 分钟</span>
+                <span>更新于 {{ format_datetime(lead.write_time) }}</span>
+            </div>
+        </header>
+        <article class="tm-content">{{ lead.contents }}</article>
+        {% else %}
         <header class="tm-home-head">
             <h1>{% if current.path == "/" %}{{ site.title }}{% else %}{{ current.title }}{% endif %}</h1>
             {% if length(current.subtitle) > 0 or length(site.subtitle) > 0 %}
             <p class="tm-home-sub">{% if current.path == "/" %}{{ site.subtitle }}{% else %}{{ current.subtitle }}{% endif %}</p>
             {% endif %}
         </header>
-
         {% if length(current.desc) > 0 %}
         <div class="tm-home-desc">{{ current.desc }}</div>
         {% endif %}
-
-        <div class="tm-home-list">
-            {% for item in items %}
-            {% if item.is_dir %}
-            <a class="tm-home-item" href="{{ item.path }}" data-tip="{{ item.title }}">
-                <span class="tm-home-item-title">{{ item.title }}</span>
-                <span class="tm-home-item-date">{{ format_datetime(item.write_time) }}</span>
-            </a>
-            {% else %}
-            <a class="tm-home-item" href="{% if item.link_path != "" %}{{ item.link_path }}{% else %}{{ item.path }}{% endif %}" data-tip="{{ item.title }}">
-                <span class="tm-home-item-title">{{ item.title }}</span>
-                <span class="tm-home-item-date">{{ format_datetime(item.write_time) }}</span>
-            </a>
-            {% endif %}
-            {% endfor %}
-        </div>
+        {% endif %}
     </div>
 </main>
 

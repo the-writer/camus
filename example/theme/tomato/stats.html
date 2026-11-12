@@ -58,9 +58,12 @@
     </nav>
 
     <footer class="tm-sidebar-footer">
-        <a href="{{ path_prefix }}/">首页</a> /
-        <a href="{{ path_prefix }}/stats.html">统计</a> /
-        <a href="{{ path_prefix }}/friends.html">友链</a>
+        <span class="tm-footer-links">
+            <a href="{{ path_prefix }}/">首页</a> /
+            <a href="{{ path_prefix }}/stats.html">统计</a> /
+            <a href="{{ path_prefix }}/friends.html">友链</a>
+        </span>
+        <span class="tm-footer-version">v{{ build.version }}</span>
     </footer>
 </aside>
 
