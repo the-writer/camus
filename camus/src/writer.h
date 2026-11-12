@@ -64,6 +64,7 @@ namespace camus
 		);
 		void render_single_article(
 			catalog::catalog_node &node, const std::vector<nlohmann::json> &toc_items,
+			const std::vector<catalog::catalog_node *> &ordered_articles,
 			std::unordered_map<std::string, article_stats> &stats, const std::filesystem::path &out_dir
 		);
 		void render_stats_page(

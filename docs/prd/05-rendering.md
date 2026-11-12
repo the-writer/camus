@@ -22,7 +22,7 @@
 
 `theme_name` 默认 `default`；示例站点使用 `terminal`。HTML 引擎固定为 `default`（inja），不再从配置读取，`theme_name` 也不会再拼接引擎子路径。
 
-所有内置主题（`default`/`document`/`pixel`/`terminal`）都额外引用公共资源入口：
+所有内置主题（`default`/`document`/`pixel`/`terminal`/`tomato`）都额外引用公共资源入口：
 
 - 样式：`{{ with_prefix("/css/style.css") }}`，对应本地 `assets/css/style.css`
 - 脚本：`{{ with_prefix("/js/onload.js") }}`，对应本地 `assets/js/onload.js`
@@ -30,6 +30,8 @@
 两个文件在默认资源中为空文件；用户可在本地 `./assets` 下提供同名文件覆盖，不存在时构建不会报错。
 
 `pixel` 主题在 `assets/css/pixel-inja.css` 中设置 `html { font-size: 85%; }`，字体与基于 rem 的元素尺寸整体约缩小 15%。
+
+`tomato` 是小说阅读主题：左侧为章节目录（桌面端可点击折叠，移动端默认隐藏并以遮罩抽屉展开），右侧为正文；提供字号调节（默认 `16px`，范围 `16–40px`）与主题模式（自动 / 白天 / 夜间，自动模式跟随系统深浅色），二者通过 `localStorage` 持久化（键 `tomato-font-size`、`tomato-theme`，主题值可为 `auto` / `light` / `dark`）。页面数据使用文章页的 `chapters` 扁平章节列表，样式位于 `assets/css/tomato.css`，交互位于 `assets/js/tomato.js`。
 
 ## 5.2 Markdown 渲染
 
@@ -92,6 +94,7 @@ flowchart TD
 | `stats.read_min` | 数字 | 阅读分钟数 |
 | `nav.next_path` / `nav.next_title` | 字符串 | 下一篇（更旧） |
 | `nav.prev_path` / `nav.prev_title` | 字符串 | 上一篇（更新） |
+| `chapters` | 数组 | 全部非 `hidden` 文章的扁平章节列表，按源路径升序；每项含 `title`、`path`、`write_time`、`current`（是否为当前文章）。供 `tomato` 等阅读主题渲染章节目录 |
 | `render_data.stats/page/nav` | 对象 | 节点自带的渲染数据（与顶层 `stats/page/nav` 同源） |
 
 `page.html` 渲染后还会做 HTML 后处理（见 §5.8）。

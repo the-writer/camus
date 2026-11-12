@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="x-ua-compatible" content="ie=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+    <meta name="description" content="{{ page.description }}"/>
+    <title>{{ page.title }} - {{ site.title }}</title>
+    <link rel="icon" href="{{ with_prefix("/favicon.ico") }}"/>
+    <link rel="stylesheet" href="{{ with_prefix("/css/tomato.css") }}"/>
+    <link rel="stylesheet" href="{{ with_prefix("/css/style.css") }}"/>
+    <script>
+        (function () {
+            try {
+                var mode = localStorage.getItem("tomato-theme");
+                if (mode !== "dark" && mode !== "light" && mode !== "auto") {
+                    mode = "auto";
+                }
+                var effective = mode === "auto"
+                    ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+                    : mode;
+                document.documentElement.setAttribute("data-theme", effective);
+                document.documentElement.setAttribute("data-theme-mode", mode);
+            } catch (e) {
+            }
+        })();
+    </script>
+</head>
+<body class="tomato">
+
+<button id="tm-menu" class="tm-menu-btn" type="button" aria-label="切换章节目录" title="切换章节目录">☰</button>
+
+<aside class="tm-sidebar" id="tm-sidebar">
+    <header class="tm-book">
+        <h1>{{ site.title }}</h1>
+        {% if site.subtitle %}<div class="tm-book-sub">{{ site.subtitle }}</div>{% endif %}
+    </header>
+
+    <div class="tm-toc-head">
+        <span>目录</span>
+        <span class="tm-count">{{ length(chapters) }}</span>
+    </div>
+
+    <nav class="tm-chapters" aria-label="章节列表">
+        {% for chapter in chapters %}
+        <a class="tm-chapter{% if chapter.current %} tm-current{% endif %}" href="{{ chapter.path }}">{{ chapter.title }}</a>
+        {% endfor %}
+    </nav>
+
+    <footer class="tm-sidebar-footer">
+        <a href="{{ path_prefix }}/">首页</a> /
+        <a href="{{ path_prefix }}/stats.html">统计</a> /
+        <a href="{{ path_prefix }}/friends.html">友链</a>
+    </footer>
+</aside>
+
+<div class="tm-overlay" id="tm-overlay"></div>
+
+<aside class="tm-tools" aria-label="阅读设置">
+    <button id="tm-theme" class="tm-tool" type="button" aria-pressed="false" title="切换主题（自动 / 白天 / 夜间）">
+        <span id="tm-theme-icon" aria-hidden="true">◐</span>
+        <span id="tm-theme-label" class="tm-tool-label">自动</span>
+    </button>
+    <div class="tm-font">
+        <button id="tm-font-plus" class="tm-font-btn" type="button" aria-label="增大字号">A+</button>
+        <input id="tm-font-range" class="tm-font-range" type="range" min="16" max="40" step="1" value="16"
+               aria-label="字号"/>
+        <button id="tm-font-minus" class="tm-font-btn" type="button" aria-label="减小字号">A-</button>
+    </div>
+</aside>
+
+<main class="tm-main">
+    <div class="tm-reader">
+        <header class="tm-reader-head">
+            <h1>{{ page.title }}</h1>
+            <div class="tm-meta">
+                <span>{{ stats.word_count }} 字</span>
+                <span>约 {{ stats.read_min }} 分钟</span>
+                <span>更新于 {{ format_datetime(page.write_time) }}</span>
+            </div>
+        </header>
+
+        <article class="tm-content">
+            {{ page.contents }}
+        </article>
+
+        <nav class="tm-pager" aria-label="章节导航">
+            {% if nav.prev_path != "" %}
+            <a href="{{ nav.prev_path }}">
+                <span class="tm-pager-label">上一章</span>
+                <span class="tm-pager-title">{{ nav.prev_title }}</span>
+            </a>
+            {% else %}
+            <span class="tm-pager-placeholder"></span>
+            {% endif %}
+            {% if nav.next_path != "" %}
+            <a class="tm-pager-next" href="{{ nav.next_path }}">
+                <span class="tm-pager-label">下一章</span>
+                <span class="tm-pager-title">{{ nav.next_title }}</span>
+            </a>
+            {% else %}
+            <span class="tm-pager-placeholder"></span>
+            {% endif %}
+        </nav>
+    </div>
+</main>
+
+<script src="{{ with_prefix("/js/tomato.js") }}"></script>
+<script src="{{ with_prefix("/js/onload.js") }}"></script>
+</body>
+</html>

@@ -23,7 +23,7 @@
 
 ```text
 <数据目录>/
-├── theme/{default,document,pixel,terminal}/{home,page,stats,friends}.html
+├── theme/{default,document,pixel,terminal,tomato}/{home,page,stats,friends}.html
 ├── theme/pdf/{page.html,style.css,fonts.css}   # PDF 模板、打印样式与字体样式
 ├── assets/                    # 默认静态资源（css/js/fonts/imgs/robots.txt 等）
 │   ├── css/style.css          # 公共样式入口，默认空文件

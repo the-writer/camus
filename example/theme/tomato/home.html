@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="x-ua-compatible" content="ie=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+    <meta name="description" content="{{ current.desc }}"/>
+    <title>{% if current.path != "/" and current.title %}{{ current.title }} - {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
+    <link rel="icon" href="{{ with_prefix("/favicon.ico") }}"/>
+    <link rel="stylesheet" href="{{ with_prefix("/css/tomato.css") }}"/>
+    <link rel="stylesheet" href="{{ with_prefix("/css/style.css") }}"/>
+    <script>
+        (function () {
+            try {
+                var mode = localStorage.getItem("tomato-theme");
+                if (mode !== "dark" && mode !== "light" && mode !== "auto") {
+                    mode = "auto";
+                }
+                var effective = mode === "auto"
+                    ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+                    : mode;
+                document.documentElement.setAttribute("data-theme", effective);
+                document.documentElement.setAttribute("data-theme-mode", mode);
+            } catch (e) {
+            }
+        })();
+    </script>
+</head>
+<body class="tomato">
+
+<button id="tm-menu" class="tm-menu-btn" type="button" aria-label="切换章节目录" title="切换章节目录">☰</button>
+
+<aside class="tm-sidebar" id="tm-sidebar">
+    <header class="tm-book">
+        <h1>{{ site.title }}</h1>
+        {% if site.subtitle %}<div class="tm-book-sub">{{ site.subtitle }}</div>{% endif %}
+    </header>
+
+    <div class="tm-toc-head">
+        <span>目录</span>
+        <span class="tm-count">{{ length(items) }}</span>
+    </div>
+
+    <nav class="tm-chapters" aria-label="章节列表">
+        {% for item in items %}
+        {% if item.is_dir %}
+        <a class="tm-chapter tm-dir" href="{{ item.path }}">{{ item.title }}</a>
+        {% else %}
+        <a class="tm-chapter" href="{% if item.link_path != "" %}{{ item.link_path }}{% else %}{{ item.path }}{% endif %}">{{ item.title }}</a>
+        {% endif %}
+        {% endfor %}
+    </nav>
+
+    <footer class="tm-sidebar-footer">
+        <a href="{{ path_prefix }}/">首页</a> /
+        <a href="{{ path_prefix }}/stats.html">统计</a> /
+        <a href="{{ path_prefix }}/friends.html">友链</a>
+    </footer>
+</aside>
+
+<div class="tm-overlay" id="tm-overlay"></div>
+
+<aside class="tm-tools" aria-label="阅读设置">
+    <button id="tm-theme" class="tm-tool" type="button" aria-pressed="false" title="切换主题（自动 / 白天 / 夜间）">
+        <span id="tm-theme-icon" aria-hidden="true">◐</span>
+        <span id="tm-theme-label" class="tm-tool-label">自动</span>
+    </button>
+    <div class="tm-font">
+        <button id="tm-font-plus" class="tm-font-btn" type="button" aria-label="增大字号">A+</button>
+        <input id="tm-font-range" class="tm-font-range" type="range" min="16" max="40" step="1" value="16"
+               aria-label="字号"/>
+        <button id="tm-font-minus" class="tm-font-btn" type="button" aria-label="减小字号">A-</button>
+    </div>
+</aside>
+
+<main class="tm-main">
+    <div class="tm-reader">
+        <header class="tm-home-head">
+            <h1>{% if current.path == "/" %}{{ site.title }}{% else %}{{ current.title }}{% endif %}</h1>
+            {% if current.subtitle or site.subtitle %}
+            <p class="tm-home-sub">{% if current.path == "/" %}{{ site.subtitle }}{% else %}{{ current.subtitle }}{% endif %}</p>
+            {% endif %}
+        </header>
+
+        {% if current.desc %}
+        <div class="tm-home-desc">{{ current.desc }}</div>
+        {% endif %}
+
+        <div class="tm-home-list">
+            {% for item in items %}
+            {% if item.is_dir %}
+            <a class="tm-home-item" href="{{ item.path }}">
+                <span class="tm-home-item-title">{{ item.title }}</span>
+                <span class="tm-home-item-date">{{ format_datetime(item.write_time) }}</span>
+            </a>
+            {% else %}
+            <a class="tm-home-item" href="{% if item.link_path != "" %}{{ item.link_path }}{% else %}{{ item.path }}{% endif %}">
+                <span class="tm-home-item-title">{{ item.title }}</span>
+                <span class="tm-home-item-date">{{ format_datetime(item.write_time) }}</span>
+            </a>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</main>
+
+<script src="{{ with_prefix("/js/tomato.js") }}"></script>
+<script src="{{ with_prefix("/js/onload.js") }}"></script>
+</body>
+</html>
