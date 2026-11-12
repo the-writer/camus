@@ -961,9 +961,22 @@ namespace camus
 		const std::unordered_map<std::string, article_stats> &stats, const std::vector<nlohmann::json> &toc_items
 	)
 	{
+		const auto &all = stats.at("all");
+		int64_t days = 0;
+		if (all.articles > 0 && all.min_time != 0 && all.max_time >= all.min_time) {
+			days = (all.max_time - all.min_time) / (24 * 3600) + 1;
+		}
+
 		nlohmann::json j = conf_.json();
 		j["toc"] = toc_items;
 		j["stats"] = stats;
+		j["chapters"] = build_chapter_items();
+		j["stats_overview"] = {
+			{"words", all.words},
+			{"articles", all.articles},
+			{"days", days},
+			{"read_mins", all.read_mins},
+		};
 
 		const std::string contents =
 			render::inja_render(inja_, conf_.camus().get_theme(config::CAMUS_THEME_TYPE_STATS), j);
@@ -1031,6 +1044,7 @@ namespace camus
 		nlohmann::json json = conf_.json();
 		json["toc"] = toc_items;
 		json["friends"] = conf_.camus().friends;
+		json["chapters"] = build_chapter_items();
 
 		add_write(
 			filesystem::clean_path("friends.html", conf_.camus().dest_dir()),

@@ -43,17 +43,24 @@
     </header>
 
     <div class="tm-toc-head">
-        <span>目录</span>
-        <span class="tm-count">{{ length(toc) }}</span>
+        <span class="tm-toc-title">目录 <span class="tm-count">{{ length(chapters) }}</span></span>
+        <div class="tm-toc-actions">
+            <button id="tm-volume-btn" class="tm-toc-action" type="button" aria-haspopup="true" aria-expanded="false" hidden>
+                分卷 <span class="tm-caret" aria-hidden="true">⌄</span>
+            </button>
+            <button id="tm-reverse-btn" class="tm-toc-action" type="button" aria-pressed="false">倒序</button>
+            <button id="tm-index-btn" class="tm-toc-action" type="button" aria-pressed="false">序号</button>
+        </div>
+        <div id="tm-volume-menu" class="tm-volume-menu" hidden></div>
     </div>
 
-    <nav class="tm-chapters" aria-label="章节列表">
-        {% for item in toc %}
-        {% if item.is_dir %}
-        <a class="tm-chapter tm-dir" href="{{ item.path }}" data-tip="{{ item.title }}"><span class="tm-chapter-title">{{ item.title }}</span></a>
-        {% else %}
-        <a class="tm-chapter" href="{% if item.link_path != "" %}{{ item.link_path }}{% else %}{{ item.path }}{% endif %}" data-tip="{{ item.title }}"><span class="tm-chapter-title">{{ item.title }}</span></a>
-        {% endif %}
+    <nav class="tm-chapters" id="tm-chapters" aria-label="章节列表">
+        {% for chapter in chapters %}
+        <a class="tm-chapter{% if chapter.current %} tm-current{% endif %}"
+           href="{{ chapter.path }}"
+           data-volume="{{ chapter.volume }}"
+           data-volume-key="{{ chapter.volume_key }}"
+           data-tip="{{ chapter.title }}"><span class="tm-chapter-title">{{ chapter.title }}</span></a>
         {% endfor %}
     </nav>
 
@@ -86,12 +93,47 @@
     <div class="tm-reader">
         <header class="tm-reader-head">
             <h1>统计</h1>
-            <div class="tm-meta">
-                <span>{{ stats.all.articles }} 篇</span>
-                <span>{{ stats.all.words }} 字</span>
-                <span>约 {{ stats.all.read_mins }} 分钟</span>
-            </div>
         </header>
+
+        <div class="tm-stat-cards">
+            <div class="tm-stat-card">
+                <span class="tm-stat-label">总字数</span>
+                <strong class="tm-stat-value">{{ stats_overview.words }}</strong>
+            </div>
+            <div class="tm-stat-card">
+                <span class="tm-stat-label">文章数</span>
+                <strong class="tm-stat-value">{{ stats_overview.articles }}</strong>
+            </div>
+            <div class="tm-stat-card">
+                <span class="tm-stat-label">总创作天数</span>
+                <strong class="tm-stat-value">{{ stats_overview.days }}<span class="tm-stat-unit">天</span></strong>
+            </div>
+            <div class="tm-stat-card">
+                <span class="tm-stat-label">总阅读时长</span>
+                <strong class="tm-stat-value">{{ stats_overview.read_mins }}<span class="tm-stat-unit">分钟</span></strong>
+            </div>
+        </div>
+
+        <div class="tm-panel tm-chart-panel">
+            <div class="tm-chart-head">
+                <h2>年度趋势</h2>
+                <div class="tm-chart-switch" role="group" aria-label="切换统计指标">
+                    <button type="button" class="tm-chart-toggle is-active" data-metric="articles" aria-pressed="true">文章数量</button>
+                    <button type="button" class="tm-chart-toggle" data-metric="words" aria-pressed="false">文字数量</button>
+                </div>
+            </div>
+            <div class="tm-chart">
+                <svg class="tm-chart-svg" viewBox="0 0 720 240" preserveAspectRatio="xMidYMid meet"
+                     role="img" aria-label="年度文章数折线图">
+                    <g class="tm-chart-grid" id="tm-chart-grid"></g>
+                    <polyline class="tm-chart-area" id="tm-chart-area" points=""></polyline>
+                    <polyline class="tm-chart-line" id="tm-chart-line" points=""></polyline>
+                    <g class="tm-chart-dots" id="tm-chart-dots"></g>
+                    <g class="tm-chart-axis" id="tm-chart-axis"></g>
+                </svg>
+                <p class="tm-chart-empty" id="tm-chart-empty" hidden>暂无数据</p>
+            </div>
+        </div>
 
         <div class="tm-panel">
             <h2>年度分布</h2>

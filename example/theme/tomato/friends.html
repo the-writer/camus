@@ -43,17 +43,24 @@
     </header>
 
     <div class="tm-toc-head">
-        <span>目录</span>
-        <span class="tm-count">{{ length(toc) }}</span>
+        <span class="tm-toc-title">目录 <span class="tm-count">{{ length(chapters) }}</span></span>
+        <div class="tm-toc-actions">
+            <button id="tm-volume-btn" class="tm-toc-action" type="button" aria-haspopup="true" aria-expanded="false" hidden>
+                分卷 <span class="tm-caret" aria-hidden="true">⌄</span>
+            </button>
+            <button id="tm-reverse-btn" class="tm-toc-action" type="button" aria-pressed="false">倒序</button>
+            <button id="tm-index-btn" class="tm-toc-action" type="button" aria-pressed="false">序号</button>
+        </div>
+        <div id="tm-volume-menu" class="tm-volume-menu" hidden></div>
     </div>
 
-    <nav class="tm-chapters" aria-label="章节列表">
-        {% for item in toc %}
-        {% if item.is_dir %}
-        <a class="tm-chapter tm-dir" href="{{ item.path }}" data-tip="{{ item.title }}"><span class="tm-chapter-title">{{ item.title }}</span></a>
-        {% else %}
-        <a class="tm-chapter" href="{% if item.link_path != "" %}{{ item.link_path }}{% else %}{{ item.path }}{% endif %}" data-tip="{{ item.title }}"><span class="tm-chapter-title">{{ item.title }}</span></a>
-        {% endif %}
+    <nav class="tm-chapters" id="tm-chapters" aria-label="章节列表">
+        {% for chapter in chapters %}
+        <a class="tm-chapter{% if chapter.current %} tm-current{% endif %}"
+           href="{{ chapter.path }}"
+           data-volume="{{ chapter.volume }}"
+           data-volume-key="{{ chapter.volume_key }}"
+           data-tip="{{ chapter.title }}"><span class="tm-chapter-title">{{ chapter.title }}</span></a>
         {% endfor %}
     </nav>
 
@@ -92,9 +99,16 @@
             <ul class="tm-simple-list">
                 {% for friend in friends %}
                 <li>
-                    <span>
+                    <a class="tm-simple-logo" href="{{ friend.link_url }}" target="_blank" rel="noopener"
+                       aria-hidden="true" tabindex="-1">
+                        {% if length(friend.image_url) > 0 %}
+                        <img alt="" loading="lazy"
+                             data-logo="{{ friend.image_url }}" data-prefix="{{ path_prefix }}"/>
+                        {% endif %}
+                    </a>
+                    <span class="tm-simple-body">
                         <a href="{{ friend.link_url }}" target="_blank" rel="noopener">{{ friend.title }}</a>
-                        {% if length(friend.desc) > 0 %}<br/><span class="tm-muted">{{ friend.desc }}</span>{% endif %}
+                        {% if length(friend.desc) > 0 %}<span class="tm-muted">{{ friend.desc }}</span>{% endif %}
                     </span>
                 </li>
                 {% endfor %}

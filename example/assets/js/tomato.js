@@ -570,4 +570,198 @@
     });
 
     window.addEventListener("resize", clampBookSubtitle);
+
+    // ── 友链 LOGO 路径解析（与封面图一致：绝对 URL 原样使用，相对路径拼 path_prefix） ──
+    document.querySelectorAll("img[data-logo]").forEach(function (img) {
+        var raw = (img.getAttribute("data-logo") || "").trim();
+        if (!raw) {
+            img.remove();
+            return;
+        }
+
+        var src = raw;
+        if (!/^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(raw) && !/^data:/i.test(raw)) {
+            var prefix = img.getAttribute("data-prefix") || "";
+            var path = raw.replace(/^\.?\//, "").replace(/^assets\//, "");
+            src = prefix + (path.charAt(0) === "/" ? path : "/" + path);
+        }
+
+        img.addEventListener("error", function () {
+            img.remove();
+        });
+        img.src = src;
+    });
+
+    // ── 统计页折线图：读取年度统计表并绘制 ──
+    function initStatsChart() {
+        var line = document.getElementById("tm-chart-line");
+        if (!line || !line.ownerSVGElement) {
+            return;
+        }
+
+        var svg = line.ownerSVGElement;
+        var grid = document.getElementById("tm-chart-grid");
+        var area = document.getElementById("tm-chart-area");
+        var dots = document.getElementById("tm-chart-dots");
+        var axis = document.getElementById("tm-chart-axis");
+        var empty = document.getElementById("tm-chart-empty");
+
+        var data = [];
+        document.querySelectorAll(".tm-stats-table tbody tr").forEach(function (row) {
+            var cells = row.querySelectorAll("td");
+            if (cells.length < 3) {
+                return;
+            }
+            var year = (cells[0].textContent || "").trim();
+            var articles = parseInt((cells[1].textContent || "").trim(), 10);
+            var words = parseInt((cells[2].textContent || "").trim(), 10);
+            if (!/^\d{4}$/.test(year) || !isFinite(articles) || !isFinite(words)) {
+                return;
+            }
+            data.push({ year: year, articles: articles, words: words });
+        });
+
+        data.sort(function (a, b) {
+            return Number(a.year) - Number(b.year);
+        });
+
+        if (!data.length) {
+            svg.style.display = "none";
+            if (empty) {
+                empty.hidden = false;
+            }
+            return;
+        }
+
+        function svgNode(name, attrs) {
+            var el = document.createElementNS("http://www.w3.org/2000/svg", name);
+            Object.keys(attrs || {}).forEach(function (key) {
+                el.setAttribute(key, attrs[key]);
+            });
+            return el;
+        }
+
+        function niceStep(raw) {
+            if (raw <= 1) {
+                return 1;
+            }
+            var pow = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10));
+            var n = raw / pow;
+            var step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+            return Math.max(1, step * pow);
+        }
+
+        function formatValue(value, metric) {
+            if (metric === "words" && value >= 10000) {
+                var wan = value / 10000;
+                return (wan % 1 === 0 ? wan.toFixed(0) : wan.toFixed(1)) + "万";
+            }
+            return String(Math.round(value));
+        }
+
+        var width = 720;
+        var height = 240;
+        var pad = { top: 18, right: 20, bottom: 34, left: 44 };
+        var plotW = width - pad.left - pad.right;
+        var plotH = height - pad.top - pad.bottom;
+        var baseY = pad.top + plotH;
+
+        var toggles = document.querySelectorAll(".tm-chart-toggle");
+        var metric = "articles";
+
+        function metricValue(d) {
+            return metric === "words" ? d.words : d.articles;
+        }
+
+        function xAt(i) {
+            return data.length === 1 ? pad.left + plotW / 2 : pad.left + (i * plotW) / (data.length - 1);
+        }
+
+        function draw() {
+            var maxValue = Math.max.apply(
+                null,
+                data.map(metricValue).concat([1])
+            );
+            var step = niceStep(maxValue / 4);
+            var niceMax = step * 4;
+
+            function yAt(value) {
+                return pad.top + plotH - (value / niceMax) * plotH;
+            }
+
+            grid.textContent = "";
+            axis.textContent = "";
+            dots.textContent = "";
+
+            for (var k = 0; k <= 4; k++) {
+                var value = (niceMax / 4) * k;
+                var y = yAt(value);
+                grid.appendChild(svgNode("line", {
+                    x1: pad.left,
+                    y1: y,
+                    x2: pad.left + plotW,
+                    y2: y
+                }));
+                var label = svgNode("text", {
+                    x: pad.left - 8,
+                    y: y,
+                    "text-anchor": "end",
+                    "dominant-baseline": "middle"
+                });
+                label.textContent = formatValue(value, metric);
+                axis.appendChild(label);
+            }
+
+            var labelEvery = Math.ceil(data.length / 12);
+            var points = [];
+            data.forEach(function (d, i) {
+                var x = xAt(i);
+                var y = yAt(metricValue(d));
+                points.push(x + "," + y);
+
+                var dot = svgNode("circle", { cx: x, cy: y, r: 3.5, class: "tm-chart-dot" });
+                var title = svgNode("title", {});
+                title.textContent = d.year + " 年：" +
+                    (metric === "words" ? d.words + " 字" : d.articles + " 篇");
+                dot.appendChild(title);
+                dots.appendChild(dot);
+
+                if (i % labelEvery === 0 || i === data.length - 1) {
+                    var yearLabel = svgNode("text", {
+                        x: x,
+                        y: baseY + 20,
+                        "text-anchor": "middle"
+                    });
+                    yearLabel.textContent = d.year;
+                    axis.appendChild(yearLabel);
+                }
+            });
+
+            line.setAttribute("points", points.join(" "));
+            area.setAttribute(
+                "points",
+                [xAt(0) + "," + baseY].concat(points).concat([xAt(data.length - 1) + "," + baseY]).join(" ")
+            );
+        }
+
+        function setMetric(next) {
+            metric = next === "words" ? "words" : "articles";
+            toggles.forEach(function (btn) {
+                var active = btn.getAttribute("data-metric") === metric;
+                btn.classList.toggle("is-active", active);
+                btn.setAttribute("aria-pressed", active ? "true" : "false");
+            });
+            draw();
+        }
+
+        toggles.forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                setMetric(btn.getAttribute("data-metric"));
+            });
+        });
+
+        setMetric("articles");
+    }
+
+    initStatsChart();
 })();

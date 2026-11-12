@@ -76,7 +76,7 @@ dist/
 
 ## 6.5 统计页 `stats.html`
 
-`render_stats_page()`（`writer.cpp:397`）使用 `stats.html` 模板，数据为 `{ ...conf, toc, stats }`（见 §5.7）。
+`render_stats_page()`（`writer.cpp:397`）使用 `stats.html` 模板，数据为 `{ ...conf, toc, stats, chapters }`（见 §5.7）。`tomato` 主题的统计页侧栏与文章页一致，使用 `chapters` 渲染完整章节目录及分卷 / 倒序 / 序号控件。
 
 `stats` 对象字段（`article_stats`）：
 
@@ -91,9 +91,15 @@ dist/
 
 `all` 桶的 `min_time` 初始为 `time_t` 最大值；年份桶以 `1996 < 1970 + write_time/(365*86400) < 2200` 过滤，键为年份字符串。
 
+`tomato` 主题的统计页顶部展示 4 张概览卡片：总字数、文章数、总创作天数、总阅读时长，数据来自 `stats_overview`（`words` / `articles` / `days` / `read_mins`）。`days` 为首篇到最新一篇的跨度天数（`(max_time - min_time) / 86400 + 1`），无文章时为 0；`read_mins` 为全站阅读分钟数合计。窄屏（≤900px）时卡片改为两列。
+
+`tomato` 主题的统计页顶部不再展示「篇数 / 字数 / 阅读时长」元信息行，改为「年度趋势」折线图面板：`assets/js/tomato.js` 的 `initStatsChart()` 读取下方年度表格的「年份 / 篇数 / 字数」列，按年份数值升序用 SVG 绘制折线、面积、数据点与坐标轴（无数据时显示「暂无数据」并隐藏图表）。面板右上角提供「文章数量 / 文字数量」切换开关，默认展示文章数量；切换后按对应列重绘，悬浮数据点显示该年的篇数或字数。
+
 ## 6.6 友链页 `friends.html`
 
-`emit_friends()` 使用 `friends.html` 模板，数据为 `{ ...conf, toc, friends }`；`toc` 为根节点直接子节点（过滤 `hidden` 与 `hidden_in_toc`）排序后的数组。输出到 `dest_dir/friends.html`。
+`emit_friends()` 使用 `friends.html` 模板，数据为 `{ ...conf, toc, friends, chapters }`；`toc` 为根节点直接子节点（过滤 `hidden` 与 `hidden_in_toc`）排序后的数组。输出到 `dest_dir/friends.html`。`tomato` 主题的友链页侧栏同样改用 `chapters` 渲染完整章节目录及分卷 / 倒序 / 序号控件。
+
+`tomato` 主题的友链列表在每项左侧展示 `image_url` LOGO（56×56 圆形、无边框，绝对 URL 原样使用，相对路径去除 `assets/` 前缀后拼接 `path_prefix`，加载失败时移除图片），移除了行间分割线；无 `image_url` 或加载失败时保留 56×56 占位区域，文字始终左对齐。LOGO 与友链标题均可点击跳转，友链链接、LOGO、侧栏章节与底部导航等可交互元素统一使用手型光标。
 
 ## 6.7 `sitemap.xml`
 

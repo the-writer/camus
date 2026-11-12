@@ -218,11 +218,12 @@ body.tomato {
 .tm-volume-menu {
     position: absolute;
     top: calc(100% + 4px);
-    left: 12px;
     right: 12px;
+    width: 200px;
+    max-width: calc(100% - 24px);
     z-index: 60;
     max-height: 60vh;
-    padding: 8px;
+    padding: 6px;
     overflow-y: auto;
     background: var(--tm-panel);
     border: 1px solid var(--tm-border);
@@ -232,10 +233,11 @@ body.tomato {
 
 .tm-volume-item {
     display: block;
-    padding: 10px 12px;
+    padding: 6px 10px;
     border-radius: 8px;
     color: var(--tm-text-secondary);
-    font-size: 0.86rem;
+    font-size: 0.82rem;
+    line-height: 1.5;
     font-weight: 500;
     text-decoration: none;
     cursor: pointer;
@@ -777,6 +779,129 @@ body.tomato {
     font-size: 1.05rem;
 }
 
+.tm-stat-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 22px;
+}
+
+.tm-stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 18px;
+    background: var(--tm-panel);
+    border: 1px solid var(--tm-border);
+    border-radius: var(--tm-radius);
+}
+
+.tm-stat-label {
+    color: var(--tm-text-faint);
+    font-size: 0.78rem;
+}
+
+.tm-stat-value {
+    color: var(--tm-text);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.tm-stat-unit {
+    margin-left: 2px;
+    color: var(--tm-text-faint);
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.tm-chart-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    margin-bottom: 18px;
+}
+
+.tm-chart-head h2 {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.tm-chart-switch {
+    display: inline-flex;
+    padding: 2px;
+    border: 1px solid var(--tm-border);
+    border-radius: 999px;
+    background: var(--tm-panel-soft);
+}
+
+.tm-chart-toggle {
+    padding: 4px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--tm-text-faint);
+    font: inherit;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.tm-chart-toggle:hover {
+    color: var(--tm-accent);
+}
+
+.tm-chart-toggle.is-active {
+    color: var(--tm-accent);
+    background: var(--tm-accent-soft);
+}
+
+.tm-chart-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.tm-chart-grid line {
+    stroke: var(--tm-border);
+    stroke-width: 1;
+    shape-rendering: crispEdges;
+}
+
+.tm-chart-axis text {
+    fill: var(--tm-text-faint);
+    font-size: 11px;
+}
+
+.tm-chart-line {
+    fill: none;
+    stroke: var(--tm-accent);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.tm-chart-area {
+    fill: var(--tm-accent-soft);
+    stroke: none;
+}
+
+.tm-chart-dot {
+    fill: var(--tm-panel);
+    stroke: var(--tm-accent);
+    stroke-width: 2;
+}
+
+.tm-chart-empty {
+    margin: 8px 0 0;
+    color: var(--tm-text-faint);
+    font-size: 0.85rem;
+}
+
 .tm-simple-list {
     margin: 0;
     padding: 0;
@@ -785,15 +910,42 @@ body.tomato {
 
 .tm-simple-list li {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--tm-border);
+    align-items: flex-start;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 0;
 }
 
-.tm-simple-list li:last-child {
-    border-bottom: none;
+.tm-simple-logo {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--tm-panel-soft);
+    overflow: hidden;
+}
+
+.tm-simple-logo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    object-fit: cover;
+}
+
+.tm-simple-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    gap: 6px;
+    min-width: 0;
+    line-height: 1.5;
 }
 
 .tm-simple-list a {
@@ -803,6 +955,13 @@ body.tomato {
 
 .tm-simple-list a:hover {
     color: var(--tm-accent);
+}
+
+.tm-simple-list a,
+.tm-simple-logo,
+.tm-sidebar-footer a,
+.tm-chapter {
+    cursor: pointer;
 }
 
 .tm-muted {
@@ -861,6 +1020,10 @@ body.tomato {
 }
 
 @media (max-width: 900px) {
+    .tm-stat-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .tm-sidebar {
         transform: translateX(-100%);
         width: min(86vw, 360px);
