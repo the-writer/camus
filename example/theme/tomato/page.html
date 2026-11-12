@@ -31,9 +31,15 @@
 <button id="tm-menu" class="tm-menu-btn" type="button" aria-label="切换章节目录" title="切换章节目录">☰</button>
 
 <aside class="tm-sidebar" id="tm-sidebar">
-    <header class="tm-book">
-        <h1>{{ site.title }}</h1>
-        {% if site.subtitle %}<div class="tm-book-sub">{{ site.subtitle }}</div>{% endif %}
+    <header class="tm-book{% if length(site.cover_image) > 0 %} tm-book-cover{% endif %}">
+        {% if length(site.cover_image) > 0 %}
+        <img
+             class="tm-book-cover-img" alt="{{ site.title }}" data-cover="{{ site.cover_image }}" data-prefix="{{ path_prefix }}"/>
+        {% endif %}
+        <div class="tm-book-info">
+            <h1>{{ site.title }}</h1>
+            {% if length(site.subtitle) > 0 %}<div class="tm-book-sub" data-tip="{{ site.subtitle }}">{{ site.subtitle }}</div>{% endif %}
+        </div>
     </header>
 
     <div class="tm-toc-head">
@@ -53,7 +59,8 @@
         <a class="tm-chapter{% if chapter.current %} tm-current{% endif %}"
            href="{{ chapter.path }}"
            data-volume="{{ chapter.volume }}"
-           data-volume-key="{{ chapter.volume_key }}">{{ chapter.title }}</a>
+           data-volume-key="{{ chapter.volume_key }}"
+           data-tip="{{ chapter.title }}"><span class="tm-chapter-title">{{ chapter.title }}</span></a>
         {% endfor %}
     </nav>
 

@@ -31,9 +31,15 @@
 <button id="tm-menu" class="tm-menu-btn" type="button" aria-label="切换章节目录" title="切换章节目录">☰</button>
 
 <aside class="tm-sidebar" id="tm-sidebar">
-    <header class="tm-book">
-        <h1>{{ site.title }}</h1>
-        {% if site.subtitle %}<div class="tm-book-sub">{{ site.subtitle }}</div>{% endif %}
+    <header class="tm-book{% if length(site.cover_image) > 0 %} tm-book-cover{% endif %}">
+        {% if length(site.cover_image) > 0 %}
+        <img
+             class="tm-book-cover-img" alt="{{ site.title }}" data-cover="{{ site.cover_image }}" data-prefix="{{ path_prefix }}"/>
+        {% endif %}
+        <div class="tm-book-info">
+            <h1>{{ site.title }}</h1>
+            {% if length(site.subtitle) > 0 %}<div class="tm-book-sub" data-tip="{{ site.subtitle }}">{{ site.subtitle }}</div>{% endif %}
+        </div>
     </header>
 
     <div class="tm-toc-head">
@@ -44,9 +50,9 @@
     <nav class="tm-chapters" aria-label="章节列表">
         {% for item in items %}
         {% if item.is_dir %}
-        <a class="tm-chapter tm-dir" href="{{ item.path }}">{{ item.title }}</a>
+        <a class="tm-chapter tm-dir" href="{{ item.path }}" data-tip="{{ item.title }}"><span class="tm-chapter-title">{{ item.title }}</span></a>
         {% else %}
-        <a class="tm-chapter" href="{% if item.link_path != "" %}{{ item.link_path }}{% else %}{{ item.path }}{% endif %}">{{ item.title }}</a>
+        <a class="tm-chapter" href="{% if item.link_path != "" %}{{ item.link_path }}{% else %}{{ item.path }}{% endif %}" data-tip="{{ item.title }}"><span class="tm-chapter-title">{{ item.title }}</span></a>
         {% endif %}
         {% endfor %}
     </nav>
@@ -77,24 +83,24 @@
     <div class="tm-reader">
         <header class="tm-home-head">
             <h1>{% if current.path == "/" %}{{ site.title }}{% else %}{{ current.title }}{% endif %}</h1>
-            {% if current.subtitle or site.subtitle %}
+            {% if length(current.subtitle) > 0 or length(site.subtitle) > 0 %}
             <p class="tm-home-sub">{% if current.path == "/" %}{{ site.subtitle }}{% else %}{{ current.subtitle }}{% endif %}</p>
             {% endif %}
         </header>
 
-        {% if current.desc %}
+        {% if length(current.desc) > 0 %}
         <div class="tm-home-desc">{{ current.desc }}</div>
         {% endif %}
 
         <div class="tm-home-list">
             {% for item in items %}
             {% if item.is_dir %}
-            <a class="tm-home-item" href="{{ item.path }}">
+            <a class="tm-home-item" href="{{ item.path }}" data-tip="{{ item.title }}">
                 <span class="tm-home-item-title">{{ item.title }}</span>
                 <span class="tm-home-item-date">{{ format_datetime(item.write_time) }}</span>
             </a>
             {% else %}
-            <a class="tm-home-item" href="{% if item.link_path != "" %}{{ item.link_path }}{% else %}{{ item.path }}{% endif %}">
+            <a class="tm-home-item" href="{% if item.link_path != "" %}{{ item.link_path }}{% else %}{{ item.path }}{% endif %}" data-tip="{{ item.title }}">
                 <span class="tm-home-item-title">{{ item.title }}</span>
                 <span class="tm-home-item-date">{{ format_datetime(item.write_time) }}</span>
             </a>

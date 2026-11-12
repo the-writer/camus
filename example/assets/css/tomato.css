@@ -71,8 +71,35 @@ body.tomato {
 }
 
 .tm-book {
-    padding: 26px 26px 18px;
+    padding: 18px 15px;
     border-bottom: 1px solid var(--tm-border);
+}
+
+.tm-book.tm-book-cover {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    max-height: 150px;
+    overflow: hidden;
+}
+
+.tm-book-cover-img {
+    flex: 0 0 70px;
+    width: 70px;
+    height: auto;
+    border-radius: 8px;
+    object-fit: cover;
+    background: var(--tm-panel-soft);
+}
+
+.tm-book-info {
+    min-width: 0;
+}
+
+.tm-book.tm-book-cover .tm-book-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .tm-book h1 {
@@ -88,6 +115,48 @@ body.tomato {
     font-size: 0.82rem;
     color: var(--tm-text-secondary);
     line-height: 1.6;
+}
+
+/* ── 自定义提示框（替代系统 title） ─────────────────────── */
+
+.tm-tip {
+    position: fixed;
+    z-index: 9999;
+    max-width: 260px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #2b2b2b;
+    color: #ffffff;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    letter-spacing: 0;
+    text-align: left;
+    white-space: normal;
+    word-break: break-word;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+}
+
+.tm-tip::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+}
+
+.tm-tip[data-placement="bottom"]::before {
+    top: -12px;
+    border-bottom-color: #2b2b2b;
+}
+
+.tm-tip[data-placement="top"]::before {
+    bottom: -12px;
+    border-top-color: #2b2b2b;
+}
+
+.tm-tip[hidden] {
+    display: none;
 }
 
 .tm-toc-head {
@@ -170,6 +239,9 @@ body.tomato {
     font-weight: 500;
     text-decoration: none;
     cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     transition: color 0.15s ease, background-color 0.15s ease;
 }
 
@@ -185,8 +257,6 @@ body.tomato {
 
 .tm-volume-title {
     margin: 10px 12px 4px;
-    padding-top: 12px;
-    border-top: 1px solid var(--tm-border);
     color: var(--tm-text-faint);
     font-size: 0.76rem;
     font-weight: 600;
@@ -196,11 +266,10 @@ body.tomato {
 
 .tm-chapters .tm-volume-title:first-child {
     margin-top: 0;
-    padding-top: 0;
-    border-top: 0;
 }
 
 .tm-index {
+    flex: none;
     display: inline-block;
     width: var(--tm-index-width, 3ch);
     margin-right: 8px;
@@ -226,7 +295,8 @@ body.tomato {
 }
 
 .tm-chapter {
-    display: block;
+    display: flex;
+    align-items: center;
     padding: 12px 12px;
     border-radius: 8px;
     font-size: 0.92rem;
@@ -234,7 +304,16 @@ body.tomato {
     color: var(--tm-text-secondary);
     text-decoration: none;
     transition: color 0.15s ease, background-color 0.15s ease;
-    word-break: break-word;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.tm-chapter-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .tm-chapter:hover {
@@ -653,6 +732,10 @@ body.tomato {
 }
 
 .tm-home-item .tm-home-item-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 0.95rem;
     line-height: 1.6;
 }

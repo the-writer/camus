@@ -303,6 +303,7 @@
                 var link = document.createElement("a");
                 link.className = "tm-chapter" + (item.current ? " tm-current" : "");
                 link.href = item.href;
+                link.setAttribute("data-tip", item.title);
                 link.setAttribute("data-volume", item.volume);
                 link.setAttribute("data-volume-key", item.volumeKey);
 
@@ -319,6 +320,7 @@
                 link.appendChild(title);
 
                 chaptersNav.appendChild(link);
+                bindTip(link);
             });
 
             if (volumeFilter === "") {
@@ -407,4 +409,165 @@
             link.addEventListener("click", closeMobileSidebar);
         });
     }
+
+    // ── 自定义悬浮提示（替代系统 title） ──
+    var tipEl = null;
+
+    function ensureTip() {
+        if (!tipEl) {
+            tipEl = document.createElement("div");
+            tipEl.className = "tm-tip";
+            tipEl.setAttribute("role", "tooltip");
+            tipEl.hidden = true;
+            document.body.appendChild(tipEl);
+        }
+        return tipEl;
+    }
+
+    function hideTip() {
+        if (tipEl) {
+            tipEl.hidden = true;
+        }
+    }
+
+    function showTip(target, text) {
+        var tip = ensureTip();
+        tip.textContent = text;
+        tip.hidden = false;
+
+        var rect = target.getBoundingClientRect();
+        var width = tip.offsetWidth;
+        var height = tip.offsetHeight;
+        var margin = 8;
+
+        var left = rect.left + rect.width / 2 - width / 2;
+        left = Math.max(margin, Math.min(window.innerWidth - margin - width, left));
+
+        var top = rect.bottom + margin;
+        var placement = "bottom";
+        if (top + height > window.innerHeight - margin && rect.top - margin - height >= margin) {
+            top = rect.top - margin - height;
+            placement = "top";
+        }
+
+        tip.style.left = Math.round(left) + "px";
+        tip.style.top = Math.round(top) + "px";
+        tip.setAttribute("data-placement", placement);
+    }
+
+    function isTruncated(target) {
+        if (target.classList.contains("tm-book-sub")) {
+            return target.classList.contains("is-clamped") || target.scrollHeight > target.clientHeight + 1;
+        }
+
+        var inner = target.querySelector(".tm-chapter-title, .tm-home-item-title");
+        if (inner) {
+            return inner.scrollWidth > inner.clientWidth + 1;
+        }
+
+        return target.scrollWidth > target.clientWidth + 1;
+    }
+
+    function bindTip(target) {
+        if (!target || target.dataset.tipBound === "1") {
+            return;
+        }
+        target.dataset.tipBound = "1";
+
+        function open() {
+            var text = target.getAttribute("data-tip") || "";
+            if (text && isTruncated(target)) {
+                showTip(target, text);
+            }
+        }
+
+        target.addEventListener("mouseenter", open);
+        target.addEventListener("mouseleave", hideTip);
+        target.addEventListener("focus", open);
+        target.addEventListener("blur", hideTip);
+    }
+
+    document.querySelectorAll("[data-tip]").forEach(bindTip);
+    window.addEventListener("scroll", hideTip, true);
+    window.addEventListener("resize", hideTip);
+
+    // ── 封面模式下限制标题区域高度，超出时省略简介 ──
+    function clampBookSubtitle() {
+        var header = document.querySelector(".tm-book-cover");
+        if (!header) {
+            return;
+        }
+
+        var info = header.querySelector(".tm-book-info");
+        var sub = info ? info.querySelector(".tm-book-sub") : null;
+        if (!sub) {
+            return;
+        }
+
+        sub.classList.remove("is-clamped");
+        sub.style.display = "";
+        sub.style.webkitBoxOrient = "";
+        sub.style.webkitLineClamp = "";
+        sub.style.overflow = "";
+
+        var headerStyle = window.getComputedStyle(header);
+        var padding =
+            (parseFloat(headerStyle.paddingTop) || 0) + (parseFloat(headerStyle.paddingBottom) || 0);
+        var maxHeight = header.clientHeight - padding;
+
+        var infoRect = info.getBoundingClientRect();
+        var subRect = sub.getBoundingClientRect();
+        var subTop = subRect.top - infoRect.top;
+        var style = window.getComputedStyle(sub);
+        var lineHeight = parseFloat(style.lineHeight);
+        if (!lineHeight) {
+            lineHeight = parseFloat(style.fontSize) * 1.6;
+        }
+
+        var available = maxHeight - subTop;
+        if (available <= 0) {
+            sub.style.display = "none";
+            return;
+        }
+
+        if (sub.scrollHeight <= available + 1) {
+            return;
+        }
+
+        var lines = Math.max(1, Math.floor(available / lineHeight));
+        sub.style.display = "-webkit-box";
+        sub.style.webkitBoxOrient = "vertical";
+        sub.style.webkitLineClamp = String(lines);
+        sub.style.overflow = "hidden";
+        sub.classList.add("is-clamped");
+    }
+
+    clampBookSubtitle();
+
+    // ── 封面图路径解析（assets/ 内容会提升到输出根目录） ──
+    document.querySelectorAll("img[data-cover]").forEach(function (img) {
+        var raw = (img.getAttribute("data-cover") || "").trim();
+        if (!raw) {
+            return;
+        }
+
+        var src = raw;
+        if (!/^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(raw) && !/^data:/i.test(raw)) {
+            var prefix = img.getAttribute("data-prefix") || "";
+            var path = raw.replace(/^\.?\//, "").replace(/^assets\//, "");
+            src = prefix + (path.charAt(0) === "/" ? path : "/" + path);
+        }
+
+        img.addEventListener("error", function () {
+            var header = img.closest(".tm-book");
+            img.remove();
+            if (header) {
+                header.classList.remove("tm-book-cover");
+            }
+        });
+
+        img.src = src;
+    });
+
+    window.addEventListener("resize", clampBookSubtitle);
 })();
