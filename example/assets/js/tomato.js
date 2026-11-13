@@ -5,8 +5,177 @@
     var body = document.body;
     var FONT_KEY = "tomato-font-size";
     var THEME_KEY = "tomato-theme";
+    var LANG_KEY = "tomato-lang";
     var FONT_MIN = 14;
     var FONT_MAX = 40;
+
+    var I18N = {
+        en: {
+            "page.home": "Home",
+            "page.stats": "Stats",
+            "page.friends": "Friends",
+            "page.search": "Search",
+            "menu.toggle": "Toggle chapter list",
+            "home.back": "Back to home",
+            "toc.title": "Contents",
+            "filter.volume": "Volumes",
+            "filter.month": "Time",
+            "filter.tag": "Tags",
+            "action.reverse": "Reverse",
+            "action.index": "Index",
+            "action.search": "Search",
+            "nav.chapters": "Chapters",
+            "footer.home": "Home",
+            "footer.stats": "Stats",
+            "footer.friends": "Friends",
+            "footer.search": "Search",
+            "tools.aria": "Reading settings",
+            "theme.title": "Switch theme (auto / light / dark)",
+            "theme.auto": "Auto",
+            "theme.light": "Light",
+            "theme.dark": "Dark",
+            "lang.title": "Switch language",
+            "lang.label": "EN",
+            "font.increase": "Increase font size",
+            "font.decrease": "Decrease font size",
+            "font.size": "Font size",
+            "meta.wordsUnit": "words",
+            "meta.readLess": "less than 1 min",
+            "meta.readApprox": "~{n} min",
+            "copy.link": "Copy link",
+            "copy.copied": "Copied",
+            "copy.failed": "Copy failed",
+            "pager.prev": "Previous",
+            "pager.next": "Next",
+            "pager.aria": "Chapter navigation",
+            "menu.allVolumes": "All volumes",
+            "menu.noVolume": "No volume",
+            "menu.allTime": "All time",
+            "menu.allTags": "All tags",
+            "stats.totalWords": "Total words",
+            "stats.articles": "Articles",
+            "stats.days": "Days",
+            "stats.readTime": "Total reading time",
+            "unit.days": "days",
+            "unit.minutes": "min",
+            "stats.trend": "Yearly trend",
+            "stats.metricArticles": "Articles",
+            "stats.metricWords": "Words",
+            "stats.switchAria": "Switch metric",
+            "stats.chartAria": "Yearly article count line chart",
+            "stats.noData": "No data",
+            "stats.distribution": "Yearly distribution",
+            "table.year": "Year",
+            "table.count": "Count",
+            "table.words": "Words",
+            "table.share": "Share",
+            "chart.tooltipArticles": "{year}: {n} articles",
+            "chart.tooltipWords": "{year}: {n} words",
+            "search.heading": "Search",
+            "search.placeholder": "Enter keywords",
+            "search.regex": "Use regular expression",
+            "search.start": "Enter keywords to search",
+            "search.noResults": "No results",
+            "search.indexMissing": "Search index URL is missing",
+            "search.loading": "Loading search index...",
+            "search.loadFailed": "Failed to load search index: {msg}",
+            "search.found": "Found {n} results",
+            "search.foundLimited": "Found {n} results, showing first {m}",
+            "search.invalidRegex": "Please enter a valid regular expression",
+            "search.regexError": "Invalid regular expression: {msg}"
+        },
+        zh: {
+            "page.home": "首页",
+            "page.stats": "统计",
+            "page.friends": "友链",
+            "page.search": "搜索",
+            "menu.toggle": "切换章节目录",
+            "home.back": "返回首页",
+            "toc.title": "目录",
+            "filter.volume": "分卷",
+            "filter.month": "时间",
+            "filter.tag": "标签",
+            "action.reverse": "倒序",
+            "action.index": "序号",
+            "action.search": "搜索",
+            "nav.chapters": "章节列表",
+            "footer.home": "首页",
+            "footer.stats": "统计",
+            "footer.friends": "友链",
+            "footer.search": "搜索",
+            "tools.aria": "阅读设置",
+            "theme.title": "切换主题（自动 / 白天 / 夜间）",
+            "theme.auto": "自动",
+            "theme.light": "白天",
+            "theme.dark": "夜间",
+            "lang.title": "切换语言",
+            "lang.label": "中",
+            "font.increase": "增大字号",
+            "font.decrease": "减小字号",
+            "font.size": "字号",
+            "meta.wordsUnit": "字",
+            "meta.readLess": "小于1分钟",
+            "meta.readApprox": "约 {n} 分钟",
+            "copy.link": "复制链接",
+            "copy.copied": "已复制",
+            "copy.failed": "复制失败",
+            "pager.prev": "上一章",
+            "pager.next": "下一章",
+            "pager.aria": "章节导航",
+            "menu.allVolumes": "全部分卷",
+            "menu.noVolume": "无分卷",
+            "menu.allTime": "全部时间",
+            "menu.allTags": "全部标签",
+            "stats.totalWords": "总字数",
+            "stats.articles": "文章数",
+            "stats.days": "总创作天数",
+            "stats.readTime": "总阅读时长",
+            "unit.days": "天",
+            "unit.minutes": "分钟",
+            "stats.trend": "年度趋势",
+            "stats.metricArticles": "文章数量",
+            "stats.metricWords": "文字数量",
+            "stats.switchAria": "切换统计指标",
+            "stats.chartAria": "年度文章数折线图",
+            "stats.noData": "暂无数据",
+            "stats.distribution": "年度分布",
+            "table.year": "年份",
+            "table.count": "篇数",
+            "table.words": "字数",
+            "table.share": "占比",
+            "chart.tooltipArticles": "{year} 年：{n} 篇",
+            "chart.tooltipWords": "{year} 年：{n} 字",
+            "search.heading": "搜索",
+            "search.placeholder": "输入关键词",
+            "search.regex": "使用正则表达式",
+            "search.start": "输入关键词开始搜索",
+            "search.noResults": "暂无搜索结果",
+            "search.indexMissing": "搜索索引地址缺失",
+            "search.loading": "正在加载搜索索引...",
+            "search.loadFailed": "搜索索引加载失败：{msg}",
+            "search.found": "找到 {n} 条",
+            "search.foundLimited": "找到 {n} 条，仅显示前 {m} 条",
+            "search.invalidRegex": "请输入有效的正则表达式",
+            "search.regexError": "正则表达式无效：{msg}"
+        }
+    };
+
+    function translate(key, vars) {
+        var table = I18N[currentLanguage] || I18N.en;
+        var text = table[key];
+        if (typeof text !== "string") {
+            text = I18N.en[key];
+        }
+        if (typeof text !== "string") {
+            return key;
+        }
+        if (vars) {
+            Object.keys(vars).forEach(function (name) {
+                text = text.replace(new RegExp("\\{" + name + "\\}", "g"), String(vars[name]));
+            });
+        }
+        return text;
+    }
 
     // 仅 tomato 主题读取 camus.js 中的开关；其它主题保持原有行为。
     var tomatoOptions = window.CAMUS_THEME === "tomato" ? window.CAMUS_TOMATO : null;
@@ -35,6 +204,12 @@
             /* storage 不可用时忽略 */
         }
     }
+
+    var languageOptions = tomatoOptions && tomatoOptions.language ? tomatoOptions.language : {};
+    var languageEnabled = languageOptions.enabled !== false;
+    var defaultLanguage = languageOptions.default === "zh" ? "zh" : "en";
+    var storedLanguage = read(LANG_KEY);
+    var currentLanguage = storedLanguage === "zh" || storedLanguage === "en" ? storedLanguage : defaultLanguage;
 
     // ── 夜间模式 ──
     var themeBtn = document.getElementById("tm-theme");
@@ -65,7 +240,8 @@
             themeIcon.textContent = mode === "dark" ? "☾" : mode === "auto" ? "◐" : "☀";
         }
         if (themeLabel) {
-            themeLabel.textContent = mode === "dark" ? "夜间" : mode === "auto" ? "自动" : "白天";
+            themeLabel.textContent =
+                mode === "dark" ? translate("theme.dark") : mode === "auto" ? translate("theme.auto") : translate("theme.light");
         }
         if (themeBtn) {
             themeBtn.setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
@@ -211,6 +387,9 @@
         }
         return fallback;
     }
+
+    var refreshChapters = null;
+    var closeAllMenus = null;
 
     if (chaptersNav) {
         var items = [];
@@ -361,7 +540,7 @@
 
             var all = document.createElement("a");
             all.className = "tm-volume-item" + (volumeFilter === "" ? " is-active" : "");
-            all.textContent = "全部分卷";
+            all.textContent = translate("menu.allVolumes");
             all.addEventListener("click", function () {
                 selectVolume("");
             });
@@ -370,7 +549,7 @@
             if (hasNoVolume) {
                 var none = document.createElement("a");
                 none.className = "tm-volume-item" + (volumeFilter === NONE_VOLUME ? " is-active" : "");
-                none.textContent = "无分卷";
+                none.textContent = translate("menu.noVolume");
                 none.addEventListener("click", function () {
                     selectVolume(NONE_VOLUME);
                 });
@@ -444,7 +623,7 @@
             }
 
             monthMenu.innerHTML = "";
-            appendMonthItem(monthMenu, "全部时间", "", totalMonthItems);
+            appendMonthItem(monthMenu, translate("menu.allTime"), "", totalMonthItems);
             months.forEach(function (month) {
                 appendMonthItem(monthMenu, month.key, month.key, month.count);
             });
@@ -486,7 +665,7 @@
             }
 
             tagMenu.innerHTML = "";
-            appendTagItem(tagMenu, "全部标签", "", totalTagItems);
+            appendTagItem(tagMenu, translate("menu.allTags"), "", totalTagItems);
             tags.forEach(function (tag) {
                 appendTagItem(tagMenu, tag.key, tag.key, tag.count);
             });
@@ -572,6 +751,13 @@
                 }
             }
         }
+
+        refreshChapters = renderChapters;
+        closeAllMenus = function () {
+            closeVolumeMenu();
+            closeMonthMenu();
+            closeTagMenu();
+        };
 
         function syncButtons() {
             if (reverseBtn) {
@@ -856,7 +1042,6 @@
     // ── 复制当前文章链接 ──
     var copyBtn = document.getElementById("tm-copy-link");
     if (copyBtn) {
-        var copyLabel = copyBtn.textContent;
         var copyTimer = null;
 
         var showCopyResult = function (text, ok) {
@@ -866,7 +1051,7 @@
                 window.clearTimeout(copyTimer);
             }
             copyTimer = window.setTimeout(function () {
-                copyBtn.textContent = copyLabel;
+                copyBtn.textContent = translate("copy.link");
                 copyBtn.classList.remove("is-copied");
             }, 1600);
         };
@@ -887,14 +1072,14 @@
                 ok = false;
             }
             document.body.removeChild(area);
-            showCopyResult(ok ? "已复制" : "复制失败", ok);
+            showCopyResult(ok ? translate("copy.copied") : translate("copy.failed"), ok);
         };
 
         copyBtn.addEventListener("click", function () {
             var url = window.location.href;
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url).then(function () {
-                    showCopyResult("已复制", true);
+                    showCopyResult(translate("copy.copied"), true);
                 }).catch(function () {
                     fallbackCopy(url);
                 });
@@ -987,8 +1172,12 @@
 
         function formatValue(value, metric) {
             if (metric === "words" && value >= 10000) {
-                var wan = value / 10000;
-                return (wan % 1 === 0 ? wan.toFixed(0) : wan.toFixed(1)) + "万";
+                if (currentLanguage === "zh") {
+                    var wan = value / 10000;
+                    return (wan % 1 === 0 ? wan.toFixed(0) : wan.toFixed(1)) + "万";
+                }
+                var k = value / 1000;
+                return (k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)) + "k";
             }
             return String(Math.round(value));
         }
@@ -1055,8 +1244,10 @@
 
                 var dot = svgNode("circle", { cx: x, cy: y, r: 3.5, class: "tm-chart-dot" });
                 var title = svgNode("title", {});
-                title.textContent = d.year + " 年：" +
-                    (metric === "words" ? d.words + " 字" : d.articles + " 篇");
+                title.textContent = translate(
+                    metric === "words" ? "chart.tooltipWords" : "chart.tooltipArticles",
+                    { year: d.year, n: metric === "words" ? d.words : d.articles }
+                );
                 dot.appendChild(title);
                 dots.appendChild(dot);
 
@@ -1098,4 +1289,88 @@
     }
 
     initStatsChart();
+
+    // ── 语言切换 ──
+    var langBtn = document.getElementById("tm-lang");
+    var langLabel = document.getElementById("tm-lang-label");
+
+    function applyI18n() {
+        document.querySelectorAll("[data-i18n]").forEach(function (el) {
+            el.textContent = translate(el.getAttribute("data-i18n"));
+        });
+        document.querySelectorAll("[data-i18n-title]").forEach(function (el) {
+            el.setAttribute("title", translate(el.getAttribute("data-i18n-title")));
+        });
+        document.querySelectorAll("[data-i18n-aria-label]").forEach(function (el) {
+            el.setAttribute("aria-label", translate(el.getAttribute("data-i18n-aria-label")));
+        });
+        document.querySelectorAll("[data-i18n-placeholder]").forEach(function (el) {
+            el.setAttribute("placeholder", translate(el.getAttribute("data-i18n-placeholder")));
+        });
+        document.querySelectorAll(".tm-readtime").forEach(function (el) {
+            var minutes = parseInt(el.getAttribute("data-read-min"), 10) || 0;
+            el.textContent = minutes < 1
+                ? translate("meta.readLess")
+                : translate("meta.readApprox", { n: minutes });
+        });
+
+        var copyBtnEl = document.getElementById("tm-copy-link");
+        if (copyBtnEl && !copyBtnEl.classList.contains("is-copied")) {
+            copyBtnEl.textContent = translate("copy.link");
+        }
+
+        if (typeof applyMode === "function") {
+            applyMode(currentMode());
+        }
+
+        var page = body ? body.getAttribute("data-page") : "";
+        var siteTitle = body ? body.getAttribute("data-site-title") : "";
+        if (page && siteTitle) {
+            document.title = translate("page." + page) + (page === "home" ? " | " : " - ") + siteTitle;
+        }
+
+        if (closeAllMenus) {
+            closeAllMenus();
+        }
+        if (refreshChapters) {
+            refreshChapters();
+        }
+        if (typeof initStatsChart === "function") {
+            initStatsChart();
+        }
+
+        document.dispatchEvent(new CustomEvent("tomato-lang-change", { detail: { lang: currentLanguage } }));
+    }
+
+    function applyLanguage(lang, persist) {
+        currentLanguage = lang === "zh" ? "zh" : "en";
+        if (persist) {
+            write(LANG_KEY, currentLanguage);
+        }
+        root.setAttribute("lang", currentLanguage === "zh" ? "zh-CN" : "en");
+        if (langLabel) {
+            langLabel.textContent = translate("lang.label");
+        }
+        if (langBtn) {
+            langBtn.setAttribute("title", translate("lang.title"));
+            langBtn.setAttribute("aria-label", translate("lang.title"));
+        }
+        applyI18n();
+    }
+
+    window.CAMUS_I18N = {
+        current: function () {
+            return currentLanguage;
+        },
+        t: translate
+    };
+
+    if (langBtn) {
+        langBtn.hidden = !languageEnabled;
+        langBtn.addEventListener("click", function () {
+            applyLanguage(currentLanguage === "zh" ? "en" : "zh", true);
+        });
+    }
+
+    applyLanguage(currentLanguage, false);
 })();

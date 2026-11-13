@@ -11,6 +11,7 @@
         volume: { enabled: true },
         month: { enabled: true },
         tag: { enabled: true },
+        language: { enabled: true, default: "en" },
         reverse: { enabled: true, default: false },
         index: { enabled: true, default: false },
         font: {

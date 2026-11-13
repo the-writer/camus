@@ -20,6 +20,34 @@
     var lastResults = null;
     var lastTotal = 0;
 
+
+    var FALLBACK_I18N = {
+        "search.indexMissing": "搜索索引地址缺失",
+        "search.loading": "正在加载搜索索引...",
+        "search.loadFailed": "搜索索引加载失败：{msg}",
+        "search.noResults": "暂无搜索结果",
+        "search.found": "找到 {n} 条",
+        "search.foundLimited": "找到 {n} 条，仅显示前 {m} 条",
+        "search.start": "输入关键词开始搜索",
+        "search.invalidRegex": "请输入有效的正则表达式",
+        "search.regexError": "正则表达式无效：{msg}"
+    };
+
+    function tt(key, vars) {
+        var text;
+        if (window.CAMUS_I18N && typeof window.CAMUS_I18N.t === "function") {
+            text = window.CAMUS_I18N.t(key, vars);
+        } else {
+            text = FALLBACK_I18N[key] || key;
+        }
+        if (vars) {
+            Object.keys(vars).forEach(function (name) {
+                text = text.replace(new RegExp("\\{" + name + "\\}", "g"), String(vars[name]));
+            });
+        }
+        return text;
+    }
+
     function setStatus(text) {
         status.textContent = text;
     }
@@ -84,10 +112,10 @@
     function loadIndex() {
         var url = window.CAMUS_SEARCH_URL;
         if (!url) {
-            setStatus("搜索索引地址缺失");
+            setStatus(tt("search.indexMissing"));
             return;
         }
-        setStatus("正在加载搜索索引...");
+        setStatus(tt("search.loading"));
 
         fetch(url, { cache: "no-cache" })
             .then(function (response) {
@@ -133,7 +161,7 @@
                 search();
             })
             .catch(function (error) {
-                setStatus("搜索索引加载失败：" + error.message);
+                setStatus(tt("search.loadFailed", { msg: error.message }));
             });
     }
 
@@ -172,19 +200,19 @@
         });
 
         if (!results.length) {
-            renderEmpty("暂无搜索结果");
+            renderEmpty(tt("search.noResults"));
             setStatus("");
         } else if (total > results.length) {
-            setStatus("找到 " + total + " 条，仅显示前 " + results.length + " 条");
+            setStatus(tt("search.foundLimited", { n: total, m: results.length }));
         } else {
-            setStatus("找到 " + total + " 条");
+            setStatus(tt("search.found", { n: total }));
         }
     }
 
     function search() {
         var query = input.value.trim();
         if (!query) {
-            renderEmpty("输入关键词开始搜索");
+            renderEmpty(tt("search.start"));
             setStatus("");
             return;
         }
@@ -198,8 +226,8 @@
             try {
                 matcher = new RegExp(query, "i");
             } catch (error) {
-                renderEmpty("请输入有效的正则表达式");
-                setStatus("正则表达式无效：" + error.message);
+                renderEmpty(tt("search.invalidRegex"));
+                setStatus(tt("search.regexError", { msg: error.message }));
                 return;
             }
         } else {
@@ -270,6 +298,10 @@
         if (lastResults) {
             renderResults(lastResults, lastTotal);
         }
+    });
+
+    document.addEventListener("tomato-lang-change", function () {
+        search();
     });
 
     loadIndex();

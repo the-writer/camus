@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="utf-8"/>
     <meta http-equiv="x-ua-compatible" content="ie=edge"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
     <meta name="description" content="{{ site.description }}"/>
-    <title>统计 - {{ site.title }}</title>
+    <title>Stats - {{ site.title }}</title>
     <link rel="icon" href="{{ with_prefix("/favicon.ico") }}"/>
     <link rel="stylesheet" href="{{ with_prefix("/css/tomato.css") }}"/>
     <link rel="stylesheet" href="{{ with_prefix("/css/style.css") }}"/>
@@ -26,14 +26,14 @@
         })();
     </script>
 </head>
-<body class="tomato" data-camus-theme="{{ render.theme_name }}">
+<body class="tomato" data-camus-theme="{{ render.theme_name }}" data-page="stats" data-site-title="{{ site.title }}">
 
-<button id="tm-menu" class="tm-menu-btn" type="button" aria-label="切换章节目录" title="切换章节目录">☰</button>
+<button id="tm-menu" class="tm-menu-btn" type="button" aria-label="Toggle chapter list" title="Toggle chapter list" data-i18n-aria-label="menu.toggle" data-i18n-title="menu.toggle">☰</button>
 
 <aside class="tm-sidebar" id="tm-sidebar">
     <header class="tm-book{% if length(site.logo) > 0 %} tm-book-cover{% endif %}">
         {% if length(site.logo) > 0 %}
-        <a class="tm-book-cover-link" href="{{ path_prefix }}/" aria-label="返回首页">
+        <a class="tm-book-cover-link" href="{{ path_prefix }}/" aria-label="Back to home" data-i18n-aria-label="home.back">
             <img
                  class="tm-book-cover-img" alt="{{ site.title }}" data-cover="{{ site.logo }}" data-prefix="{{ path_prefix }}"/>
         </a>
@@ -45,27 +45,27 @@
     </header>
 
     <div class="tm-toc-head">
-        <span class="tm-toc-title">目录 <span class="tm-count">{{ length(chapters) }}</span></span>
+        <span class="tm-toc-title"><span data-i18n="toc.title">Contents</span> <span class="tm-count">{{ length(chapters) }}</span></span>
         <div class="tm-toc-actions">
             <button id="tm-volume-btn" class="tm-toc-action" type="button" aria-haspopup="true" aria-expanded="false" hidden>
-                分卷 <span class="tm-caret" aria-hidden="true">⌄</span>
+                <span data-i18n="filter.volume">Volumes</span> <span class="tm-caret" aria-hidden="true">⌄</span>
             </button>
             <button id="tm-month-btn" class="tm-toc-action" type="button" aria-haspopup="true" aria-expanded="false" hidden>
-                时间 <span class="tm-caret" aria-hidden="true">⌄</span>
+                <span data-i18n="filter.month">Time</span> <span class="tm-caret" aria-hidden="true">⌄</span>
             </button>
             <button id="tm-tag-btn" class="tm-toc-action" type="button" aria-haspopup="true" aria-expanded="false" hidden>
-                标签 <span class="tm-caret" aria-hidden="true">⌄</span>
+                <span data-i18n="filter.tag">Tags</span> <span class="tm-caret" aria-hidden="true">⌄</span>
             </button>
-            <button id="tm-reverse-btn" class="tm-toc-action" type="button" aria-pressed="false">倒序</button>
-            <button id="tm-index-btn" class="tm-toc-action" type="button" aria-pressed="false">序号</button>
-            <a id="tm-search-btn" class="tm-toc-action" href="{{ path_prefix }}/search.html" aria-label="搜索" title="搜索"><span class="tm-search-icon" style="-webkit-mask-image: url('{{ with_prefix("/icons/search.svg") }}'); mask-image: url('{{ with_prefix("/icons/search.svg") }}');"></span></a>
+            <button id="tm-reverse-btn" class="tm-toc-action" type="button" aria-pressed="false" data-i18n="action.reverse">Reverse</button>
+            <button id="tm-index-btn" class="tm-toc-action" type="button" aria-pressed="false" data-i18n="action.index">Index</button>
+            <a id="tm-search-btn" class="tm-toc-action" href="{{ path_prefix }}/search.html" aria-label="Search" title="Search" data-i18n-aria-label="action.search" data-i18n-title="action.search"><span class="tm-search-icon" style="-webkit-mask-image: url('{{ with_prefix("/icons/search.svg") }}'); mask-image: url('{{ with_prefix("/icons/search.svg") }}');"></span></a>
         </div>
         <div id="tm-volume-menu" class="tm-volume-menu" hidden></div>
         <div id="tm-month-menu" class="tm-volume-menu" hidden></div>
         <div id="tm-tag-menu" class="tm-volume-menu" hidden></div>
     </div>
 
-    <nav class="tm-chapters" id="tm-chapters" aria-label="章节列表">
+    <nav class="tm-chapters" id="tm-chapters" aria-label="Chapters" data-i18n-aria-label="nav.chapters">
         {% for chapter in chapters %}
         <a class="tm-chapter{% if chapter.current %} tm-current{% endif %}"
            href="{{ chapter.path }}"
@@ -79,10 +79,10 @@
 
     <footer class="tm-sidebar-footer">
         <span class="tm-footer-links">
-            <a href="{{ path_prefix }}/">首页</a> /
-            <a href="{{ path_prefix }}/stats.html">统计</a> /
-            <a href="{{ path_prefix }}/friends.html">友链</a> /
-            <a href="{{ path_prefix }}/search.html">搜索</a>
+            <a href="{{ path_prefix }}/" data-i18n="footer.home">Home</a> /
+            <a href="{{ path_prefix }}/stats.html" data-i18n="footer.stats">Stats</a> /
+            <a href="{{ path_prefix }}/friends.html" data-i18n="footer.friends">Friends</a> /
+            <a href="{{ path_prefix }}/search.html" data-i18n="footer.search">Search</a>
         </span>
         <a class="tm-footer-version" href="{{ git.repo }}/releases/tag/v{{ build.version }}" target="_blank" rel="noopener" title="{{ build.powered_by_text }}">v{{ build.version }}</a>
     </footer>
@@ -90,74 +90,77 @@
 
 <div class="tm-overlay" id="tm-overlay"></div>
 
-<aside class="tm-tools" aria-label="阅读设置">
-    <button id="tm-theme" class="tm-tool" type="button" aria-pressed="false" title="切换主题（自动 / 白天 / 夜间）">
+<aside class="tm-tools" aria-label="Reading settings" data-i18n-aria-label="tools.aria">
+    <button id="tm-theme" class="tm-tool" type="button" aria-pressed="false" title="Switch theme (auto / light / dark)" data-i18n-title="theme.title">
         <span id="tm-theme-icon" aria-hidden="true">◐</span>
-        <span id="tm-theme-label" class="tm-tool-label">自动</span>
+        <span id="tm-theme-label" class="tm-tool-label">Auto</span>
+    </button>
+    <button id="tm-lang" class="tm-tool" type="button" aria-label="Switch language" title="Switch language">
+        <span id="tm-lang-label" class="tm-tool-label">EN</span>
     </button>
     <div class="tm-font">
-        <button id="tm-font-plus" class="tm-font-btn" type="button" aria-label="增大字号">A+</button>
+        <button id="tm-font-plus" class="tm-font-btn" type="button" aria-label="Increase font size" data-i18n-aria-label="font.increase">A+</button>
         <input id="tm-font-range" class="tm-font-range" type="range" min="14" max="40" step="1" value="14"
-               aria-label="字号"/>
-        <button id="tm-font-minus" class="tm-font-btn" type="button" aria-label="减小字号">A-</button>
+               aria-label="Font size" data-i18n-aria-label="font.size"/>
+        <button id="tm-font-minus" class="tm-font-btn" type="button" aria-label="Decrease font size" data-i18n-aria-label="font.decrease">A-</button>
     </div>
 </aside>
 
 <main class="tm-main">
     <div class="tm-reader">
         <header class="tm-reader-head">
-            <h1>统计</h1>
+            <h1 data-i18n="page.stats">Stats</h1>
         </header>
 
         <div class="tm-stat-cards">
             <div class="tm-stat-card">
-                <span class="tm-stat-label">总字数</span>
+                <span class="tm-stat-label" data-i18n="stats.totalWords">Total words</span>
                 <strong class="tm-stat-value">{{ stats_overview.words }}</strong>
             </div>
             <div class="tm-stat-card">
-                <span class="tm-stat-label">文章数</span>
+                <span class="tm-stat-label" data-i18n="stats.articles">Articles</span>
                 <strong class="tm-stat-value">{{ stats_overview.articles }}</strong>
             </div>
             <div class="tm-stat-card">
-                <span class="tm-stat-label">总创作天数</span>
-                <strong class="tm-stat-value">{{ stats_overview.days }}<span class="tm-stat-unit">天</span></strong>
+                <span class="tm-stat-label" data-i18n="stats.days">Days</span>
+                <strong class="tm-stat-value">{{ stats_overview.days }}<span class="tm-stat-unit" data-i18n="unit.days">days</span></strong>
             </div>
             <div class="tm-stat-card">
-                <span class="tm-stat-label">总阅读时长</span>
-                <strong class="tm-stat-value">{{ stats_overview.read_mins }}<span class="tm-stat-unit">分钟</span></strong>
+                <span class="tm-stat-label" data-i18n="stats.readTime">Total reading time</span>
+                <strong class="tm-stat-value">{{ stats_overview.read_mins }}<span class="tm-stat-unit" data-i18n="unit.minutes">min</span></strong>
             </div>
         </div>
 
         <div class="tm-panel tm-chart-panel">
             <div class="tm-chart-head">
-                <h2>年度趋势</h2>
-                <div class="tm-chart-switch" role="group" aria-label="切换统计指标">
-                    <button type="button" class="tm-chart-toggle is-active" data-metric="articles" aria-pressed="true">文章数量</button>
-                    <button type="button" class="tm-chart-toggle" data-metric="words" aria-pressed="false">文字数量</button>
+                <h2 data-i18n="stats.trend">Yearly trend</h2>
+                <div class="tm-chart-switch" role="group" aria-label="Switch metric" data-i18n-aria-label="stats.switchAria">
+                    <button type="button" class="tm-chart-toggle is-active" data-metric="articles" aria-pressed="true" data-i18n="stats.metricArticles">Articles</button>
+                    <button type="button" class="tm-chart-toggle" data-metric="words" aria-pressed="false" data-i18n="stats.metricWords">Words</button>
                 </div>
             </div>
             <div class="tm-chart">
                 <svg class="tm-chart-svg" viewBox="0 0 720 240" preserveAspectRatio="xMidYMid meet"
-                     role="img" aria-label="年度文章数折线图">
+                     role="img" aria-label="Yearly article count line chart" data-i18n-aria-label="stats.chartAria">
                     <g class="tm-chart-grid" id="tm-chart-grid"></g>
                     <polyline class="tm-chart-area" id="tm-chart-area" points=""></polyline>
                     <polyline class="tm-chart-line" id="tm-chart-line" points=""></polyline>
                     <g class="tm-chart-dots" id="tm-chart-dots"></g>
                     <g class="tm-chart-axis" id="tm-chart-axis"></g>
                 </svg>
-                <p class="tm-chart-empty" id="tm-chart-empty" hidden>暂无数据</p>
+                <p class="tm-chart-empty" id="tm-chart-empty" hidden data-i18n="stats.noData">No data</p>
             </div>
         </div>
 
         <div class="tm-panel">
-            <h2>年度分布</h2>
+            <h2 data-i18n="stats.distribution">Yearly distribution</h2>
             <table class="tm-stats-table">
                 <thead>
                 <tr>
-                    <th>年份</th>
-                    <th>篇数</th>
-                    <th>字数</th>
-                    <th>占比</th>
+                    <th data-i18n="table.year">Year</th>
+                    <th data-i18n="table.count">Count</th>
+                    <th data-i18n="table.words">Words</th>
+                    <th data-i18n="table.share">Share</th>
                 </tr>
                 </thead>
                 <tbody>
