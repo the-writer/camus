@@ -12,6 +12,14 @@
     <link rel="stylesheet" href="{{ with_prefix("/css/pixel-inja.css") }}">
     <link rel="stylesheet" href="{{ with_prefix("/css/ark-pixel-font.css") }}">
     <style>
+        .cover {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 3rem 2rem 6rem;
+            position: relative;
+            z-index: 1;
+        }
+
         .search-form {
             display: flex;
             gap: 0.8rem;
@@ -96,6 +104,14 @@
             color: var(--text-secondary);
             text-align: center;
             font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .cover { padding: 1.8rem 1rem 3.5rem; }
+        }
+
+        @media (max-width: 480px) {
+            .cover { padding: 1rem 0.6rem 2.5rem; }
         }
     </style>
     <link rel="stylesheet" href="{{ with_prefix("/css/style.css") }}">
