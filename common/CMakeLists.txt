@@ -1,4 +1,5 @@
 find_package(PkgConfig REQUIRED)
+find_package(ZLIB REQUIRED)
 pkg_check_modules(OPENSSL REQUIRED IMPORTED_TARGET openssl)
 
 file(GLOB SOURCES
@@ -41,6 +42,7 @@ target_link_libraries(common PUBLIC
         nlohmann_json
         inja
         PkgConfig::OPENSSL
+        ZLIB::ZLIB
 )
 
 # cpp-httplib 客户端/服务端支持 HTTPS（--update / --check-update 请求 GitHub API）。

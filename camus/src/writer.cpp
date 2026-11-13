@@ -21,6 +21,7 @@
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <zlib.h>
 
 #include <build/build.h>
 #include <unistd.h>
@@ -503,6 +504,49 @@ namespace
 		// 否则会在全局尺寸之外继续沿用主题里硬编码的 A4。
 		return "\n:root { --pdf-font-size: " + font_size + "; }\n@page { size: " + size + "; margin: " + margin +
 			   "; }\n@page cover { size: " + size + "; margin: 0; }\n";
+	}
+	std::string normalize_search_text(std::string value)
+	{
+		value = strings::replace(value, "\t", " ");
+		value = strings::replace(value, "\r", " ");
+		value = strings::replace(value, "\n", " ");
+		return strings::trim_space(value);
+	}
+
+	std::string gzip_compress(const std::string &input)
+	{
+		z_stream stream{};
+		if (deflateInit2(&stream, Z_BEST_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
+			return {};
+		}
+
+		stream.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(input.data()));
+		stream.avail_in = static_cast<uInt>(input.size());
+
+		std::string output;
+		char buffer[16384];
+		int status = Z_OK;
+		do {
+			stream.next_out = reinterpret_cast<Bytef *>(buffer);
+			stream.avail_out = sizeof(buffer);
+			status = deflate(&stream, Z_FINISH);
+			const std::size_t produced = sizeof(buffer) - stream.avail_out;
+			if (produced > 0) {
+				output.append(buffer, produced);
+			}
+		} while (status == Z_OK);
+
+		deflateEnd(&stream);
+		if (status != Z_STREAM_END) {
+			return {};
+		}
+
+		// 简单转译，避免直接下载后按普通 gzip 解出整站文本。
+		for (char &byte : output) {
+			byte = static_cast<char>(static_cast<unsigned char>(byte) ^ 0x5A);
+		}
+
+		return output;
 	}
 } // namespace
 
@@ -1053,6 +1097,48 @@ namespace camus
 		);
 	}
 
+	void writer::emit_search()
+	{
+		const auto camus = conf_.camus();
+		const auto theme = camus.render.theme.find(config::CAMUS_THEME_TYPE_SEARCH);
+		if (theme == camus.render.theme.end() || theme->second.empty()) {
+			return;
+		}
+		const std::string search_template = theme->second;
+
+		std::string index;
+		catalog::traverse_catalog_tree(catalog_, [&](catalog::catalog_node &node, int) {
+			if (node.is_directory() || node.property.visibility == catalog::hidden) {
+				return;
+			}
+
+			const std::string title = normalize_search_text(node.property.display_name);
+			const std::string url =
+				filesystem::clean_path(node.link_url(), conf_.camus().public_url.path_prefix);
+			const std::string content = normalize_search_text(strings::string_join(node.contents, " "));
+			index += title;
+			index += '\t';
+			index += url;
+			index += '\t';
+			index += content;
+			index += '\n';
+		});
+
+		if (const std::string compressed = gzip_compress(index); compressed.empty()) {
+			logging::warn("search index compression failed");
+			return;
+		} else {
+			add_write(conf_.camus().dest_dir() / "search.gz", compressed);
+		}
+
+		nlohmann::json j = conf_.json();
+		j["chapters"] = build_chapter_items();
+		add_write(
+			conf_.camus().dest_dir() / "search.html",
+			render::inja_render(inja_, search_template, j)
+		);
+	}
+
 	void writer::emit_toc()
 	{
 		if (cmd_.dryrun) {
@@ -1447,6 +1533,53 @@ namespace camus
 			{"version", PROJECT_VERSION},
 		};
 
+		// 依据全部文章 Markdown 的中文占比决定 PDF 预定义名称使用中文还是英文。
+		std::string ratio_source = std::format("# {}\n\n{}\n", site_title, conf_.camus().site.description);
+		for (const auto &article : articles) {
+			ratio_source += article.markdown;
+			ratio_source += '\n';
+		}
+		const double cn_ratio = chinese_ratio(ratio_source);
+		// chinese_ratio() 返回百分比，0.5 即 50%。
+		const bool use_chinese = cn_ratio > 50.0;
+		const std::string label_cover = use_chinese ? "封面" : "Cover";
+		const std::string label_contents = use_chinese ? "目录" : "Contents";
+		const std::string label_site = use_chinese ? "站点" : "Site";
+		const std::string label_generated = use_chinese ? "生成时间" : "Generated";
+		const std::string label_compiler = use_chinese ? "编译器" : "Compiler";
+		logging::debug("pdf language ratio={:.2f}% chinese={}", cn_ratio, use_chinese);
+
+		const bool toc_index = conf_.camus().pdf.toc.index;
+		const auto article_meta = [&](const catalog::catalog_node &node) -> std::string {
+			if (page_conf.meta.empty()) {
+				return "";
+			}
+
+			std::vector<std::string> parts;
+			for (const auto &token : page_conf.meta) {
+				if (token == "words") {
+					parts.push_back(
+						use_chinese ? std::format("共 {} 字", node.render_data_.stats.word_count)
+									: std::format("{} words", node.render_data_.stats.word_count)
+					);
+				} else if (token == "read-times") {
+					const auto read_minutes = std::max<uint32_t>(1, node.render_data_.stats.read_min);
+					parts.push_back(
+						use_chinese ? std::format("约 {} 分钟", read_minutes)
+									: std::format("~{} min", read_minutes)
+					);
+				} else if (token == "created-time" && node.property.write_time > 0) {
+					parts.push_back(functions::format_time_t(node.property.write_time, "%Y-%m-%d"));
+				}
+			}
+
+			if (parts.empty()) {
+				return "";
+			}
+
+			return strings::string_join(parts, " · ");
+		};
+
 		nlohmann::json toc_items = nlohmann::json::array();
 		nlohmann::json article_items = nlohmann::json::array();
 
@@ -1493,13 +1626,14 @@ namespace camus
 
 				const std::string anchor = std::format("pdf-article-{}", index);
 				const std::string number = std::format("{:02}", index);
+				const std::string toc_title = toc_index ? std::format("{}. {}", index, label) : label;
 
 				toc_items.push_back({
 					{"anchor", anchor},
 					{"index", index},
 					{"number", number},
-					{"title", html_escape(label)},
-					{"outline_title", label},
+					{"title", html_escape(toc_title)},
+					{"outline_title", toc_title},
 					{"tags", tags},
 					{"page", ""},
 					{"page_label", ""},
@@ -1508,18 +1642,28 @@ namespace camus
 				});
 
 				const std::string body_markdown = std::format("## {}\n\n{}", label, article_markdown);
+				std::string article_html = render::render_markdown(
+					body_markdown.c_str(),
+					conf_.camus().render.markdown_engine,
+					conf_.camus().render.markdown_options
+				);
+
+				if (const std::string meta = article_meta(node); !meta.empty()) {
+					if (const auto heading_end = article_html.find("</h2>"); heading_end != std::string::npos) {
+						article_html.insert(
+							heading_end + 5,
+							std::format("<p class=\"pdf-article__meta\">{}</p>", meta)
+						);
+					}
+				}
+
 				article_items.push_back({
 					{"anchor", anchor},
 					{"index", index},
 					{"number", number},
 					{"title", html_escape(label)},
 					{"tags", tags},
-					{"content",
-					 render::render_markdown(
-						 body_markdown.c_str(),
-						 conf_.camus().render.markdown_engine,
-						 conf_.camus().render.markdown_options
-					 )},
+					{"content", std::move(article_html)},
 				});
 
 				return;
@@ -1547,17 +1691,6 @@ namespace camus
 		};
 
 		append_node(catalog_, 0);
-
-		// 依据合并后 Markdown 的中文占比决定 PDF 预定义名称使用中文还是英文。
-		const double cn_ratio = chinese_ratio(markdown);
-		// chinese_ratio() 返回百分比，0.5 即 50%。
-		const bool use_chinese = cn_ratio > 50.0;
-		const std::string label_cover = use_chinese ? "封面" : "Cover";
-		const std::string label_contents = use_chinese ? "目录" : "Contents";
-		const std::string label_site = use_chinese ? "站点" : "Site";
-		const std::string label_generated = use_chinese ? "生成时间" : "Generated";
-		const std::string label_compiler = use_chinese ? "编译器" : "Compiler";
-		logging::debug("pdf language ratio={:.2f}% chinese={}", cn_ratio, use_chinese);
 
 		pdf["labels"] = {
 			{"cover", label_cover},
@@ -2283,6 +2416,7 @@ namespace camus
 		emit_article();
 		emit_toc();
 		emit_friends();
+		emit_search();
 		emit_sitemap();
 		emit_assets();
 

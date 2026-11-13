@@ -7,6 +7,8 @@ auto_check_update: auto                     # 启动自动更新：auto 下载�
 # 页面渲染配置
 theme: tomato                             # 加载 theme/name/*.html
 pdf:
+    # toc:
+    #     index: true                        # 目录与书签标题带 "1. " 序号（正文标题不变）
     engine: chrome                          # PDF 引擎：chromium/chrome/edge（Linux 自动按 PATH 查找）；disable 时不生成 PDF
     sort: file_first                        # PDF 排序：file_first 文件在前、dir_first 目录在前、mixed 按路径字典序混排
     build:                                  # Chrome/Edge 启动参数
@@ -18,6 +20,7 @@ pdf:
         size: A5
         margin: 18mm 15mm
         font_size: 10pt                     # 正文字号，仅支持 pt；其它字号按比例缩放
+        meta: []                            # 标题下信息行：可选 words / read-times / created-time 任意组合；留空不显示
 html:
     copy_pdf: false                         # 为 true 时把生成的 PDF 复制到 HTML 输出根目录
     download_cover: false                    # 为 true 时 HTML 使用本地封面；PDF 始终会下载 URL 封面

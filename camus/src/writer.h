@@ -76,6 +76,7 @@ namespace camus
 		void finalize_directory_properties();
 		void emit_article();
 		void emit_friends();
+		void emit_search();
 		void emit_toc();
 		void emit_sitemap();
 		void emit_assets();

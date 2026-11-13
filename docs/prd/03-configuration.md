@@ -47,7 +47,7 @@
 | `html` | 对象 | 可选 | HTML 输出配置：`build`（cmark-gfm 选项名数组，见 §3.4）、`copy_pdf`（bool，默认 `false`，为 `true` 时把最终 PDF 复制到 HTML 输出根目录）、`download_cover`（bool，默认 `false`，仅控制 HTML：为 `true` 时 HTML 使用下载到本地的封面；PDF 不受该项影响，始终在构建前强制下载远程封面，下载失败中止构建） | `yaml_config.cpp`、`writer.cpp` |
 | `markdown` | 字符串数组 | 可选（已弃用） | 兼容旧配置：等价于 `html.build`；存在 `html.build` 时被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
 | `markdown_options` | 旧键 | 可选（已弃用） | 兼容旧配置：等价于 `html.build`；存在 `html` 或顶层 `markdown` 时被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
-| `pdf` | 对象 | 可选 | PDF 配置：`engine`（字符串）、`build`（字符串数组）、`page`（`size` / `margin` / `font_size`）、`sort`（`file_first` / `dir_first` / `mixed`，默认 `file_first`），见 §3.3.1 | `yaml_config.cpp` |
+| `pdf` | 对象 | 可选 | PDF 配置：`engine`（字符串）、`build`（字符串数组）、`page`（`size` / `margin` / `font_size` / `meta`）、`toc.index`（默认 `false`）、`sort`（`file_first` / `dir_first` / `mixed`，默认 `file_first`），见 §3.3.1 | `yaml_config.cpp` |
 | `pdf_engine` / `pdf_options` | 旧键 | 可选（已弃用） | 兼容旧配置：分别等价于 `pdf.engine` 与 `pdf.build` / `pdf.page`；存在顶层 `pdf` 时旧键被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
 
 `public_url` 拆解规则（`parse_public_url()`）：
@@ -83,6 +83,8 @@
   - `--print-to-pdf=book.pdf`：相对路径按 `<dest_dir>/book.pdf` 解析。
 - `pdf.page.size` 与 `pdf.page.margin` 会生成 `@page { size: ...; margin: ...; }` 追加到打印样式末尾，作用于未命名页；默认 `A4` / `20mm 18mm`。同时追加 `@page cover { size: ...; margin: 0; }`，使封面命名页也使用配置的尺寸（边距保持 0）；`front` 命名页继承全局尺寸。取值同时作为 `pdf.page.size` / `pdf.page.margin` 提供给模板（见 §5.10）。
 - `pdf.page.font_size` 为 PDF 正文字号，默认 `10pt`，**仅支持 `pt` 单位**（形如 `10pt` / `10.5pt`）；非法或非 pt 值输出 WARN 并回退默认。该值写入根 CSS 变量 `--pdf-font-size`，模板中的标题、代码、表格、页脚等字号均基于该变量按比例计算（见 §5.10）。
+- `pdf.page.meta` 为字符串数组，可选值 `words`（字数）、`read-times`（阅读时长）、`created-time`（创建日期）；可任意组合或为空（不显示）。每一项会在 PDF 文章标题（`## 标题`）下自动插入一行 `pdf-article__meta` 信息，使用 ` · ` 分隔；空数组 / 未配置时不插入。
+- `pdf.toc.index` 默认 `false`；为 `true` 时目录页与书签大纲中的文章标题显示为 `1. 标题`、`2. 标题` 的序号格式，正文内标题不自动加序号。
 - `pdf.sort` 控制 PDF 中同一层内文件与子目录的排列（同时影响正文、目录页与书签大纲），默认 `file_first`：
 
   | 取值 | 效果 |
@@ -237,7 +239,7 @@ build:
 | `domain_name` | 字符串 | `public_url` 的域名部分 |
 | `path_prefix` | 字符串 | `public_url` 的路径前缀 |
 | `render` | 对象 | 模板兼容聚合对象（`theme_name`、`html_engine`、`markdown_engine`）；对应配置项在 `camus.yaml` 顶层，此对象仅用于模板数据 |
-| `pdf` | 对象 | PDF 配置：`engine`、`build`、`page`（`size`/`margin`/`font_size`）、`sort`（序列化为 `file_first` / `dir_first` / `mixed`）；PDF 模板中的 `pdf` 会被页面数据覆盖，见 §5.10 |
+| `pdf` | 对象 | PDF 配置：`engine`、`build`、`page`（`size`/`margin`/`font_size`/`meta`）、`toc`（`index`）、`sort`（序列化为 `file_first` / `dir_first` / `mixed`）；PDF 模板中的 `pdf` 会被页面数据覆盖，见 §5.10 |
 | `friends` | 数组 | 友情链接 |
 | `site` | 对象 | 根路由（`path/title/subtitle/description/cover_image/transfers`） |
 | `route` | 数组 | 全部路由（继承后） |
@@ -260,7 +262,7 @@ build:
 | `version_major` | 主版本号（`PROJECT_VERSION_MAJOR`） |
 | `compiler` | 编译器版本字符串 |
 | `compiler_name` | 编译器名称（`clang` / `gcc` / `msvc` / `unknown`） |
-| `powered_by` | 预渲染的页脚 HTML 片段（含版本号与编译器名称） |
+| `powered_by` | 预渲染的页脚 HTML 片段（Home / Friends / Stats / GitHub 链接、版本号与编译器名称）；`pixel` 主题会在 Friends 右侧额外加入 Search 链接 |
 
 示例（inja）：
 

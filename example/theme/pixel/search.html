@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="x-ua-compatible" content="ie=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="{{ site.subtitle }}">
+    <title>Search - {{ site.title }}</title>
+    <link rel="icon" href="{{ with_prefix("/favicon.ico") }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ with_prefix("/css/pixel-inja.css") }}">
+    <link rel="stylesheet" href="{{ with_prefix("/css/ark-pixel-font.css") }}">
+    <style>
+        .search-form {
+            display: flex;
+            gap: 0.8rem;
+            margin: 2rem 0 1rem;
+        }
+
+        #search-input {
+            flex: 1;
+            min-width: 0;
+            padding: 0.8rem 1rem;
+            border: 2px solid var(--border);
+            background: var(--code-bg);
+            color: var(--text);
+            font: inherit;
+            font-size: 1.2rem;
+        }
+
+        #search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        #search-regex {
+            flex: none;
+            padding: 0 1.2rem;
+            border: 2px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text-secondary);
+            font: inherit;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        #search-regex:hover,
+        #search-regex.is-active {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        #search-status {
+            margin: 1rem 0;
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        #search-results {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .search-result {
+            padding: 0.9rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .search-result:last-child {
+            border-bottom: none;
+        }
+
+        .search-result a {
+            display: block;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+
+        .search-result a:hover {
+            text-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .search-result-url {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+
+        .search-result-empty {
+            padding: 2rem 0;
+            color: var(--text-secondary);
+            text-align: center;
+            font-size: 1rem;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ with_prefix("/css/style.css") }}">
+</head>
+<body data-camus-theme="{{ render.theme_name }}">
+<div class="pixel-stars"></div>
+<div class="scanlines"></div>
+
+<div class="cover">
+    <div class="pixel-deco">[ * * * * * * * * * * ]</div>
+    <header class="cover-header">
+        <h1 class="cover-title">Search</h1>
+    </header>
+
+    <form id="search-form" class="search-form" role="search">
+        <input id="search-input" type="search" placeholder="Search..." autocomplete="off" autofocus>
+        <button id="search-regex" type="button" aria-pressed="false" title="Use regular expression">REGEX</button>
+    </form>
+
+    <p id="search-status">Loading index...</p>
+    <ul id="search-results"></ul>
+
+
+    <footer class="cover-footer">{{ build.powered_by }}</footer>
+</div>
+
+<script>window.CAMUS_SEARCH_URL = "{{ with_prefix("/search.gz") }}";</script>
+<script src="{{ with_prefix("/js/ark-pixel-font.js") }}"></script>
+<script src="{{ with_prefix("/js/onload.js") }}"></script>
+<script src="{{ with_prefix("/js/search.js") }}"></script>
+</body>
+</html>

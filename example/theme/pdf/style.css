@@ -87,6 +87,8 @@ hr { border: none; border-top: 1px solid #e0e0e0; margin: 1.5em 0; }
 .pdf-toc__page { flex: none; min-width: 3em; text-align: right; color: #000; font-variant-numeric: tabular-nums; }
 .pdf-article { page-break-before: always; break-before: page; }
 
+.pdf-article__meta { margin: 0 0 1em; color: #6f6f6f; font-size: var(--pdf-fs-meta); }
+
 .pdf-toc__title {
     flex: 1;
     display: flex;

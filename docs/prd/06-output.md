@@ -39,6 +39,8 @@ dist/
 │   ├── <目录 real_url>/index.html  # 每个目录节点一页（含根目录 dist/html/index.html）
 │   ├── stats.html
 │   ├── friends.html
+│   ├── search.html                 # 主题提供 search.html 时（tomato / pixel）
+│   ├── search.gz                   # 搜索索引（XOR + gzip）
 │   ├── sitemap.xml                 # sitemap=true
 │   ├── meta.json                   # meta=true
 │   └── <assets 内容提升到根>        # css/ js/ fonts/ robots.txt favicon.ico ...
@@ -57,6 +59,7 @@ dist/
 | 目录索引页 | 每个非空目录节点（含根；空目录在收尾阶段被移除） | `writer.cpp` `emit_toc()` |
 | `stats.html` | 始终（除非 dryrun） | `writer.cpp:408` |
 | `friends.html` | 始终（除非 dryrun） | `writer.cpp:461` |
+| `search.html` / `search.gz` | 主题存在 `search.html`（tomato / pixel）且非 dryrun | `writer.cpp` `emit_search()` |
 | `sitemap.xml` | `sitemap: true` | `writer.cpp:555` |
 | `meta.json` | `meta: true` | `writer.cpp:540-545` |
 | 静态资源 | 数据目录 `assets/` 或本地 `./assets` 非空 | `writer.cpp` `emit_assets()` |

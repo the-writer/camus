@@ -30,11 +30,12 @@ namespace filesystem
 	int write_file(const std::filesystem::path &path, const std::string_view &content)
 	{
 		std::ofstream outfile;
-		if (outfile.open(std::string{path}, std::ofstream::out | std::ofstream::trunc); !outfile) {
+		if (outfile.open(std::string{path}, std::ofstream::out | std::ofstream::trunc | std::ofstream::binary);
+			!outfile) {
 			return -1;
 		}
 
-		outfile << content.data();
+		outfile.write(content.data(), static_cast<std::streamsize>(content.size()));
 		outfile.close();
 		return content.length();
 	}

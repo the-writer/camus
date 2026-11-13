@@ -58,8 +58,17 @@ namespace camus::config
 		std::string margin = pdf_page_margin_default;
 		// 正文字号，仅支持 pt；其它字号由模板基于该值按比例计算
 		std::string font_size = pdf_page_font_size_default;
+		// 标题下的信息行：words / read-times / created-time 的组合，空则不显示。
+		std::vector<std::string> meta;
 
-		NLOHMANN_DEFINE_TYPE_INTRUSIVE(pdf_page_conf, size, margin, font_size);
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(pdf_page_conf, size, margin, font_size, meta);
+	};
+
+	struct pdf_toc_conf {
+		// 为 true 时目录与书签标题带 "1. " 序号，正文标题不变。
+		bool index = false;
+
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(pdf_toc_conf, index);
 	};
 
 	enum pdf_sort_mode : uint8_t {
@@ -100,9 +109,10 @@ namespace camus::config
 		std::string engine;
 		std::vector<std::string> build;
 		pdf_page_conf page;
+		pdf_toc_conf toc;
 		pdf_sort_mode sort = PDF_SORT_FILE_FIRST;
 
-		NLOHMANN_DEFINE_TYPE_INTRUSIVE(pdf_conf, engine, build, page, sort);
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(pdf_conf, engine, build, page, toc, sort);
 	};
 
 	enum camus_theme_type : uint8_t {
@@ -110,6 +120,7 @@ namespace camus::config
 		CAMUS_THEME_TYPE_PAGE,
 		CAMUS_THEME_TYPE_STATS,
 		CAMUS_THEME_TYPE_FRIENDS,
+		CAMUS_THEME_TYPE_SEARCH,
 	};
 
 	struct html_conf {

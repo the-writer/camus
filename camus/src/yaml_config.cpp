@@ -265,6 +265,33 @@ namespace camus::config
 			return replacements;
 		}
 
+		void parse_pdf_page_meta(const YAML::Node &meta, std::vector<std::string> &target)
+		{
+			target.clear();
+			if (!meta || meta.IsNull()) {
+				return;
+			}
+
+			const auto add = [&target](const std::string &raw) {
+				const std::string token = strings::to_lower(strings::trim_space(raw));
+				if (!token.empty()) {
+					target.push_back(token);
+				}
+			};
+
+			if (meta.IsSequence()) {
+				for (const auto &item : meta) {
+					if (item.IsScalar()) {
+						add(item.as<std::string>());
+					}
+				}
+			} else if (meta.IsScalar()) {
+				for (const auto &item : strings::split(meta.as<std::string>(), ',')) {
+					add(item);
+				}
+			}
+		}
+
 		std::optional<bool> parse_bool_override(const std::string &value)
 		{
 			std::string normalized;
@@ -376,10 +403,19 @@ namespace camus::config
 			{"compiler_name", compiler_name},
 		};
 
+		nlohmann::json powered_by_data = json();
+		powered_by_data["search_link"] =
+			camus_.render.theme_name == "pixel"
+				? std::format(
+					  R"(<a class="site-stats-link" href="{}/search.html">Search</a> /)"
+					  "\n",
+					  camus_.public_url.path_prefix
+				  )
+				: "";
 		const std::string powered_by = R"(
 <a class="site-stats-link" href="{{ path_prefix }}/">Home</a> /
 <a class="site-stats-link" href="{{ path_prefix }}/friends.html">Friends</a> /
-<a class="site-stats-link" href="{{ path_prefix }}/stats.html">Stats</a> /
+{{ search_link }}<a class="site-stats-link" href="{{ path_prefix }}/stats.html">Stats</a> /
 <a class="site-stats-link" href="{{ git.repo }}" target="_blank">GitHub</a>
 <br />
 <small>
@@ -390,7 +426,7 @@ namespace camus::config
 </small>
 )";
 
-		public_config_["build"]["powered_by"] = render::inja_render(powered_by, json());
+		public_config_["build"]["powered_by"] = render::inja_render(powered_by, powered_by_data);
 	}
 
 	yaml_config::yaml_config(const std::string &filename) : camus_({}), filename_(filename)
@@ -520,6 +556,14 @@ namespace camus::config
 				if (const YAML::Node font_size = page["font_size"]; font_size && font_size.IsScalar()) {
 					camus_.pdf.page.font_size = strings::trim_space(font_size.as<std::string>());
 				}
+
+				parse_pdf_page_meta(page["meta"], camus_.pdf.page.meta);
+			}
+
+			if (const YAML::Node toc = node["toc"]; toc && toc.IsMap()) {
+				if (const YAML::Node index = toc["index"]; index && index.IsScalar()) {
+					camus_.pdf.toc.index = index.as<bool>();
+				}
 			}
 
 			if (const YAML::Node sort = node["sort"]; sort && sort.IsScalar()) {
@@ -621,6 +665,8 @@ namespace camus::config
 						if (const YAML::Node font_size = page["font_size"]; font_size && font_size.IsScalar()) {
 							camus_.pdf.page.font_size = strings::trim_space(font_size.as<std::string>());
 						}
+
+						parse_pdf_page_meta(page["meta"], camus_.pdf.page.meta);
 					}
 				}
 				continue;
@@ -805,7 +851,7 @@ namespace camus::config
 			camus_.assets_dir.clear();
 		}
 
-		const auto read_theme = [](const std::string &name, const std::string &type) -> std::string {
+		const auto read_theme = [](const std::string &name, const std::string &type, const bool required = true) -> std::string {
 			// 本地 theme/ 覆盖优先，其次读取平台数据目录中的默认主题
 			std::filesystem::path home_file;
 			if (const std::string replace_theme = std::format("theme/{}/{}.html", name, type);
@@ -816,6 +862,9 @@ namespace camus::config
 			}
 
 			if (home_file.empty() || !std::filesystem::exists(home_file)) {
+				if (!required) {
+					return "";
+				}
 				logging::fatal("read theme content failed name={}/{}", name, type);
 			}
 
@@ -827,6 +876,7 @@ namespace camus::config
 		camus_.render.theme[CAMUS_THEME_TYPE_PAGE] = read_theme(camus_.render.theme_name, "page");
 		camus_.render.theme[CAMUS_THEME_TYPE_STATS] = read_theme(camus_.render.theme_name, "stats");
 		camus_.render.theme[CAMUS_THEME_TYPE_FRIENDS] = read_theme(camus_.render.theme_name, "friends");
+		camus_.render.theme[CAMUS_THEME_TYPE_SEARCH] = read_theme(camus_.render.theme_name, "search", false);
 
 		// 目录元信息来自各目录下的 SUMMARY.md，路由路径本身不再需要入口配置
 		auto find_route = [&](const std::string &path) -> route_conf * {

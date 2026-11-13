@@ -12,6 +12,9 @@
 | `CAMUS_THEME_TYPE_PAGE` | `page.html` | 文章页 |
 | `CAMUS_THEME_TYPE_STATS` | `stats.html` | 统计页 |
 | `CAMUS_THEME_TYPE_FRIENDS` | `friends.html` | 友链页 |
+| `CAMUS_THEME_TYPE_SEARCH` | `search.html` | 搜索页（可选；仅 tomato / pixel 提供） |
+
+`search.html` 为可选主题类型：主题目录存在该文件时才生成搜索页与索引，缺失时跳过（不会 fatal）。构建时若有搜索页，会把所有 `visibility != hidden` 的文章打包为 `search.gz`：内容为 `标题\t链接\t正文` 的逐行文本（制表符/换行已替换为空格），先 gzip 压缩再对每个字节 XOR `0x5A`，避免下载后直接按普通 gzip 解出整站文本。运行时 `assets/js/search.js` 读取 `search.gz`，XOR 还原后用 `DecompressionStream("gzip")` 解压，按 `indexOf`（默认）或用户开启的正则表达式（`RegExp(..., "i")`）匹配标题与正文，最多渲染 100 条结果链接；无匹配时显示「暂无搜索结果」空状态列表。`tomato` 的搜索页复用完整左侧章节目录与控件，入口使用主题色 SVG 放大镜（`assets/icons/search.svg`，通过 CSS mask 跟随文字颜色）；`pixel` 的搜索页复用像素风格容器。
 
 加载顺序（`yaml_config.cpp:244-264`）：
 
@@ -44,11 +47,11 @@ window.CAMUS_TOMATO = {
 - `reverse` / `index` 的 `default` 表示无本地记录时是否默认选中；已有 `localStorage` 记录优先。
 - 仅当 `window.CAMUS_THEME === "tomato"` 时 `tomato.js` 才应用这些开关；tomato 模板将 `onload.js` 放在 `tomato.js` 之前加载。
 
-`pixel` 主题在 `assets/css/pixel-inja.css` 中设置 `html { font-size: 85%; }`，字体与基于 rem 的元素尺寸整体约缩小 15%。
+`pixel` 主题在 `assets/css/pixel-inja.css` 中设置 `html { font-size: 85%; }`，字体与基于 rem 的元素尺寸整体约缩小 15%。`pixel` 主题的页脚链接（`build.powered_by`）在「Friends」右侧额外提供「Search」入口，其余主题不显示搜索入口。
 
 `document` / `pixel` / `terminal` / `tomato` 的正文样式区分行内代码与围栏代码块：`pre` 内的 `code` 不再套用行内代码的边框、底色与内边距，代码块边框只由 `pre` 提供。四个主题均从 CDN 加载 highlight.js 进行语法高亮（`tomato` 同时覆盖首页正文），并在 `assets/js/highlight-init.js` 中把 `language-shell` 统一映射为 bash 语法后调用 `highlightAll()`，因此 `shell` / `ini` 等围栏代码会正常着色。
 
-`tomato` 是小说阅读主题：左侧为章节目录（桌面端可点击折叠，移动端默认隐藏并以遮罩抽屉展开），右侧为正文；上一章 / 下一章仅显示按钮文案。目录支持按分卷筛选（`分卷` 下拉，含「全部分卷」「无分卷」与各不重复分卷；下拉菜单默认宽 200px、右对齐且菜单项行高紧凑）、按时间筛选（`分卷` 右侧的 `时间` 下拉，按文章 `write_time` 的 UTC 月份分组，已存在的月份显示为 `YYYY-MM`，含「全部时间」；每个时间项的右侧显示文章数量（含全部时间总数），与分卷筛选可叠加）、倒序（`倒序`）与数字序号（`序号`，右对齐，数字后带 `.`；列宽至少两位数字，并随全书章节数增长），分卷标题在目录中以单独一行的小标题展示；章节名过长时单行省略（`...`），副标题与章节名在内容被截断时，悬浮/聚焦会通过主题自绘的深色提示框（非系统原生 `title`）显示完整文本。提供字号调节（默认 `14px`，范围 `14–40px`）与主题模式（自动 / 白天 / 夜间，自动模式跟随系统深浅色），均通过 `localStorage` 持久化并在下次访问时自动恢复（键 `tomato-font-size`、`tomato-theme`（`auto` / `light` / `dark`）、`tomato-reverse`、`tomato-index`、`tomato-sidebar-collapsed`（桌面端目录折叠，`1` / `0`；移动端目录仍默认隐藏））。当根路由设置了非空 `cover_image` 时，目录顶部标题区分为左右两栏：标题区默认由内容与封面共同撑开，最高限制为 150px（`max-height`，含内边距）；左侧封面始终 70px 宽并按原图比例展示（不拉伸高度），且不会因标题/简介为空而被裁切；右侧显示标题与副标题，副标题超出可用高度时自动省略（`...`）。未设置封面时保持单栏。封面地址支持绝对 URL 原样使用，相对路径会去除 `assets/` 前缀并按输出根目录拼上 `path_prefix`（`assets/` 内容构建时提升到输出根目录），加载失败时回退为单栏。页面数据使用文章页的 `chapters` 扁平章节列表；目录页（首页）使用 `lead` 直接展示目录子树的第一篇文章正文（含上一章/下一章），侧栏使用 `chapters` 渲染与文章页一致的目录（分卷/倒序/序号），结构与文章页相同；统计页与友链页的侧栏也使用同一 `chapters` 列表与控件，保持目录完整、可用；侧边栏底部右侧显示 `v{{ build.version }}` 版本信息。正文表格使用黑白熊猫配色：亮色主题下表头为黑底白字、边框为黑线，暗色主题反转为白底黑字与白线，数据行按奇偶交替底色。文章页底部提供「复制链接」按钮，点击复制当前页面 URL（优先 `navigator.clipboard`，不可用时回退 `execCommand`），成功后按钮短暂显示「已复制」。样式位于 `assets/css/tomato.css`，交互位于 `assets/js/tomato.js`。
+`tomato` 是小说阅读主题：左侧为章节目录（桌面端可点击折叠，移动端默认隐藏并以遮罩抽屉展开），右侧为正文；上一章 / 下一章仅显示按钮文案。侧栏底部「友链」右侧提供「搜索」入口，目录栏「序号」右侧提供放大镜按钮，均跳转独立搜索页（`search.html`）；目录支持按分卷筛选（`分卷` 下拉，含「全部分卷」「无分卷」与各不重复分卷；下拉菜单默认宽 200px、右对齐且菜单项行高紧凑）、按时间筛选（`分卷` 右侧的 `时间` 下拉，按文章 `write_time` 的 UTC 月份分组，已存在的月份显示为 `YYYY-MM`，含「全部时间」；每个时间项的右侧显示文章数量（含全部时间总数），与分卷筛选可叠加）、倒序（`倒序`）与数字序号（`序号`，右对齐，数字后带 `.`；列宽至少两位数字，并随全书章节数增长），分卷标题在目录中以单独一行的小标题展示；章节名过长时单行省略（`...`），副标题与章节名在内容被截断时，悬浮/聚焦会通过主题自绘的深色提示框（非系统原生 `title`）显示完整文本。提供字号调节（默认 `14px`，范围 `14–40px`）与主题模式（自动 / 白天 / 夜间，自动模式跟随系统深浅色），均通过 `localStorage` 持久化并在下次访问时自动恢复（键 `tomato-font-size`、`tomato-theme`（`auto` / `light` / `dark`）、`tomato-reverse`、`tomato-index`、`tomato-sidebar-collapsed`（桌面端目录折叠，`1` / `0`；移动端目录仍默认隐藏））。当根路由设置了非空 `cover_image` 时，目录顶部标题区分为左右两栏：标题区默认由内容与封面共同撑开，最高限制为 150px（`max-height`，含内边距）；左侧封面始终 70px 宽并按原图比例展示（不拉伸高度），且不会因标题/简介为空而被裁切；右侧显示标题与副标题，副标题超出可用高度时自动省略（`...`）。未设置封面时保持单栏。封面地址支持绝对 URL 原样使用，相对路径会去除 `assets/` 前缀并按输出根目录拼上 `path_prefix`（`assets/` 内容构建时提升到输出根目录），加载失败时回退为单栏。页面数据使用文章页的 `chapters` 扁平章节列表；目录页（首页）使用 `lead` 直接展示目录子树的第一篇文章正文（含上一章/下一章），侧栏使用 `chapters` 渲染与文章页一致的目录（分卷/倒序/序号），结构与文章页相同；统计页与友链页的侧栏也使用同一 `chapters` 列表与控件，保持目录完整、可用；侧边栏底部右侧显示 `v{{ build.version }}` 版本信息。正文表格使用黑白熊猫配色：亮色主题下表头为黑底白字、边框为黑线，暗色主题反转为白底黑字与白线，数据行按奇偶交替底色。文章页底部提供「复制链接」按钮，点击复制当前页面 URL（优先 `navigator.clipboard`，不可用时回退 `execCommand`），成功后按钮短暂显示「已复制」。样式位于 `assets/css/tomato.css`，交互位于 `assets/js/tomato.js`。
 
 ## 5.2 Markdown 渲染
 

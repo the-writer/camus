@@ -53,6 +53,7 @@
             </button>
             <button id="tm-reverse-btn" class="tm-toc-action" type="button" aria-pressed="false">倒序</button>
             <button id="tm-index-btn" class="tm-toc-action" type="button" aria-pressed="false">序号</button>
+            <a id="tm-search-btn" class="tm-toc-action" href="{{ path_prefix }}/search.html" aria-label="搜索" title="搜索"><span class="tm-search-icon" style="-webkit-mask-image: url('{{ with_prefix("/icons/search.svg") }}'); mask-image: url('{{ with_prefix("/icons/search.svg") }}');"></span></a>
         </div>
         <div id="tm-volume-menu" class="tm-volume-menu" hidden></div>
         <div id="tm-month-menu" class="tm-volume-menu" hidden></div>
@@ -73,7 +74,8 @@
         <span class="tm-footer-links">
             <a href="{{ path_prefix }}/">首页</a> /
             <a href="{{ path_prefix }}/stats.html">统计</a> /
-            <a href="{{ path_prefix }}/friends.html">友链</a>
+            <a href="{{ path_prefix }}/friends.html">友链</a> /
+            <a href="{{ path_prefix }}/search.html">搜索</a>
         </span>
         <span class="tm-footer-version">v{{ build.version }}</span>
     </footer>
