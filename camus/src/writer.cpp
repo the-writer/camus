@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -1386,6 +1387,9 @@ namespace camus
 			return;
 		}
 
+		const auto pdf_started = std::chrono::steady_clock::now();
+		logging::info("pdf build started articles={} engine={}", articles.size(), engine);
+
 		const std::string &site_title = conf_.camus().site.title;
 		const std::string cover_title = html_escape(site_title.empty() ? "Camus" : site_title);
 		const std::string cover_subtitle = html_escape(conf_.camus().site.subtitle);
@@ -1881,6 +1885,19 @@ namespace camus
 				);
 			}
 		}
+
+		const double pdf_elapsed =
+			std::chrono::duration<double>(std::chrono::steady_clock::now() - pdf_started).count();
+		std::error_code size_ec;
+		const auto pdf_bytes = std::filesystem::file_size(pdf_path, size_ec);
+		logging::info(
+			"pdf build complete articles={} pages={} bytes={} elapsed={:.2f}s dest={}",
+			articles.size(),
+			total_pages,
+			size_ec ? 0 : pdf_bytes,
+			pdf_elapsed,
+			pdf_path.string()
+		);
 	}
 
 	writer::writer(const cmdline &cmd) : conf_(CAMUS_CONF_NAME), cmd_(cmd)
@@ -2260,11 +2277,20 @@ namespace camus
 
 		prepare_remote_cover();
 
+		const auto html_started = std::chrono::steady_clock::now();
+		logging::info("html build started");
+
 		emit_article();
 		emit_toc();
 		emit_friends();
 		emit_sitemap();
 		emit_assets();
+
+		const size_t html_files = pending_writes_.size();
+		size_t html_bytes = 0;
+		for (const auto &[path, content] : pending_writes_) {
+			html_bytes += content.size();
+		}
 
 		flush_writes();
 
@@ -2288,6 +2314,16 @@ namespace camus
 				);
 			}
 		}
+
+		const double html_elapsed =
+			std::chrono::duration<double>(std::chrono::steady_clock::now() - html_started).count();
+		logging::info(
+			"html build complete files={} bytes={} elapsed={:.2f}s output={}",
+			html_files,
+			html_bytes,
+			html_elapsed,
+			conf_.camus().dest_dir().string()
+		);
 
 		emit_pdf();
 
