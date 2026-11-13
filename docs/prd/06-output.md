@@ -40,7 +40,7 @@ dist/
 │   ├── stats.html
 │   ├── friends.html
 │   ├── search.html                 # 主题提供 search.html 时（tomato / pixel）
-│   ├── search.gz                   # 搜索索引（XOR + gzip）
+│   ├── 9f3a7c1e.bin                # 搜索索引（文件名取 CAMUS_SEARCH_INDEX_NAME，XOR + gzip）
 │   ├── sitemap.xml                 # sitemap=true
 │   └── <assets 内容提升到根>        # css/ js/ fonts/ robots.txt favicon.ico ...
 └── pdf/                            # pdf.engine 非空且不为 disable 时
@@ -58,7 +58,7 @@ dist/
 | 目录索引页 | 每个非空目录节点（含根；空目录在收尾阶段被移除） | `writer.cpp` `emit_toc()` |
 | `stats.html` | 始终（除非 dryrun） | `writer.cpp:408` |
 | `friends.html` | 始终（除非 dryrun） | `writer.cpp:461` |
-| `search.html` / `search.gz` | 主题存在 `search.html`（tomato / pixel）且非 dryrun | `writer.cpp` `emit_search()` |
+| `search.html` / `CAMUS_SEARCH_INDEX_NAME`（`9f3a7c1e.bin`） | 主题存在 `search.html`（tomato / pixel）且非 dryrun | `writer.cpp` `emit_search()` |
 | `sitemap.xml` | `sitemap: true` | `writer.cpp:555` |
 | 静态资源 | 数据目录 `assets/` 或本地 `./assets` 非空 | `writer.cpp` `emit_assets()` |
 | `index.md` / `index.pdf` / `index.html`（均位于 `dist/pdf`） | `pdf.engine` 非空、不为 `disable` 且引擎可用 | `writer.cpp` `emit_pdf()` |

@@ -417,6 +417,8 @@ namespace camus::config
 
 		public_config_["build"] = std::unordered_map<std::string, std::string>{
 			{"basedir", basedir},
+			{"search_index", CAMUS_SEARCH_INDEX_NAME},
+			{"search_url", filesystem::clean_path(std::string("/") + CAMUS_SEARCH_INDEX_NAME, camus_.public_url.path_prefix)},
 			{"timestamp", std::to_string(now * 1000)},
 			{"time", buf},
 			{"build_type", BUILD_TYPE},

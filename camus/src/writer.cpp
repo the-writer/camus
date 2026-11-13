@@ -1143,7 +1143,7 @@ namespace camus
 			logging::warn("search index compression failed");
 			return;
 		} else {
-			add_write(conf_.camus().dest_dir() / "search.gz", compressed);
+			add_write(conf_.camus().dest_dir() / CAMUS_SEARCH_INDEX_NAME, compressed);
 		}
 
 		nlohmann::json j = conf_.json();

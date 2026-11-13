@@ -219,7 +219,7 @@
     </div>
 </main>
 
-<script>window.CAMUS_SEARCH_URL = "{{ with_prefix("/search.gz") }}";</script>
+<script>window.CAMUS_SEARCH_URL = "{{ build.search_url }}";</script>
 <script src="{{ with_prefix("/js/onload.js") }}"></script>
 <script src="{{ with_prefix("/js/tomato.js") }}"></script>
 <script src="{{ with_prefix("/js/search.js") }}"></script>

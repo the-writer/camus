@@ -20,6 +20,7 @@
 #define CAMUS_DATA_DIR_LINUX "/var/lib/camus"
 #define CAMUS_CONF_NAME "camus.yaml"
 #define CAMUS_SUMMARY_NAME "SUMMARY.md"
+#define CAMUS_SEARCH_INDEX_NAME "9f3a7c1e.bin"
 #define CAMUS_OPEN_TARGET_PROJECT "project"
 #define CAMUS_OPEN_TARGET_RUNTIME "runtime"
 #define CAMUS_PRIVATE_DIR "private"

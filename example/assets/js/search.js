@@ -82,7 +82,11 @@
     }
 
     function loadIndex() {
-        var url = window.CAMUS_SEARCH_URL || "/search.gz";
+        var url = window.CAMUS_SEARCH_URL;
+        if (!url) {
+            setStatus("搜索索引地址缺失");
+            return;
+        }
         setStatus("正在加载搜索索引...");
 
         fetch(url, { cache: "no-cache" })
