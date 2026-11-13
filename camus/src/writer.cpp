@@ -1,6 +1,7 @@
 #include "writer.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <cctype>
 #include <chrono>
@@ -43,6 +44,9 @@
 
 namespace
 {
+	// 单篇文章内并发下载远程图片的最大线程数（不足时按实际图片数启动）。
+	constexpr std::size_t PDF_IMAGE_DOWNLOAD_CONCURRENCY = 6;
+
 	// 下载远程图片时使用的桌面 Chrome UA，避免被简单的 UA 规则拦截。
 	constexpr const char *IMAGE_USER_AGENT =
 		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -517,10 +521,105 @@ namespace
 	{
 		// 仅匹配 <img> 标签内的远程 src，保留标签其余属性。
 		const std::regex pattern(R"RE((<img\b[^>]*?\bsrc=")(https?://[^"]+)("))RE", std::regex::icase);
+
+		struct download_task {
+			std::string url;
+			std::filesystem::path cache_file;
+		};
+
+		// 第一遍：按 URL 去重，命中缓存的直接解析，其余收集为下载任务。
 		std::map<std::string, std::string> resolved;
+		std::vector<std::string> urls;
+		std::set<std::string> seen;
+		for (auto it = std::sregex_iterator(html.begin(), html.end(), pattern); it != std::sregex_iterator();
+			 ++it) {
+			std::string url = (*it)[2].str();
+			url = strings::replace(url, "&amp;", "&");
+			if (seen.insert(url).second) {
+				urls.push_back(url);
+			}
+		}
+
+		// 同一 cache 文件（例如仅查询串不同的 URL）只下载一次，避免并发写同一文件。
+		struct deferred_url {
+			std::string url;
+			std::size_t task_index;
+		};
+
+		std::vector<download_task> tasks;
+		std::vector<deferred_url> deferred;
+		std::map<std::filesystem::path, std::size_t> task_by_file;
+		std::error_code ec;
+		for (const auto &url : urls) {
+			const std::filesystem::path cache_file = remote_image_cache_file(url, images_dir);
+			std::error_code size_ec;
+			const auto size = cache_file.empty() ? 0 : std::filesystem::file_size(cache_file, size_ec);
+			if (!cache_file.empty() && !size_ec && size > 0) {
+				resolved[url] = relative_url_path(cache_file, pdf_dir);
+				continue;
+			}
+
+			if (cache_file.empty()) {
+				resolved[url] = "";
+				continue;
+			}
+
+			if (const auto found = task_by_file.find(cache_file); found != task_by_file.end()) {
+				deferred.push_back({url, found->second});
+				continue;
+			}
+
+			std::filesystem::create_directories(cache_file.parent_path(), ec);
+			task_by_file[cache_file] = tasks.size();
+			tasks.push_back({url, cache_file});
+		}
+
+		// 第二遍（并发）：按实际任务数启动线程，最多 6 个。
+		std::vector<std::string> results(tasks.size());
+		const std::size_t worker_count =
+			std::min<std::size_t>(PDF_IMAGE_DOWNLOAD_CONCURRENCY, tasks.size());
+		if (worker_count > 0) {
+			std::atomic<std::size_t> next{0};
+			std::vector<std::thread> threads;
+			threads.reserve(worker_count);
+			for (std::size_t i = 0; i < worker_count; ++i) {
+				threads.emplace_back([&]() {
+					while (true) {
+						const std::size_t index = next.fetch_add(1);
+						if (index >= tasks.size()) {
+							break;
+						}
+
+						logging::info("downloading pdf image url={}", tasks[index].url);
+						if (download_remote_image(tasks[index].url, tasks[index].cache_file)) {
+							results[index] = relative_url_path(tasks[index].cache_file, pdf_dir);
+						}
+					}
+				});
+			}
+
+			for (auto &thread : threads) {
+				thread.join();
+			}
+		}
+
+		for (std::size_t i = 0; i < tasks.size(); ++i) {
+			resolved[tasks[i].url] = results[i];
+			if (results[i].empty()) {
+				logging::warn("pdf image download failed, keep remote url={}", tasks[i].url);
+			}
+		}
+
+		for (const auto &item : deferred) {
+			resolved[item.url] = results[item.task_index];
+			if (results[item.task_index].empty()) {
+				logging::warn("pdf image download failed, keep remote url={}", item.url);
+			}
+		}
+
+		// 第三遍：替换 src；未命中缓存 / 下载失败时保留原始远程 URL。
 		std::string output;
 		output.reserve(html.size());
-
 		std::size_t cursor = 0;
 		for (auto it = std::sregex_iterator(html.begin(), html.end(), pattern); it != std::sregex_iterator();
 			 ++it) {
@@ -534,26 +633,6 @@ namespace
 			std::string replacement;
 			if (const auto found = resolved.find(url); found != resolved.end()) {
 				replacement = found->second;
-			} else {
-				const std::filesystem::path cache_file = remote_image_cache_file(url, images_dir);
-				std::error_code size_ec;
-				const auto size = cache_file.empty() ? 0 : std::filesystem::file_size(cache_file, size_ec);
-				bool ready = !cache_file.empty() && !size_ec && size > 0;
-
-				if (!ready && !cache_file.empty()) {
-					logging::info("downloading pdf image url={}", url);
-					ready = download_remote_image(url, cache_file);
-				}
-
-				if (ready) {
-					replacement = relative_url_path(cache_file, pdf_dir);
-				}
-
-				if (replacement.empty()) {
-					logging::warn("pdf image download failed, keep remote url={}", url);
-				}
-
-				resolved[url] = replacement;
 			}
 
 			output += match[1].str();
