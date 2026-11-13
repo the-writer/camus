@@ -2439,7 +2439,6 @@ namespace camus
 		prepare_remote_cover();
 
 		const auto html_started = std::chrono::steady_clock::now();
-		logging::info("html build started");
 
 		emit_article();
 		emit_toc();

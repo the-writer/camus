@@ -23,7 +23,7 @@ empty_path(pdf_dir(),   safe_check=true)   // ./dist/pdf
 
 每次构建输出阶段统计日志（info 级别）：
 
-- HTML：`html build started`；完成后 `html build complete files=<文件数> bytes=<总字节> elapsed=<秒>s output=<输出目录>`。
+- HTML：构建开始时不输出日志；完成后输出 `html build complete files=<文件数> bytes=<总字节> elapsed=<秒>s output=<输出目录>`。
 - PDF：`pdf build started articles=<文章数> engine=<引擎>`；完成后 `pdf build complete articles=<文章数> pages=<页数> bytes=<文件字节> elapsed=<秒>s dest=<PDF 路径>`。
 - PDF 未启用、引擎不可用或无文章时不会输出 PDF 阶段日志；`-W` 每次重建按相同规则输出，不改变监听逻辑。
 
