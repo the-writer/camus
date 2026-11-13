@@ -138,8 +138,10 @@
 <aside class="tm-sidebar" id="tm-sidebar">
     <header class="tm-book{% if length(site.logo) > 0 %} tm-book-cover{% endif %}">
         {% if length(site.logo) > 0 %}
-        <img
-             class="tm-book-cover-img" alt="{{ site.title }}" data-cover="{{ site.logo }}" data-prefix="{{ path_prefix }}"/>
+        <a class="tm-book-cover-link" href="{{ path_prefix }}/" aria-label="返回首页">
+            <img
+                 class="tm-book-cover-img" alt="{{ site.title }}" data-cover="{{ site.logo }}" data-prefix="{{ path_prefix }}"/>
+        </a>
         {% endif %}
         <div class="tm-book-info">
             <h1>{{ site.title }}</h1>
