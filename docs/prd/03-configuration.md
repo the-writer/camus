@@ -74,10 +74,19 @@
 
 - `pdf.engine: disable` 表示显式禁用 PDF：不解析引擎、不产生 `dist/pdf` 内容，也不输出告警。
 - 引擎找不到时输出 WARN 并跳过 PDF，不影响 HTML 构建。
-- `pdf.build` 中的字符串原样作为启动参数；其中以 `--print-to-pdf` 开头的项只取第一个并统一重写，支持 `{{dest_dir}}` 占位符（占位符代表 PDF 输出目录 `./dist/pdf`）：
-  - `--print-to-pdf=`：默认输出 `<dest_dir>/index.pdf`；
-  - `--print-to-pdf={{dest_dir}}/docs/book.pdf`：输出到 `<dest_dir>/docs/book.pdf`；
-  - `--print-to-pdf=book.pdf`：相对路径按 `<dest_dir>/book.pdf` 解析。
+- `pdf.build` 中的字符串作为启动参数，**每个参数**都支持以下占位符（修改后直接生效）：
+
+  | 占位符 | 含义 |
+  |---|---|
+  | `{{dist_dir}}` / `{{ dist_dir }}` | 输出根目录 `./dist`（`dest_dir` 的父目录） |
+  | `{{dest_dir}}` / `{{ dest_dir }}` | PDF 输出目录 `./dist/pdf`（历史命名，等价于 `{{dist_dir}}/pdf`） |
+  | `{{cache_dir}}` / `{{ cache_dir }}` | 缓存目录 `./dist/cache`（等价于 `{{dist_dir}}/cache`） |
+  | `{{engine}}` / `{{ engine }}` | 引擎缓存名（由 `pdf.engine` 规范化，如 `chrome` / `edge`；自定义路径取可执行文件名） |
+
+  其中以 `--print-to-pdf` 开头的项只取第一个并统一重写：
+  - `--print-to-pdf=`：默认输出 `<dist_dir>/pdf/index.pdf`；
+  - `--print-to-pdf={{dist_dir}}/pdf/docs/book.pdf`：输出到 `<dist_dir>/pdf/docs/book.pdf`；
+  - `--print-to-pdf=book.pdf`：相对路径按 `<dist_dir>/pdf/book.pdf` 解析。
 - `pdf.page.size` 与 `pdf.page.margin` 会生成 `@page { size: ...; margin: ...; }` 追加到打印样式末尾，作用于未命名页；默认 `A4` / `20mm 18mm`。同时追加 `@page cover { size: ...; margin: 0; }`，使封面命名页也使用配置的尺寸（边距保持 0）；`front` 命名页继承全局尺寸。取值同时作为 `pdf.page.size` / `pdf.page.margin` 提供给模板（见 §5.10）。
 - `pdf.page.font_size` 为 PDF 正文字号，默认 `10pt`，**仅支持 `pt` 单位**（形如 `10pt` / `10.5pt`）；非法或非 pt 值输出 WARN 并回退默认。该值写入根 CSS 变量 `--pdf-font-size`，模板中的标题、代码、表格、页脚等字号均基于该变量按比例计算（见 §5.10）。
 - `pdf.page.meta` 为字符串数组，可选值 `words`（字数）、`read-times`（阅读时长）、`created-time`（创建日期）；可任意组合或为空（不显示）。每一项会在 PDF 文章标题（`## 标题`）下自动插入一行 `pdf-article__meta` 信息，使用 ` · ` 分隔；空数组 / 未配置时不插入。`read-times` 显示整数分钟，不足 1 分钟时显示「小于1分钟」（英文语种为 `<1 min`），不输出小数。
@@ -91,7 +100,7 @@
   | `mixed` | 不区分文件 / 目录，完全按相对路径字符串字典序升序 |
 
   取值不区分大小写并忽略首尾空格；未知值输出 WARN 并回退 `file_first`。该顺序仅作用于 PDF，与 HTML 站点排序（目录优先、按 `write_time` 降序）互不影响。
-- 未显式提供 `--headless` 时自动追加；始终追加临时 `--user-data-dir`（构建结束删除），避免污染用户浏览器配置。
+- 未显式提供 `--headless` 时自动追加。示例配置在 `pdf.build` 中显式声明 `--user-data-dir={{dist_dir}}/cache/{{engine}}_userdata`，跨构建复用 profile（HTTP / 代码 / GPU 缓存）；用户改写该项即直接生效。若配置未提供任何 `--user-data-dir`，程序兜底追加同一路径，避免使用系统默认浏览器 profile。
 - PDF 中间 HTML 使用 `theme/pdf/page.html` 模板、`theme/pdf/style.css` 样式与 `theme/pdf/fonts.css` 字体样式；字体文件放在站点 `assets/fonts/`，构建时复制到 `dist/pdf/assets/fonts/`。该目录不通过 `camus.yaml` 配置，查找顺序与可用模板变量见 §5.10、§8.3。
 
 ### 3.4 html.build 映射

@@ -79,6 +79,7 @@ flowchart TD
 |---|---|
 | workdir | 工作目录，`-w` 指定，默认当前目录；运行时会 `chdir` 到该目录 |
 | source_dir | Markdown 源目录；固定按 `src` → `posts` 探测，不存在则回退 `src` |
+| dist_dir | 输出根目录，固定 `./dist`（`dest_dir` 的父目录） |
 | dest_dir | HTML 输出目录，固定 `./dist/html` |
 | pdf_dir | PDF 输出目录，固定 `./dist/pdf` |
 | assets_dir | 本地静态资源目录，固定 `./assets`；缺省时使用数据目录的 `assets/`，内容会被提升到输出根目录 |

@@ -202,9 +202,15 @@ namespace camus::config
 			return output.dest_dir;
 		}
 
+		// 输出根目录（dest_dir 的父目录，如 ./dist），PDF 与缓存等同级产物都放在其下。
+		[[nodiscard]] std::filesystem::path dist_dir() const
+		{
+			return output.dest_dir.parent_path();
+		}
+
 		[[nodiscard]] std::filesystem::path pdf_dir() const
 		{
-			return output.dest_dir.parent_path() / "pdf";
+			return dist_dir() / "pdf";
 		}
 
 		std::string get_theme(const camus_theme_type &theme)

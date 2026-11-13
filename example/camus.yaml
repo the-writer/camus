@@ -12,7 +12,8 @@ pdf:
         - --headless
         - --enable-logging
         - --no-pdf-header-footer
-        - --print-to-pdf={{dest_dir}}/index.pdf  # {{dest_dir}} 为 PDF 输出目录，可自定义文件名与位置
+        - --user-data-dir={{dist_dir}}/cache/{{engine}}_userdata  # 复用浏览器 profile；{{dist_dir}} 为 dist 根，{{engine}} 为引擎名
+        - --print-to-pdf={{dist_dir}}/pdf/index.pdf  # {{dist_dir}} 为 dist 根，可自定义文件名与位置
     page:                                   # 打印页面尺寸与边距，应用到 @page
         size: A5
         margin: 18mm 15mm

@@ -14,6 +14,8 @@
 #include <iostream>
 #include <map>
 #include <ranges>
+#include <regex>
+#include <set>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -41,6 +43,11 @@
 
 namespace
 {
+	// 下载远程图片时使用的桌面 Chrome UA，避免被简单的 UA 规则拦截。
+	constexpr const char *IMAGE_USER_AGENT =
+		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
+		"Chrome/131.0.0.0 Safari/537.36";
+
 	bool command_exists(const std::string &name)
 	{
 		if (name.empty()) {
@@ -302,9 +309,18 @@ namespace
 		client.set_connection_timeout(10);
 		client.set_read_timeout(60);
 		client.set_follow_location(true);
+		// 伪装为真实浏览器加载图片的请求头，降低被 CDN / 防盗链拦截的概率。
 		client.set_default_headers({
-			{"Accept", "image/*"},
-			{"User-Agent", "camus"},
+			{"User-Agent", IMAGE_USER_AGENT},
+			{"Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"},
+			{"Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8"},
+			{"Cache-Control", "no-cache"},
+			{"Pragma", "no-cache"},
+			{"Referer", origin + "/"},
+			{"Sec-Fetch-Dest", "image"},
+			{"Sec-Fetch-Mode", "no-cors"},
+			{"Sec-Fetch-Site", "cross-site"},
+			{"Upgrade-Insecure-Requests", "1"},
 		});
 
 		std::error_code ec;
@@ -331,6 +347,204 @@ namespace
 		}
 
 		return true;
+	}
+
+	// 由 pdf.engine 配置值生成稳定的缓存目录名（如 chrome / edge / 自定义路径的文件名）。
+	std::string pdf_engine_cache_name(const std::string &engine)
+	{
+		std::string name = strings::to_lower(strings::trim_space(engine));
+		if (name.contains('/')) {
+			name = std::filesystem::path(name).filename().string();
+		}
+
+		std::string out;
+		out.reserve(name.size());
+		for (const char c : name) {
+			if (std::isalnum(static_cast<unsigned char>(c)) != 0 || c == '-' || c == '_' || c == '.') {
+				out.push_back(c);
+			} else {
+				out.push_back('_');
+			}
+		}
+
+		return out.empty() ? "chrome" : out;
+	}
+
+	// 解码 URL 路径中的百分号转义（不处理 '+'，路径中 '+' 为字面量）。
+	std::string url_decode(const std::string &value)
+	{
+		std::string out;
+		out.reserve(value.size());
+		for (std::size_t i = 0; i < value.size(); ++i) {
+			if (value[i] == '%' && i + 2 < value.size() &&
+				std::isxdigit(static_cast<unsigned char>(value[i + 1])) != 0 &&
+				std::isxdigit(static_cast<unsigned char>(value[i + 2])) != 0) {
+				out.push_back(static_cast<char>(std::stoi(value.substr(i + 1, 2), nullptr, 16)));
+				i += 2;
+				continue;
+			}
+
+			out.push_back(value[i]);
+		}
+
+		return out;
+	}
+
+	// 将单个路径片段规范为安全文件名，避免解码后出现目录穿越字符。
+	std::string sanitize_path_segment(const std::string &value)
+	{
+		std::string out;
+		out.reserve(value.size());
+		for (const char c : value) {
+			if (c == '/' || c == '\\' || c == '\0') {
+				out.push_back('_');
+			} else {
+				out.push_back(c);
+			}
+		}
+
+		return out;
+	}
+
+	// 计算远程图片在 cache/images 下的本地路径：保留 host 与 URL 路径（去查询/锚点）。
+	std::filesystem::path remote_image_cache_file(
+		const std::string &url,
+		const std::filesystem::path &images_dir
+	)
+	{
+		std::string origin;
+		std::string path;
+		if (!split_remote_url(url, origin, path)) {
+			return {};
+		}
+
+		if (const auto pos = path.find_first_of("?#"); pos != std::string::npos) {
+			path = path.substr(0, pos);
+		}
+
+		while (path.size() > 1 && path.back() == '/') {
+			path.pop_back();
+		}
+
+		std::string host = origin;
+		if (const auto pos = host.find("://"); pos != std::string::npos) {
+			host = host.substr(pos + 3);
+		}
+
+		std::string host_dir;
+		host_dir.reserve(host.size());
+		for (const char c : host) {
+			if (std::isalnum(static_cast<unsigned char>(c)) != 0 || c == '.' || c == '-' || c == '_') {
+				host_dir.push_back(c);
+			} else {
+				host_dir.push_back('_');
+			}
+		}
+
+		std::filesystem::path result = images_dir;
+		if (!host_dir.empty()) {
+			result /= host_dir;
+		}
+
+		bool has_segment = false;
+		for (const auto &raw : strings::split(url_decode(path), '/')) {
+			const std::string segment = sanitize_path_segment(raw);
+			if (segment.empty() || segment == "." || segment == "..") {
+				continue;
+			}
+
+			result /= segment;
+			has_segment = true;
+		}
+
+		if (!has_segment) {
+			result /= std::format("{}{}", strings::make_hash(url), remote_image_extension(url));
+		}
+
+		return result;
+	}
+
+	// 计算从 base 目录到 file 的相对 URL 路径（逐段百分号编码，保留 ../）。
+	std::string relative_url_path(const std::filesystem::path &file, const std::filesystem::path &base)
+	{
+		std::error_code ec;
+		const std::filesystem::path relative = std::filesystem::relative(file, base, ec);
+		if (ec) {
+			return {};
+		}
+
+		std::string out;
+		for (const auto &part : strings::split(relative.generic_string(), '/')) {
+			if (part.empty()) {
+				continue;
+			}
+
+			if (!out.empty()) {
+				out.push_back('/');
+			}
+
+			out += strings::url_encode(part);
+		}
+
+		return out;
+	}
+
+	// 把 HTML 中的远程图片提前下载到 cache/images，并把 src 改写为相对 pdf 目录的本地路径。
+	// 已存在的缓存文件直接复用；下载失败时保留原 URL，避免中断构建。
+	void localize_pdf_images(
+		std::string &html,
+		const std::filesystem::path &images_dir,
+		const std::filesystem::path &pdf_dir
+	)
+	{
+		// 仅匹配 <img> 标签内的远程 src，保留标签其余属性。
+		const std::regex pattern(R"RE((<img\b[^>]*?\bsrc=")(https?://[^"]+)("))RE", std::regex::icase);
+		std::map<std::string, std::string> resolved;
+		std::string output;
+		output.reserve(html.size());
+
+		std::size_t cursor = 0;
+		for (auto it = std::sregex_iterator(html.begin(), html.end(), pattern); it != std::sregex_iterator();
+			 ++it) {
+			const std::smatch &match = *it;
+			output.append(html, cursor, match.position() - cursor);
+			cursor = match.position() + match.length();
+
+			std::string url = match[2].str();
+			url = strings::replace(url, "&amp;", "&");
+
+			std::string replacement;
+			if (const auto found = resolved.find(url); found != resolved.end()) {
+				replacement = found->second;
+			} else {
+				const std::filesystem::path cache_file = remote_image_cache_file(url, images_dir);
+				std::error_code size_ec;
+				const auto size = cache_file.empty() ? 0 : std::filesystem::file_size(cache_file, size_ec);
+				bool ready = !cache_file.empty() && !size_ec && size > 0;
+
+				if (!ready && !cache_file.empty()) {
+					logging::info("downloading pdf image url={}", url);
+					ready = download_remote_image(url, cache_file);
+				}
+
+				if (ready) {
+					replacement = relative_url_path(cache_file, pdf_dir);
+				}
+
+				if (replacement.empty()) {
+					logging::warn("pdf image download failed, keep remote url={}", url);
+				}
+
+				resolved[url] = replacement;
+			}
+
+			output += match[1].str();
+			output += replacement.empty() ? match[2].str() : replacement;
+			output += match[3].str();
+		}
+
+		output.append(html, cursor, std::string::npos);
+		html = std::move(output);
 	}
 
 	// 解析 PDF 封面图：绝对路径直接使用；相对路径依次按 camus.yaml 所在目录（workdir）、
@@ -1581,6 +1795,10 @@ namespace camus
 		const auto pdf_started = std::chrono::steady_clock::now();
 		logging::info("pdf build started articles={} engine={}", articles.size(), engine);
 
+		// 跨构建复用的缓存目录：浏览器 profile 与远程正文图片都放在 dist/cache 下。
+		const std::filesystem::path cache_root = conf_.camus().dist_dir() / "cache";
+		const std::filesystem::path cache_images_dir = cache_root / "images";
+
 		const std::string &site_title = conf_.camus().site.title;
 		const std::string cover_title = html_escape(site_title.empty() ? "Camus" : site_title);
 		const std::string cover_subtitle = html_escape(conf_.camus().site.subtitle);
@@ -1766,6 +1984,8 @@ namespace camus
 					}
 				}
 
+				localize_pdf_images(article_html, cache_images_dir, conf_.camus().pdf_dir());
+
 				article_items.push_back({
 					{"anchor", anchor},
 					{"index", index},
@@ -1895,11 +2115,25 @@ namespace camus
 		bool has_headless = false;
 		bool has_print_to_pdf = false;
 		bool has_user_data_dir = false;
+		const std::string engine_cache_name = pdf_engine_cache_name(pdf_engine);
+		const std::map<std::string, std::string> placeholders = {
+			{"{{dist_dir}}", conf_.camus().dist_dir().string()},
+			{"{{ dist_dir }}", conf_.camus().dist_dir().string()},
+			{"{{dest_dir}}", pdf_dir.string()},
+			{"{{ dest_dir }}", pdf_dir.string()},
+			{"{{cache_dir}}", cache_root.string()},
+			{"{{ cache_dir }}", cache_root.string()},
+			{"{{engine}}", engine_cache_name},
+			{"{{ engine }}", engine_cache_name},
+		};
 
-		for (const auto &option : conf_.camus().pdf.build) {
-			if (option.empty()) {
+		for (const auto &raw_option : conf_.camus().pdf.build) {
+			if (raw_option.empty()) {
 				continue;
 			}
+
+			// pdf.build 中的每个参数都支持占位符，用户修改配置后直接生效。
+			const std::string option = strings::replace(raw_option, placeholders);
 
 			if (option.starts_with("--headless")) {
 				has_headless = true;
@@ -1913,11 +2147,8 @@ namespace camus
 				has_print_to_pdf = true;
 
 				if (const auto pos = option.find('='); pos != std::string::npos) {
-					std::string value = option.substr(pos + 1);
+					const std::string value = option.substr(pos + 1);
 					if (!value.empty()) {
-						value = strings::replace(value, "{{dest_dir}}", pdf_dir.string());
-						value = strings::replace(value, "{{ dest_dir }}", pdf_dir.string());
-
 						std::filesystem::path path(value);
 						if (path.is_relative()) {
 							path = pdf_dir / path;
@@ -1946,13 +2177,12 @@ namespace camus
 
 		args.push_back("--print-to-pdf=" + pdf_path.string());
 
-		const std::filesystem::path profile_dir =
-			std::filesystem::temp_directory_path() / std::format("camus-pdf-{}", getpid());
+		// 兜底：配置未提供 --user-data-dir 时复用固定 profile（dist/cache/{engine}_userdata），
+		// 保留 HTTP / 代码 / GPU 缓存；通常由 camus.yaml 的 pdf.build 显式声明并优先使用。
 		std::error_code ec;
-		std::filesystem::remove_all(profile_dir, ec);
-		std::filesystem::create_directories(profile_dir, ec);
-
 		if (!has_user_data_dir) {
+			const std::filesystem::path profile_dir = cache_root / (engine_cache_name + "_userdata");
+			std::filesystem::create_directories(profile_dir, ec);
 			args.push_back("--user-data-dir=" + profile_dir.string());
 		}
 
@@ -1998,7 +2228,6 @@ namespace camus
 		};
 
 		if (!render_and_print()) {
-			std::filesystem::remove_all(profile_dir, ec);
 			return;
 		}
 
@@ -2099,7 +2328,6 @@ namespace camus
 			logging::warn("pdf outline injection failed dest={}", pdf_path.string());
 		}
 
-		std::filesystem::remove_all(profile_dir, ec);
 		if (!keep_browser_log) {
 			std::filesystem::remove(browser_log_path, ec);
 		}
@@ -2183,6 +2411,9 @@ namespace camus
 		// （如 macOS 的 /tmp -> /private/tmp）时前缀匹配失败，导致产物参与 hash 反复触发编译
 		const std::filesystem::path dest_dir = std::filesystem::weakly_canonical(conf_.camus().dest_dir());
 		const std::filesystem::path pdf_dir = std::filesystem::weakly_canonical(conf_.camus().pdf_dir());
+		// PDF 浏览器 profile 与远程图片缓存也是构建产物（且运行时会频繁写入），必须排除。
+		const std::filesystem::path cache_dir =
+			std::filesystem::weakly_canonical(conf_.camus().dist_dir() / "cache");
 
 		const auto is_generated = [&](const std::filesystem::path &path) {
 			const auto within = [](const std::filesystem::path &p, const std::filesystem::path &dir) {
@@ -2194,7 +2425,7 @@ namespace camus
 				return *relative.begin() != "..";
 			};
 
-			return within(path, dest_dir) || within(path, pdf_dir);
+			return within(path, dest_dir) || within(path, pdf_dir) || within(path, cache_dir);
 		};
 
 		logging::info("watch directory: {}", dest_dir.string());

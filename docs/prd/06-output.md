@@ -44,13 +44,17 @@ dist/
 │   ├── sitemap.xml                 # build.sitemap=true
 │   ├── feed.xml                    # build.rss=true
 │   └── <assets 内容提升到根>        # css/ js/ fonts/ robots.txt favicon.ico ...
-└── pdf/                            # pdf.engine 非空且不为 disable 时
-    ├── index.md                    # 合并后的 Markdown
-    ├── index.html                  # PDF 中间 HTML
-    ├── index.pdf                   # 最终 PDF（可由 pdf.build 的自定义路径）
-    ├── assets.css                  # 站点 css/style.css 存在时复制（不覆盖 PDF 主题样式）
-    ├── assets/fonts/               # 站点 assets/fonts 复制到 PDF（fonts.css 以 assets/fonts/... 引用）
-    └── cover.<ext>                 # cover 有效时复制/下载为封面（保留原扩展名）
+├── pdf/                            # pdf.engine 非空且不为 disable 时
+│   ├── index.md                    # 合并后的 Markdown
+│   ├── index.html                  # PDF 中间 HTML
+│   ├── index.pdf                   # 最终 PDF（可由 pdf.build 的自定义路径）
+│   ├── assets.css                  # 站点 css/style.css 存在时复制（不覆盖 PDF 主题样式）
+│   ├── assets/fonts/               # 站点 assets/fonts 复制到 PDF（fonts.css 以 assets/fonts/... 引用）
+│   └── cover.<ext>                 # cover 有效时复制/下载为封面（保留原扩展名）
+└── cache/                          # PDF 阶段复用缓存（不随构建清理，跨构建保留）
+    ├── {engine}_userdata/          # 复用浏览器 profile（HTTP / 代码 / GPU 缓存），默认路径
+    └── images/                     # PDF 正文远程图片，按 host + URL 路径保存
+        └── <host>/<path>           # 如 https://host/a/b.png -> cache/images/host/a/b.png
 ```
 
 | 产物 | 触发条件 | 代码位置 |
@@ -66,6 +70,8 @@ dist/
 | `index.md` / `index.pdf` / `index.html`（均位于 `dist/pdf`） | `pdf.engine` 非空、不为 `disable` 且引擎可用 | `writer.cpp` `emit_pdf()` |
 | `dist/pdf/assets.css` | 站点输出中存在 `css/style.css` | `writer.cpp` `copy_pdf_asset_style()` |
 | `dist/pdf/assets/fonts/` | 站点输出中存在 `fonts/`（来自 `assets/fonts/`） | `writer.cpp` `copy_pdf_asset_fonts()` |
+| `dist/cache/{engine}_userdata/` | PDF 阶段且未在 `pdf.build` 中自定义 `--user-data-dir` | `writer.cpp` `emit_pdf()` |
+| `dist/cache/images/<host>/<path>` | PDF 正文出现 `http(s)` 图片 URL 且本地缓存不存在 | `writer.cpp` `localize_pdf_images()` |
 
 ## 6.3 文章输出
 
@@ -199,7 +205,8 @@ flowchart TD
     C --> D[合并为单个 Markdown]
     D --> E[写 dist/pdf/index.md]
     E --> F[逐篇 cmark-gfm 渲染为 HTML, 组装 pdf.toc / pdf.articles / 封面等数据]
-    F --> CV[解析根 SUMMARY.md 的 cover（URL 构建前先下载）, 复制为 dist/pdf/cover.<ext>]
+    F --> IMG[匹配正文远程图片 URL, 下载到 dist/cache/images（已存在则跳过）, src 改写为本地相对路径]
+    IMG --> CV[解析根 SUMMARY.md 的 cover（URL 构建前先下载）, 复制为 dist/pdf/cover.<ext>]
     CV --> CA[复制 dist/html/css/style.css -> dist/pdf/assets.css]
     CA --> G[读取 theme/pdf/page.html / style.css / fonts.css, 用 inja 渲染完整文档]
     G --> H[复制 dist/html/fonts -> dist/pdf/assets/fonts, 写 dist/pdf/index.html（内联样式与字体样式）]
@@ -234,8 +241,10 @@ flowchart TD
 - 默认模板为每篇文章输出 `<section id="pdf-article-{n}" class="pdf-article">`，并以 `page-break-before: always` 从新页开始；不再渲染独立引导页，正文第一篇文章即正文第 1 页（页码 `001`）。
 - 程序写入模板的站点字段（标题、副标题、描述、域名、目录标题/标签）均做 HTML 转义（`html_escape`）；文章正文为已渲染 HTML，原样插入。
 - 文章正文使用 Front Matter 解析后的内容；`hidden` 文章不参与，`hidden_in_toc` 参与。
-- 远程图片（URL）在构建开始前（`prepare_remote_cover()`）下载到系统临时目录，构建结束删除临时文件；下载会自动跟随 301 / 302 跳转（含跨域、跨协议，受 cpp-httplib 默认重定向上限约束）。PDF 封面取自 `cover`，复制为 `dist/pdf/cover.<ext>`，始终强制下载远程 `cover`（不受 `html.download_cover` 影响），下载失败直接中止构建（退出 127）。HTML 使用 `logo`（未设置时回退 `cover`）；`html.download_cover: true` 时下载远程 HTML 图片并生成 `dist/html/logo.<ext>`（模板 `site.logo` 与兼容字段 `site.cover_image` 改写为本地文件名），默认 `false` 时 HTML 直接引用 URL。`--dryrun` 与 PDF 禁用且 `html.download_cover=false` 时不下载。
-- PDF 输出路径默认 `dist/pdf/index.pdf`；`--print-to-pdf` 中可用 `{{dest_dir}}` 占位符自定义（占位符代表 `dist/pdf`），如 `--print-to-pdf={{dest_dir}}/docs/book.pdf`（相对路径按 `dist/pdf` 解析）。
+- **PDF 浏览器 profile 复用**：示例 `camus.yaml` 在 `pdf.build` 中显式声明 `--user-data-dir={{dist_dir}}/cache/{{engine}}_userdata`（`{engine}` 由 `pdf.engine` 配置值规范为小写文件名，如 `chrome` / `edge`；自定义可执行路径取其文件名），跨构建保留浏览器 profile（HTTP / 代码 / GPU 缓存），构建前不清空、构建结束不删除。`pdf.build` 的每个参数都支持 `{{dist_dir}}` / `{{dest_dir}}` / `{{cache_dir}}` / `{{engine}}` 占位符，用户改写该项即直接生效；若配置未提供任何 `--user-data-dir`，程序兜底追加同一路径。用户在配置中显式提供 `--user-data-dir` 时以用户为准。
+- **PDF 正文远程图片缓存**：`emit_pdf()` 渲染每篇文章 HTML 后，由 `localize_pdf_images()` 匹配 `src="http(s)://..."`，按 `dist/cache/images/<host>/<URL 路径>`（去除查询串与锚点，逐段百分号解码后作文件名）下载并缓存；已存在且非空的缓存文件直接复用、不重复下载。命中缓存的 `src` 改写为相对 `dist/pdf` 的本地路径（如 `../cache/images/host/a/b.png`，逐段 URL 编码）。单次构建内相同 URL 只处理一次；下载失败仅告警并保留原始远程 URL，不中断构建。该缓存与浏览器 profile 均位于 `dist/cache`，不随构建清理（`prepare_output_dir` 只清 `dist/html` 与 `dist/pdf`），`-W` 监听时也排除该目录。
+- 远程图片（URL）在构建开始前（`prepare_remote_cover()`）下载到系统临时目录，构建结束删除临时文件；下载会自动跟随 301 / 302 跳转（含跨域、跨协议，受 cpp-httplib 默认重定向上限约束）；请求伪装为桌面 Chrome（UA、`Accept`、`Accept-Language`、`Referer`、`Sec-Fetch-*` 等），降低被 CDN / 防盗链拦截的概率。PDF 封面取自 `cover`，复制为 `dist/pdf/cover.<ext>`，始终强制下载远程 `cover`（不受 `html.download_cover` 影响），下载失败直接中止构建（退出 127）。HTML 使用 `logo`（未设置时回退 `cover`）；`html.download_cover: true` 时下载远程 HTML 图片并生成 `dist/html/logo.<ext>`（模板 `site.logo` 与兼容字段 `site.cover_image` 改写为本地文件名），默认 `false` 时 HTML 直接引用 URL。`--dryrun` 与 PDF 禁用且 `html.download_cover=false` 时不下载。
+- PDF 输出路径默认 `dist/pdf/index.pdf`；`--print-to-pdf` 中可用 `{{dist_dir}}`（`dist` 根）或 `{{dest_dir}}`（`dist/pdf`，历史命名）占位符自定义，如 `--print-to-pdf={{dist_dir}}/pdf/docs/book.pdf`（相对路径按 `dist/pdf` 解析）。
 - PDF 中间产物 `index.md`、`index.html` 与最终 `index.pdf` 均位于 `dist/pdf`，与 HTML 站点目录分离；站点字体 `assets/fonts/` 会复制为 `dist/pdf/assets/fonts/`。
 - 浏览器的 stderr（含 macOS `CVDisplayLinkCreateWithCGDisplay failed` 等噪声日志）不直接输出到终端，而是重定向到临时日志 `camus-pdf-<pid>.log`（位于系统临时目录）；构建成功且两遍打印均正常时删除该文件，命令失败或未产出 PDF 时保留，并在告警中给出 `log=<绝对路径>` 便于排查。
 - PDF 生成成功后以 **info** 级别输出 `pdf generated dest=<绝对路径>`，提示产物位置（浏览器自身日志仍按上述规则隐藏）。
