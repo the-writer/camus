@@ -489,6 +489,24 @@ namespace
 		return out;
 	}
 
+	// 是否处于 CI 环境（GitHub Actions / GitLab CI 等）。CI 的图片缓存通常是冷启动，
+	// 串行下载比浏览器并发加载更慢，因此跳过本地化。
+	bool running_in_ci()
+	{
+		const auto truthy = [](const char *name) {
+			const char *value = std::getenv(name);
+			if (value == nullptr) {
+				return false;
+			}
+
+			const std::string normalized = strings::to_lower(strings::trim_space(value));
+			return !(normalized.empty() || normalized == "0" || normalized == "false" || normalized == "no" ||
+					 normalized == "off");
+		};
+
+		return truthy("GITHUB_ACTIONS") || truthy("GITLAB_CI") || truthy("CI");
+	}
+
 	// 把 HTML 中的远程图片提前下载到 cache/images，并把 src 改写为相对 pdf 目录的本地路径。
 	// 已存在的缓存文件直接复用；下载失败时保留原 URL，避免中断构建。
 	void localize_pdf_images(
@@ -1812,6 +1830,11 @@ namespace camus
 		// 跨构建复用的缓存目录：浏览器 profile 与远程正文图片都放在 dist/cache 下。
 		const std::filesystem::path cache_root = conf_.camus().dist_dir() / "cache";
 		const std::filesystem::path cache_images_dir = cache_root / "images";
+		// CI 中缓存是冷的，串行下载比浏览器并发加载更慢，直接跳过图片本地化。
+		const bool cache_remote_images = !running_in_ci();
+		if (!cache_remote_images) {
+			logging::debug("skip pdf image cache in ci environment");
+		}
 
 		const std::string &site_title = conf_.camus().site.title;
 		const std::string cover_title = html_escape(site_title.empty() ? "Camus" : site_title);
@@ -1998,7 +2021,9 @@ namespace camus
 					}
 				}
 
-				localize_pdf_images(article_html, cache_images_dir, conf_.camus().pdf_dir());
+				if (cache_remote_images) {
+					localize_pdf_images(article_html, cache_images_dir, conf_.camus().pdf_dir());
+				}
 
 				article_items.push_back({
 					{"anchor", anchor},
