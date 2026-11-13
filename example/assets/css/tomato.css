@@ -701,33 +701,13 @@ body.tomato {
     background: transparent;
 }
 
-.tm-article-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 14px;
-}
-
 .tm-copy-link {
-    padding: 8px 14px;
-    border: 1px solid var(--tm-border);
-    border-radius: 999px;
-    background: var(--tm-panel);
-    color: var(--tm-text-secondary);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
     font: inherit;
-    font-size: 0.8rem;
     cursor: pointer;
-    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
-}
-
-.tm-copy-link:hover {
-    color: var(--tm-accent);
-    border-color: var(--tm-accent);
-}
-
-.tm-copy-link.is-copied {
-    color: var(--tm-accent);
-    border-color: var(--tm-accent);
-    background: var(--tm-accent-soft);
 }
 
 /* ── 管理布局的按钮与遮罩 ───────────────────────────────── */

@@ -104,6 +104,7 @@
                 <span>{{ stats.word_count }} 字</span>
                 <span>约 {{ stats.read_min }} 分钟</span>
                 <span>更新于 {{ format_datetime(page.write_time) }}</span>
+                <button id="tm-copy-link" class="tm-copy-link" type="button">复制链接</button>
             </div>
         </header>
 
@@ -127,10 +128,6 @@
             <span class="tm-pager-placeholder"></span>
             {% endif %}
         </nav>
-
-        <div class="tm-article-actions">
-            <button id="tm-copy-link" class="tm-copy-link" type="button">复制链接</button>
-        </div>
     </div>
 </main>
 
