@@ -100,13 +100,15 @@
                         return;
                     }
                     var fields = line.split("\t");
-                    if (fields.length < 3) {
+                    if (fields.length < 5) {
                         return;
                     }
                     var record = {
                         title: fields[0],
                         url: fields[1],
-                        content: fields.slice(2).join("\t")
+                        time: fields[2],
+                        tags: fields[3] ? fields[3].split(",").filter(Boolean) : [],
+                        content: fields.slice(4).join("\t")
                     };
                     record.haystack = (record.title + "\n" + record.content).toLowerCase();
                     records.push(record);
@@ -130,12 +132,22 @@
             link.href = record.url;
             link.textContent = record.title;
 
-            var meta = document.createElement("span");
-            meta.className = "search-result-url";
-            meta.textContent = record.url;
-
             item.appendChild(link);
-            item.appendChild(meta);
+
+            var metaParts = [];
+            if (record.time) {
+                metaParts.push(record.time);
+            }
+            if (record.tags && record.tags.length) {
+                metaParts.push(record.tags.join(" · "));
+            }
+            if (metaParts.length) {
+                var meta = document.createElement("span");
+                meta.className = "search-result-meta";
+                meta.textContent = metaParts.join(" · ");
+                item.appendChild(meta);
+            }
+
             list.appendChild(item);
         });
 

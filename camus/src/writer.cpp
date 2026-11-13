@@ -1115,10 +1115,25 @@ namespace camus
 			const std::string title = normalize_search_text(node.property.display_name);
 			const std::string url =
 				filesystem::clean_path(node.link_url(), conf_.camus().public_url.path_prefix);
+			const std::string time = functions::format_time_t(node.property.write_time, "%Y-%m-%d");
+
+			std::string tags;
+			for (const auto &tag : node.property.tags) {
+				if (!tags.empty()) {
+					tags += ',';
+				}
+
+				tags += normalize_search_text(tag);
+			}
+
 			const std::string content = normalize_search_text(strings::string_join(node.contents, " "));
 			index += title;
 			index += '\t';
 			index += url;
+			index += '\t';
+			index += time;
+			index += '\t';
+			index += tags;
 			index += '\t';
 			index += content;
 			index += '\n';
