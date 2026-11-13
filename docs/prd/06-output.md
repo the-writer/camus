@@ -147,8 +147,8 @@ flowchart TD
 
 - 资源按三层叠加：平台数据目录 `assets/`（macOS `~/Library/Application Support/Camus`，Linux `/var/lib/camus`）→ `.camus/assets`（`-c` 最小或完整复制）→ 本地 `./assets`；后层覆盖前层同名文件。
 - 本地资源目录固定为 `./assets`；存在且非空时整体覆盖前两层同名文件，不存在或为空时使用前两层。
-- 默认最小复制只包含 `css/style.css` 与 `js/onload.js`，其余主题资源仍从平台数据目录加载。
-- 默认资源包含空文件 `css/style.css` 与 `js/onload.js`，所有内置主题都会引用它们；本地未覆盖时输出同名空文件，不报错。
+- 默认最小复制只包含 `css/style.css` 与 `js/camus.js`，其余主题资源仍从平台数据目录加载。
+- 默认资源包含空文件 `css/style.css` 与 `js/camus.js`，所有内置主题都会引用它们；本地未覆盖时输出同名空文件，不报错。
 - 仅 `.css`、`.js`、`.txt`、`.json` 会做 inja 变量替换，其它文件原样复制。
 - 最终资源被**提升到输出根目录**（如 `dist/html/css/...`、`dist/html/robots.txt`），不保留 `assets/` 前缀。
 

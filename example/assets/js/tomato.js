@@ -8,7 +8,7 @@
     var FONT_MIN = 14;
     var FONT_MAX = 40;
 
-    // 仅 tomato 主题读取 onload.js 中的开关；其它主题保持原有行为。
+    // 仅 tomato 主题读取 camus.js 中的开关；其它主题保持原有行为。
     var tomatoOptions = window.CAMUS_THEME === "tomato" ? window.CAMUS_TOMATO : null;
     var tomatoFont = tomatoOptions && tomatoOptions.font ? tomatoOptions.font : {};
     var configuredFontSize = parseInt(tomatoFont.size, 10);

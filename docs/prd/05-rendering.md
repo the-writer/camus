@@ -28,11 +28,11 @@
 所有内置主题（`default`/`document`/`pixel`/`terminal`/`tomato`）都额外引用公共资源入口：
 
 - 样式：`{{ with_prefix("/css/style.css") }}`，对应本地 `assets/css/style.css`
-- 脚本：`{{ with_prefix("/js/onload.js") }}`，对应本地 `assets/js/onload.js`
+- 脚本：`{{ with_prefix("/js/camus.js") }}`，对应本地 `assets/js/camus.js`
 
 两个文件在默认资源中为空文件；用户可在本地 `./assets` 下提供同名文件覆盖，不存在时构建不会报错。
 
-`onload.js` 运行时通过模板写入的 `<body data-camus-theme="{{ render.theme_name }}">` 自动读取主题名并写入 `window.CAMUS_THEME`，同时生成 tomato 开关配置 `window.CAMUS_TOMATO`：
+`camus.js` 运行时通过模板写入的 `<body data-camus-theme="{{ render.theme_name }}">` 自动读取主题名并写入 `window.CAMUS_THEME`，同时生成 tomato 开关配置 `window.CAMUS_TOMATO`：
 
 ```js
 window.CAMUS_TOMATO = {
@@ -51,7 +51,7 @@ window.CAMUS_TOMATO = {
 - `enabled=false` 时对应按钮直接隐藏（分卷 / 时间 / 标签 / 倒序 / 序号五项都支持）。
 - `reverse` / `index` 的 `default` 表示无本地记录时是否默认选中；已有 `localStorage` 记录优先。
 - `font.family` / `font.size` 为正文默认字体与字号：`font.size` 会限制在 14–40px，且已有 `localStorage` 字号记录优先；`font.family` 写入 CSS 变量 `--tm-font-family`。
-- 仅当 `window.CAMUS_THEME === "tomato"` 时 `tomato.js` 才应用这些开关；tomato 模板将 `onload.js` 放在 `tomato.js` 之前加载。
+- 仅当 `window.CAMUS_THEME === "tomato"` 时 `tomato.js` 才应用这些开关；tomato 模板将 `camus.js` 放在 `tomato.js` 之前加载。
 
 `pixel` 主题在 `assets/css/pixel-inja.css` 中设置 `html { font-size: 85%; }`，字体与基于 rem 的元素尺寸整体约缩小 15%。`pixel` 主题的页脚链接（`build.powered_by`）在「Friends」右侧额外提供「Search」入口，其余主题不显示搜索入口；首页/目录页的 `▶ INDEX ◀` 标题行最右侧另有一个仅作展示的假搜索框（`.toc-search`，`SEARCH...` 占位，用 `<a>` 实现、不可输入），点击直接跳转 `search.html`。
 

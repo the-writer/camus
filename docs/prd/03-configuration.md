@@ -10,7 +10,7 @@
 | `SUMMARY.md` | 源目录及任意子目录 | 目录页元信息（`title`/`subtitle`/`description`/`cover`/`logo`），不参与文章渲染 | 是 |
 | `theme/{name}/*.html` | 工作目录 | 本地主题覆盖 | 是 |
 | `theme/pdf/{page.html,style.css,fonts.css}` | 工作目录 | 本地 PDF 模板/样式覆盖 | 是 |
-| `assets/{css/style.css,js/onload.js,fonts/}` | 工作目录 | 本地静态资源覆盖；`-c` 最小复制目标 | 是 |
+| `assets/{css/style.css,js/camus.js,fonts/}` | 工作目录 | 本地静态资源覆盖；`-c` 最小复制目标 | 是 |
 | `.camus/` | 工作目录 | `-c --full` 复制的完整资源（主题、PDF 模板、资源与示例模板） | 是 |
 | `<数据目录>/` | macOS `~/Library/Application Support/Camus`；Linux `/var/lib/camus` | 默认主题、静态资源与示例模板（由安装包写入） | 是 |
 

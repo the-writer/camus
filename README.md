@@ -66,7 +66,7 @@ mkdir my-site && cd my-site
 | `camus --create <path>` | Create an article `.md` under `src/` or `posts/` with a starter template (missing directories are created; last segment is the file name) |
 | `camus --repo [url]` | Run `git init`; set `origin` when a URL is provided |
 | `camus --new <dir> --repo <url>` | Create, install and initialize git |
-| `camus -c` | Copy minimal editable resources (`assets/css/style.css`, `assets/js/onload.js`, empty `assets/fonts/`) into `./assets` |
+| `camus -c` | Copy minimal editable resources (`assets/css/style.css`, `assets/js/camus.js`, empty `assets/fonts/`) into `./assets` |
 | `camus -c --full` | Copy the complete bundled resource tree into `./.camus` |
 | `camus -c --theme` | Copy the whole `theme/` directory into `./theme`, plus minimal `assets/` |
 | `camus -c --theme <name>` | Copy only `theme/<name>/` into `./theme/<name>`, plus minimal `assets/` |
@@ -213,7 +213,7 @@ Supported fields include `title`, `short-path`, `create-time`, `visibility` (`op
 
 ## Themes and template helpers
 
-Themes contain `home.html`, `page.html`, `stats.html` and `friends.html`, loaded from `theme/{name}/`, then `.camus/theme/{name}/`, then the platform data directory. All built-in themes reference the shared `assets/css/style.css` and `assets/js/onload.js` entries (empty by default, override locally in `./assets`). Templates use [inja](https://github.com/pantor/inja) and expose the parsed configuration plus helpers:
+Themes contain `home.html`, `page.html`, `stats.html` and `friends.html`, loaded from `theme/{name}/`, then `.camus/theme/{name}/`, then the platform data directory. All built-in themes reference the shared `assets/css/style.css` and `assets/js/camus.js` entries (empty by default, override locally in `./assets`). Templates use [inja](https://github.com/pantor/inja) and expose the parsed configuration plus helpers:
 
 | Helper | Description |
 |---|---|

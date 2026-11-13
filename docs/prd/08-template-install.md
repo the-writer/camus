@@ -28,7 +28,7 @@
 ├── theme/pdf/{page.html,style.css,fonts.css}   # PDF 模板、打印样式与字体样式
 ├── assets/                    # 默认静态资源（css/js/fonts/imgs/robots.txt 等）
 │   ├── css/style.css          # 公共样式入口，默认空文件
-│   ├── js/onload.js           # 公共脚本入口，默认空文件
+│   ├── js/camus.js           # 公共脚本入口，默认空文件
 │   └── fonts/                 # 站点与 PDF 共用的字体文件
 ├── posts/                     # 示例文章
 │   ├── SUMMARY.md              # 示例站点与目录元信息（可配置 PDF cover 与 HTML logo）
@@ -71,14 +71,14 @@ flowchart TD
 
 `copy_resources()` 根据 `--full` 选择复制范围：
 
-- 默认（最小）：只创建 `<workdir>/assets/css`、`assets/js` 与 `assets/fonts`，并从数据目录复制 `css/style.css`、`js/onload.js`；`fonts/` 只创建空目录（资源目录合并查找，无需复制内置字体）；目标文件已存在且未指定 `-f` 时跳过。
+- 默认（最小）：只创建 `<workdir>/assets/css`、`assets/js` 与 `assets/fonts`，并从数据目录复制 `css/style.css`、`js/camus.js`；`fonts/` 只创建空目录（资源目录合并查找，无需复制内置字体）；目标文件已存在且未指定 `-f` 时跳过。
 - `--full`：把 `source_data_dir()` 的全部内容复制到 `<workdir>/.camus`。
 
 ```mermaid
 flowchart TD
     A[解析 source_data_dir] -->|无资源| X[报错, 返回 1]
     A -->|找到| F{--full?}
-    F -->|否| M[创建 <workdir>/assets/css、js、fonts<br/>复制 style.css、onload.js；fonts 为空目录]
+    F -->|否| M[创建 <workdir>/assets/css、js、fonts<br/>复制 style.css、camus.js；fonts 为空目录]
     M --> S[补齐工作目录 posts/camus.yaml/.gitignore/Justfile<br/>确保 posts/private]
     F -->|是| B{.camus 已存在且非空?}
     B -->|否| D[创建 .camus 并复制全部文件]
@@ -90,7 +90,7 @@ flowchart TD
     S --> OK[返回 0；构建由 --build 决定]
 ```
 
-- 最小复制可重复执行：`-f` 覆盖已有的 `style.css` / `onload.js`，未指定时保留现有文件；`fonts/` 只确保存在，不写入内置字体，已有内容保留。
+- 最小复制可重复执行：`-f` 覆盖已有的 `style.css` / `camus.js`，未指定时保留现有文件；`fonts/` 只确保存在，不写入内置字体，已有内容保留。
 - `--full` 下 `.camus` 已存在且非空、未指定 `-f`：打印 WARN，仅补齐工作目录根部示例文件，不覆盖 `.camus`。
 - `--full -f`：先删除 `.camus`（受 §6.1 的 >200 文件保护），再复制。
 - 复制完成后，对 `posts`、`camus.yaml`、`.gitignore`、`Justfile`：仅当工作目录根部不存在同名路径时才补齐；`posts/private/` 始终确保存在。
@@ -103,7 +103,7 @@ flowchart TD
 
 - `-c --theme`：复制整个 `theme/`（含 `theme/pdf/`）。
 - `-c --theme pixel`：只复制 `theme/pixel/` 到 `<workdir>/theme/pixel`。
-- 同时复制最小资源：`assets/css/style.css`、`assets/js/onload.js`，并创建空 `assets/fonts/`；不复制其他 assets，不补齐工作目录根部的 `posts` / `camus.yaml` / `.gitignore` / `Justfile`，也不受 `--full` 影响。
+- 同时复制最小资源：`assets/css/style.css`、`assets/js/camus.js`，并创建空 `assets/fonts/`；不复制其他 assets，不补齐工作目录根部的 `posts` / `camus.yaml` / `.gitignore` / `Justfile`，也不受 `--full` 影响。
 - 不加 `-f` 时跳过目标中已存在的文件（可重复执行补齐缺失主题）；加 `-f` 时覆盖同名文件。
 - `--theme` 未搭配 `-c` 时打印错误并返回 1；主题名非法（绝对路径或含 `.` / `..`）时返回 1。
 
@@ -113,7 +113,7 @@ flowchart TD
     A -->|找到| T{name 为空?}
     T -->|是| C[复制整个 theme -> <workdir>/theme]
     T -->|否| O[校验主题名并复制 theme/name -> <workdir>/theme/name]
-    C --> AS[复制最小 assets: style.css/onload.js，创建空 fonts]
+    C --> AS[复制最小 assets: style.css/camus.js，创建空 fonts]
     O --> AS
     AS --> S{--force?}
     S -->|是| W[覆盖同名文件]

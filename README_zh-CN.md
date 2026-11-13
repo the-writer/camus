@@ -66,7 +66,7 @@ mkdir my-site && cd my-site
 | `camus --create <path>` | 在 `src/` 或 `posts/` 下创建带初始模板的文章 `.md`（自动创建缺失目录；最后一级为文件名） |
 | `camus --repo [url]` | 执行 `git init`；提供地址时设置 `origin` |
 | `camus --new <dir> --repo <url>` | 创建、安装并初始化 git |
-| `camus -c` | 把最小可编辑资源（`assets/css/style.css`、`assets/js/onload.js`，并创建空 `assets/fonts/`）复制到 `./assets` |
+| `camus -c` | 把最小可编辑资源（`assets/css/style.css`、`assets/js/camus.js`，并创建空 `assets/fonts/`）复制到 `./assets` |
 | `camus -c --full` | 把完整内置资源树复制到 `./.camus` |
 | `camus -c --theme` | 把整个 `theme/` 复制到 `./theme`，并创建最小 `assets/` |
 | `camus -c --theme <name>` | 把 `theme/<name>/` 复制到 `./theme/<name>`，并创建最小 `assets/` |
@@ -213,7 +213,7 @@ visibility: open
 
 ## 主题与模板函数
 
-主题包含 `home.html`、`page.html`、`stats.html`、`friends.html`，加载顺序为 `theme/{name}/` → `.camus/theme/{name}/` → 平台数据目录。所有内置主题都会引用公共入口 `assets/css/style.css` 与 `assets/js/onload.js`（默认空文件，可在本地 `./assets` 覆盖）。模板使用 [inja](https://github.com/pantor/inja)，可直接访问解析后的配置，并提供：
+主题包含 `home.html`、`page.html`、`stats.html`、`friends.html`，加载顺序为 `theme/{name}/` → `.camus/theme/{name}/` → 平台数据目录。所有内置主题都会引用公共入口 `assets/css/style.css` 与 `assets/js/camus.js`（默认空文件，可在本地 `./assets` 覆盖）。模板使用 [inja](https://github.com/pantor/inja)，可直接访问解析后的配置，并提供：
 
 | 函数 | 说明 |
 |---|---|

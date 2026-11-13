@@ -18,7 +18,7 @@ namespace
 {
 	const std::vector<std::string> template_entries{"posts", "camus.yaml", ".gitignore", "Justfile"};
 	const std::vector<std::filesystem::path> minimal_asset_entries{
-		std::filesystem::path("css") / "style.css", std::filesystem::path("js") / "onload.js"
+		std::filesystem::path("css") / "style.css", std::filesystem::path("js") / "camus.js"
 	};
 
 	// 目录 / 文件显示名：含 '-' 且出现过数字时，取最后一个 '-' 之后的片段，去掉 01- 之类的排序前缀。
@@ -222,7 +222,7 @@ namespace camus
 							 : std::filesystem::copy_options::skip_existing;
 			std::filesystem::copy(source, target, options);
 
-			// --theme 同时复制最小资源骨架（css/style.css、js/onload.js、空 fonts/）到工作目录根部。
+			// --theme 同时复制最小资源骨架（css/style.css、js/camus.js、空 fonts/）到工作目录根部。
 			copy_minimal_assets(source_root, workdir, force);
 		} catch (const std::exception &e) {
 			logging::error("theme copy failed error={}", e.what());
