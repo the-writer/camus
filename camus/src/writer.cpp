@@ -993,8 +993,9 @@ namespace camus
 	void writer::prepare_output_dir() const
 	{
 		run_only_live([&]() {
-			filesystem::empty_path(conf_.camus().dest_dir(), true);
-			filesystem::empty_path(conf_.camus().pdf_dir(), true);
+			const uint32_t safe_limit = conf_.camus().safe_clean_limit();
+			filesystem::empty_path(conf_.camus().dest_dir(), true, false, safe_limit);
+			filesystem::empty_path(conf_.camus().pdf_dir(), true, false, safe_limit);
 		});
 	}
 
@@ -1690,7 +1691,7 @@ namespace camus
 			std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing
 		);
 
-		filesystem::empty_path(dest_dir, true);
+		filesystem::empty_path(dest_dir, true, false, conf_.camus().safe_clean_limit());
 
 		logging::debug(
 			std::format(
@@ -2563,20 +2564,29 @@ namespace camus
 			report_issue(false, "no assets found; generated pages may have no styles or scripts");
 		}
 
-		const auto check_output_dir = [&report_issue](const std::filesystem::path &path, const std::string &name) {
-			std::error_code ec;
-			if (!std::filesystem::is_directory(path, ec) || ec) {
-				return;
-			}
+		const uint32_t safe_limit = camus.safe_clean_limit();
+		const auto check_output_dir =
+			[&report_issue, safe_limit](const std::filesystem::path &path, const std::string &name) {
+				std::error_code ec;
+				if (!std::filesystem::is_directory(path, ec) || ec) {
+					return;
+				}
 
-			const int files = filesystem::scan_path_files(path, 10000);
-			if (files > 200) {
-				report_issue(
-					true,
-					std::format("{} has {} files (>200); build will abort: {}", name, files, path.string())
-				);
-			}
-		};
+				const uint32_t scan_limit = std::max<uint32_t>(10000, safe_limit);
+				const int files = filesystem::scan_path_files(path, scan_limit);
+				if (static_cast<uint32_t>(files) > safe_limit) {
+					report_issue(
+						true,
+						std::format(
+							"{} has {} files (>{}); build will abort: {}",
+							name,
+							files,
+							safe_limit,
+							path.string()
+						)
+					);
+				}
+			};
 
 		check_output_dir(camus.dest_dir(), "output dir");
 		check_output_dir(camus.pdf_dir(), "pdf dir");

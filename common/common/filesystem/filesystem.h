@@ -28,8 +28,13 @@ namespace filesystem
 	std::filesystem::path get_self_path(const std::string &arg0);
 	// 获取路径的绝对路径
 	std::string path_abs(const std::filesystem::path &path);
-	// 清空文件夹
-	void empty_path(const std::filesystem::path &path, const bool safe_check = false, const bool auto_create = false);
+	// 清空文件夹；safe_check 为 true 且条目数超过 safe_limit 时拒绝删除。
+	void empty_path(
+		const std::filesystem::path &path,
+		const bool safe_check = false,
+		const bool auto_create = false,
+		const uint32_t safe_limit = 300
+	);
 	// 判断两个路径是否指向相同的文件
 	bool path_equal(const std::filesystem::path &p1, const std::filesystem::path &p2, const bool clean_check = false);
 } // namespace filesystem

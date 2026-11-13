@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <ranges>
 
@@ -320,6 +321,25 @@ namespace camus::config
 			return std::nullopt;
 		}
 
+		std::optional<uint32_t> parse_u32_override(const std::string &value)
+		{
+			const std::string trimmed = strings::trim_space(value);
+			if (trimmed.empty()) {
+				return std::nullopt;
+			}
+
+			try {
+				const unsigned long parsed = std::stoul(trimmed);
+				if (parsed > std::numeric_limits<uint32_t>::max()) {
+					return std::nullopt;
+				}
+
+				return static_cast<uint32_t>(parsed);
+			} catch (const std::exception &) {
+				return std::nullopt;
+			}
+		}
+
 		std::optional<std::string> parse_update_mode(const std::string &value)
 		{
 			const std::string normalized = strings::to_lower(strings::trim_space(value));
@@ -463,6 +483,7 @@ namespace camus::config
 		public_config_["build"]["sitemap"] = camus_.output.sitemap;
 		public_config_["build"]["filename_case"] = camus_.output.filename_case;
 		public_config_["build"]["rss"] = camus_.output.rss;
+		public_config_["build"]["safe_clean_limit"] = camus_.output.safe_clean_limit;
 		public_config_["build"]["feed_url"] = filesystem::clean_path("/feed.xml", camus_.public_url.path_prefix);
 	}
 
@@ -987,6 +1008,15 @@ namespace camus::config
 				if (const YAML::Node rss = build["rss"]; rss && rss.IsScalar()) {
 					camus_.output.rss = rss.as<bool>();
 				}
+				if (const YAML::Node safe_clean_limit = build["safe_clean_limit"];
+					safe_clean_limit && safe_clean_limit.IsScalar()) {
+					const std::string raw = safe_clean_limit.as<std::string>();
+					if (const auto parsed = parse_u32_override(raw); parsed.has_value()) {
+						camus_.output.safe_clean_limit = *parsed;
+					} else {
+						logging::warn("invalid build.safe_clean_limit value={}", raw);
+					}
+				}
 				if (build["transfer"]) {
 					transfer_data = build["transfer"];
 				}
@@ -1006,6 +1036,14 @@ namespace camus::config
 
 		if (const auto value = env_override("build.rss"); value.has_value()) {
 			camus_.output.rss = parse_bool_override(*value).value_or(camus_.output.rss);
+		}
+
+		if (const auto value = env_override("build.safe_clean_limit"); value.has_value()) {
+			if (const auto parsed = parse_u32_override(*value); parsed.has_value()) {
+				camus_.output.safe_clean_limit = *parsed;
+			} else {
+				logging::warn("invalid build.safe_clean_limit env value={}", *value);
+			}
 		}
 
 
@@ -1123,6 +1161,7 @@ namespace camus::config
 		camus_json["sitemap"] = camus_.output.sitemap;
 		camus_json["filename_case"] = camus_.output.filename_case;
 		camus_json["rss"] = camus_.output.rss;
+		camus_json["safe_clean_limit"] = camus_.output.safe_clean_limit;
 		camus_json["auto_check_update"] = camus_.auto_check_update;
 		camus_json["public_url"] = camus_.public_url.url;
 		camus_json["protocol"] = camus_.public_url.protocol;

@@ -7,17 +7,17 @@
 `prepare_output_dir()`（`writer.cpp:220`）在渲染文章前执行：
 
 ```text
-empty_path(dest_dir(),  safe_check=true)   // ./dist/html
-empty_path(pdf_dir(),   safe_check=true)   // ./dist/pdf
+empty_path(dest_dir(),  safe_check=true, safe_limit=build.safe_clean_limit)   // ./dist/html
+empty_path(pdf_dir(),   safe_check=true, safe_limit=build.safe_clean_limit)   // ./dist/pdf
 ```
 
-`empty_path(path, true)`（`filesystem.cpp:136`）规则：
+`empty_path(path, true, false, safe_limit)`（`filesystem.cpp:157`）规则：
 
 - 路径不存在：直接返回（不创建）。
-- 若存在，递归扫描文件数（最多 10000 个）：
-  - 文件数 **> 200**：`logging::fatal("Too many files and need to be deleted manually ...")`，退出 127，**不会删除**；
+- 若存在，递归扫描条目数（扫描上限 `max(10000, safe_limit)`）：
+  - 条目数 **> `build.safe_clean_limit`**（默认 **300**，`camus.yaml` 可改，亦可用 `CAMUS_BUILD_SAFE_CLEAN_LIMIT` 覆盖）：`logging::fatal("Too many files and need to be deleted manually ...")`，退出 127，**不会删除**；
   - 否则 `remove_all` 清空。
-- 因此输出目录文件数超过 200 时必须人工清理后才能构建。
+- 因此输出目录条目数超过该阈值时必须人工清理后才能构建。`-C` 预检（`check_output_dir`）使用同一阈值，提前报告 `has N files (>limit); build will abort`。
 
 构建结束后各写入路径会由 `flush_writes()` 通过 `create_directories(parent_path)` 自动创建。
 

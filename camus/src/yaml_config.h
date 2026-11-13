@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <expected>
 #include <iostream>
 #include <map>
@@ -159,8 +160,10 @@ namespace camus::config
 		std::string filename_case = "keep";
 		bool rss = true;
 		std::filesystem::path dest_dir = "dist/html";
+		// 构建前安全清理阈值：输出目录条目数超过该值则拒绝自动删除（build.safe_clean_limit）。
+		uint32_t safe_clean_limit = 300;
 
-		NLOHMANN_DEFINE_TYPE_INTRUSIVE(output_conf, sitemap, filename_case, rss, dest_dir);
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(output_conf, sitemap, filename_case, rss, dest_dir, safe_clean_limit);
 	};
 
 	struct public_url_conf {
@@ -211,6 +214,11 @@ namespace camus::config
 		[[nodiscard]] std::filesystem::path pdf_dir() const
 		{
 			return dist_dir() / "pdf";
+		}
+
+		[[nodiscard]] uint32_t safe_clean_limit() const
+		{
+			return output.safe_clean_limit;
 		}
 
 		std::string get_theme(const camus_theme_type &theme)

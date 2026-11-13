@@ -1,5 +1,6 @@
 #include "filesystem.h"
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 
@@ -154,7 +155,12 @@ namespace filesystem
 		return strings::replace(std::filesystem::absolute(path).string(), "//", "/");
 	}
 
-	void empty_path(const std::filesystem::path &path, const bool safe_check, const bool auto_create)
+	void empty_path(
+		const std::filesystem::path &path,
+		const bool safe_check,
+		const bool auto_create,
+		const uint32_t safe_limit
+	)
 	{
 		if (!std::filesystem::exists(path)) {
 			if (auto_create) {
@@ -165,11 +171,13 @@ namespace filesystem
 		}
 
 		if (safe_check) {
-			if (const int path_files = scan_path_files(path, 10000); path_files > 200) {
+			const uint32_t scan_limit = std::max<uint32_t>(10000, safe_limit);
+			if (const int path_files = scan_path_files(path, scan_limit); path_files > safe_limit) {
 				logging::fatal(
-					"Too many files and need to be deleted manually name={} files={}",
+					"Too many files and need to be deleted manually name={} files={} limit={}",
 					path_abs(path),
-					path_files
+					path_files,
+					safe_limit
 				);
 			}
 		}
