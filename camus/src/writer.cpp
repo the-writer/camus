@@ -1982,7 +1982,10 @@ namespace camus
 				const std::string path_name = path.string();
 				const auto ext = path.extension();
 				const bool is_theme = path_name.find("/theme/") != std::string::npos;
-				if (ext == ".md" || ext == ".yaml" || ext == ".json" || is_theme) {
+				// assets 下可能包含任意类型的静态资源（图片、字体等），全部纳入签名，
+				// 否则 -W 下新增 / 修改资源不会触发重建，输出仍是旧文件。
+				const bool is_asset = path_name.find("/assets/") != std::string::npos;
+				if (ext == ".md" || ext == ".yaml" || ext == ".json" || is_theme || is_asset) {
 					files.emplace_back(path_name, strings::make_hash(filesystem::read_file(path_name)));
 				}
 			}
