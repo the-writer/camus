@@ -17,6 +17,16 @@
 
 namespace filesystem
 {
+	namespace
+	{
+		std::vector<std::pair<std::string, std::string>> text_replacements;
+	}
+
+	void set_text_replacements(std::vector<std::pair<std::string, std::string>> replacements)
+	{
+		text_replacements = std::move(replacements);
+	}
+
 	int write_file(const std::filesystem::path &path, const std::string_view &content)
 	{
 		std::ofstream outfile;
@@ -42,7 +52,17 @@ namespace filesystem
 		file.close();
 
 		std::string res = buffer.str();
-		return trim ? strings::trim_space(res) : res;
+		if (trim) {
+			res = strings::trim_space(res);
+		}
+
+		for (const auto &[from, to] : text_replacements) {
+			if (!from.empty()) {
+				res = strings::replace(res, from, to);
+			}
+		}
+
+		return res;
 	}
 
 	std::string clean_path(const std::string &path, const std::string &prefix)

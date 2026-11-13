@@ -51,13 +51,20 @@ friends:
 
 # 目录搬运规则：把 path 目录的内容映射到 target 输出路径
 # 每个目录的 title / subtitle / description 来自该目录下的 SUMMARY.md
+# 新格式为 build.transfer；旧的顶层 build 序列仍兼容
 build:
-    -   path: /introduction                       # 指定源目录
-        transfers:
-            -   source: .                         # `.` 或 `/` 表示路由目录自身，否则拼接到 path 之下
-                target: /intro/Well-known         # 目标输出路径
+    transfer:
+        -   path: /introduction                       # 指定源目录
+            transfers:
+                -   source: .                         # `.` 或 `/` 表示路由目录自身，否则拼接到 path 之下
+                    target: /intro/Well-known         # 目标输出路径
 
-    -   path: /Don Juan
-        transfers:
-            -   source: .
-                target: /M
+        -   path: /Don Juan
+            transfers:
+                -   source: .
+                    target: /M
+
+    # 文本替换：键会转为大写，读取文件时把 $KEY / ${KEY} 无条件替换为对应值
+    env:
+        # example_key: example_value
+

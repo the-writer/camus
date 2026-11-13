@@ -1,6 +1,6 @@
 # 3. 配置系统
 
-配置实现：`camus/src/yaml_config.h`、`camus/src/yaml_config.cpp`。主配置文件名固定为 `camus.yaml`（`config.h.in` 的 `CAMUS_CONF_NAME`），目录搬运规则写在 `camus.yaml` 的 `transfer` 段，目录元信息来自各目录下的 `SUMMARY.md`（`CAMUS_SUMMARY_NAME`），默认主题/资源从平台数据目录读取（见 §8）。
+配置实现：`camus/src/yaml_config.h`、`camus/src/yaml_config.cpp`。主配置文件名固定为 `camus.yaml`（`config.h.in` 的 `CAMUS_CONF_NAME`），目录搬运与文本替换规则写在 `camus.yaml` 的 `build` 段（`build.transfer` / `build.env`），目录元信息来自各目录下的 `SUMMARY.md`（`CAMUS_SUMMARY_NAME`），默认主题/资源从平台数据目录读取（见 §8）。
 
 ## 3.1 配置文件与位置
 
@@ -118,7 +118,7 @@ Markdown 引擎固定为 `cmark-gfm`，顶层 `html.build` 始终按本表解析
 
 顶层配置 `html.build` 在模板 JSON 的 `camus.render.options` 会显示为 `"{数值}({名称1,名称2,...})"`（`yaml_config.cpp`），同时以 `camus.html.build` / `camus.html.copy_pdf` / `camus.html.download_cover` 暴露。
 
-## 3.5 `transfer`（目录搬运）与 `SUMMARY.md`（目录元信息）
+## 3.5 `build`（目录搬运 / 文本替换）与 `SUMMARY.md`（目录元信息）
 
 ### 3.5.1 `SUMMARY.md` 元信息
 
@@ -152,9 +152,24 @@ subtitle: Optional summary
 2. Mozart!
 ```
 
-### 3.5.2 `build` 段
+### 3.5.2 `build` 段（`transfer` / `env`）
 
-`camus.yaml` 顶层 `build` 为序列，每项包含 `path` 与 `transfers`；旧的顶层键 `transfer` 仍兼容（同时存在时 `build` 优先）：
+`camus.yaml` 顶层 `build` 为映射，包含 `transfer`（搬运规则序列）与 `env`（文本替换键值对）：
+
+```yaml
+build:
+  transfer:
+    - path: /introduction
+      transfers:
+        - source: .
+          target: /intro/Well-known
+  env:
+    site_name: Camus
+```
+
+兼容旧格式：顶层 `build` 直接为序列，或顶层键 `transfer`；优先级为 `build.transfer` > 顶层 `build` 序列 > 顶层 `transfer`。
+
+`build.transfer` 每项字段：
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
@@ -169,7 +184,7 @@ subtitle: Optional summary
 - `transfers` 会同时挂到同 `path` 的 `SUMMARY.md` 路由上，供模板 `route` 数据使用；没有 `SUMMARY.md` 的路径仍会参与搬运匹配，但不会出现在 `route` 列表中。
 - 搬运匹配使用 `filesystem::path_equal(..., clean_check=true)`。
 
-示例：
+示例（旧格式仍可用）：
 
 ```yaml
 build:
@@ -178,6 +193,19 @@ build:
       - source: .
         target: /intro/Well-known
 ```
+
+`build.env` 文本替换规则：
+
+| 项 | 说明 |
+|---|---|
+| 类型 | 键值映射；键与值均按 YAML 标量读取，值为 `null` 时按空串处理 |
+| 占位形式 | 键统一转为大写 `KEY`，读取文件时把 `$KEY` 与 `${KEY}` 无条件替换为对应值 |
+| 作用范围 | 所有经由 `filesystem::read_file` 读取的文本内容（文章 Markdown、`SUMMARY.md`、主题 HTML、`assets` 文本等），在解析 Markdown / inja 渲染之前完成替换 |
+| 优先级 | 按占位模式长度降序执行（`${KEY}` 先于 `$KEY`），避免短键抢占长键 |
+| 异常项 | 非映射的 `env` 段、非标量的键或值会打印 WARN 并跳过 |
+| 重载 | 每次 `reload()` 重新设置替换表；未配置 `build.env` 时清空 |
+
+示例：`env: { site_name: Camus }` 会把文件中的 `$SITE_NAME` / `${SITE_NAME}` 替换为 `Camus`。
 
 ## 3.6 `friends` 段
 

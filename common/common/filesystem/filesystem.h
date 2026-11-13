@@ -1,6 +1,9 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "common/error/error.h"
 
@@ -8,6 +11,8 @@ namespace filesystem
 {
 	// 写入文件
 	int write_file(const std::filesystem::path &path, const std::string_view &content);
+	// 设置读取文本文件时无条件执行的替换（按传入顺序执行，建议长模式在前）
+	void set_text_replacements(std::vector<std::pair<std::string, std::string>> replacements);
 	// 读取文件
 	std::string read_file(const std::string &name, bool trim = false);
 	// 清理路径

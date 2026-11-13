@@ -198,6 +198,46 @@ namespace camus::config
 			return std::nullopt;
 		}
 
+		// build.env 的键统一转为大写，生成 $KEY 与 ${KEY} 两种无条件替换模式；
+		// 长模式优先执行，避免 $KEY 抢先匹配 ${KEY} 或更长的键。
+		std::vector<std::pair<std::string, std::string>> build_env_replacements(const YAML::Node &env)
+		{
+			std::vector<std::pair<std::string, std::string>> replacements;
+			if (!env || env.IsNull()) {
+				return replacements;
+			}
+
+			if (!env.IsMap()) {
+				logging::warn("ignore invalid build.env reason=not a map");
+				return replacements;
+			}
+
+			for (const auto &item : env) {
+				if (!item.first.IsScalar() || (!item.second.IsScalar() && !item.second.IsNull())) {
+					logging::warn("ignore invalid build.env entry reason=non-scalar");
+					continue;
+				}
+
+				std::string key = item.first.as<std::string>();
+				for (char &c : key) {
+					c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+				}
+				if (key.empty()) {
+					continue;
+				}
+
+				const std::string value = item.second.IsNull() ? "" : item.second.as<std::string>();
+				replacements.emplace_back("${" + key + "}", value);
+				replacements.emplace_back("$" + key, value);
+			}
+
+			std::ranges::sort(replacements, [](const auto &a, const auto &b) {
+				return a.first.size() > b.first.size();
+			});
+
+			return replacements;
+		}
+
 		std::optional<bool> parse_bool_override(const std::string &value)
 		{
 			std::string normalized;
@@ -717,6 +757,14 @@ namespace camus::config
 			camus_.cdn_url.clear();
 		}
 
+		// build.env：配置文件中以 $KEY / ${KEY}（KEY 为环境变量名大写）的形式
+		// 在后续读取的文本文件里无条件替换为对应值。
+		if (const YAML::Node build = root["build"]; build && build.IsMap()) {
+			filesystem::set_text_replacements(build_env_replacements(build["env"]));
+		} else {
+			filesystem::set_text_replacements({});
+		}
+
 		if (std::filesystem::is_directory("src")) {
 			camus_.source_dir = "src";
 		} else if (std::filesystem::is_directory("posts")) {
@@ -848,8 +896,20 @@ namespace camus::config
 			apply_summary(path);
 		}
 
-		// build 段（兼容旧键 transfer）：{ path, transfers: [{ source, target }] }
-		if (const YAML::Node transfer_data = root["build"] ? root["build"] : root["transfer"]; transfer_data) {
+		// build 段：新格式为 build.transfer（序列）；兼容旧的顶层 build 序列与 transfer 键。
+		YAML::Node transfer_data;
+		if (const YAML::Node build = root["build"]; build) {
+			if (build.IsSequence()) {
+				transfer_data = build;
+			} else if (build.IsMap() && build["transfer"]) {
+				transfer_data = build["transfer"];
+			}
+		}
+		if (!transfer_data && root["transfer"]) {
+			transfer_data = root["transfer"];
+		}
+
+		if (transfer_data) {
 			if (!transfer_data.IsSequence()) {
 				logging::warn("ignore invalid transfer config reason=not a sequence");
 			} else {
