@@ -16,6 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ with_prefix("/css/terminal-inja.css") }}">
     <link rel="stylesheet" href="{{ with_prefix("/css/ark-pixel-font.css") }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <style>
         body { font-size: 1.8rem; }
 
@@ -423,6 +424,8 @@ READY<span class="boot-cursor"></span></div>
     setTimeout(function() { boot.remove(); }, 3200);
 })();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="{{ with_prefix("/js/highlight-init.js") }}"></script>
 <script src="{{ with_prefix("/js/ark-pixel-font.js") }}"></script>
 <script src="{{ with_prefix("/js/onload.js") }}"></script>
 </body>

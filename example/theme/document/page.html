@@ -13,6 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ with_prefix("/css/document.css") }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
     <style>
         .article-meta {
             display: flex;
@@ -243,6 +244,8 @@
     </div>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="{{ with_prefix("/js/highlight-init.js") }}"></script>
 <script src="{{ with_prefix("/js/document.js") }}"></script>
 <script src="{{ with_prefix("/js/onload.js") }}"></script>
 </body>
