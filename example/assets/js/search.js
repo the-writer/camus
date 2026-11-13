@@ -30,6 +30,14 @@
         }
     }
 
+    function initialRegexMode() {
+        try {
+            return new URLSearchParams(window.location.search).get("re") === "1";
+        } catch (error) {
+            return false;
+        }
+    }
+
     function syncUrl(query) {
         if (!window.history || !window.history.replaceState) {
             return;
@@ -41,6 +49,11 @@
                 url.searchParams.set("q", query);
             } else {
                 url.searchParams.delete("q");
+            }
+            if (regexMode) {
+                url.searchParams.set("re", "1");
+            } else {
+                url.searchParams.delete("re");
             }
             window.history.replaceState(null, "", url.toString());
         } catch (error) {
@@ -187,6 +200,12 @@
     }
 
     input.value = initialQuery();
+    regexMode = initialRegexMode();
+
+    if (regexBtn && regexMode) {
+        regexBtn.classList.add("is-active");
+        regexBtn.setAttribute("aria-pressed", "true");
+    }
 
     if (form) {
         form.addEventListener("submit", function (event) {
@@ -210,6 +229,7 @@
             regexMode = !regexMode;
             regexBtn.classList.toggle("is-active", regexMode);
             regexBtn.setAttribute("aria-pressed", regexMode ? "true" : "false");
+            syncUrl(input.value.trim());
             search();
         });
     }
