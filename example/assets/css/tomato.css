@@ -448,7 +448,7 @@ body.tomato {
 .tm-reader {
     max-width: var(--tm-reader-width);
     margin: 0 auto;
-    padding: 50px 48px;
+    padding: 50px 60px 50px 48px;
 }
 
 .tm-reader-head {
