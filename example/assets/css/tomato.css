@@ -1176,7 +1176,8 @@ body.tomato {
     }
 
     .tm-menu-btn {
-        left: 14px;
+        left: auto;
+        right: 14px;
         top: 14px;
     }
 
