@@ -39,12 +39,17 @@ window.CAMUS_TOMATO = {
   volume:  { enabled: true },
   month:   { enabled: true },
   reverse: { enabled: true, default: false },
-  index:   { enabled: true, default: false }
+  index:   { enabled: true, default: false },
+  font: {
+    family: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, Georgia, "Times New Roman", serif',
+    size: 14
+  }
 };
 ```
 
 - `enabled=false` 时对应按钮直接隐藏（分卷 / 时间 / 倒序 / 序号四项都支持）。
 - `reverse` / `index` 的 `default` 表示无本地记录时是否默认选中；已有 `localStorage` 记录优先。
+- `font.family` / `font.size` 为正文默认字体与字号：`font.size` 会限制在 14–40px，且已有 `localStorage` 字号记录优先；`font.family` 写入 CSS 变量 `--tm-font-family`。
 - 仅当 `window.CAMUS_THEME === "tomato"` 时 `tomato.js` 才应用这些开关；tomato 模板将 `onload.js` 放在 `tomato.js` 之前加载。
 
 `pixel` 主题在 `assets/css/pixel-inja.css` 中设置 `html { font-size: 85%; }`，字体与基于 rem 的元素尺寸整体约缩小 15%。`pixel` 主题的页脚链接（`build.powered_by`）在「Friends」右侧额外提供「Search」入口，其余主题不显示搜索入口。

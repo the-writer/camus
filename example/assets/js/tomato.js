@@ -7,7 +7,18 @@
     var THEME_KEY = "tomato-theme";
     var FONT_MIN = 14;
     var FONT_MAX = 40;
-    var FONT_DEFAULT = 14;
+
+    // 仅 tomato 主题读取 onload.js 中的开关；其它主题保持原有行为。
+    var tomatoOptions = window.CAMUS_THEME === "tomato" ? window.CAMUS_TOMATO : null;
+    var tomatoFont = tomatoOptions && tomatoOptions.font ? tomatoOptions.font : {};
+    var configuredFontSize = parseInt(tomatoFont.size, 10);
+    var FONT_DEFAULT = isNaN(configuredFontSize)
+        ? 14
+        : Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(configuredFontSize)));
+
+    if (typeof tomatoFont.family === "string" && tomatoFont.family.trim() !== "") {
+        root.style.setProperty("--tm-font-family", tomatoFont.family);
+    }
 
     function read(key) {
         try {
@@ -177,9 +188,6 @@
     var monthMenu = document.getElementById("tm-month-menu");
     var reverseBtn = document.getElementById("tm-reverse-btn");
     var indexBtn = document.getElementById("tm-index-btn");
-
-    // 仅 tomato 主题读取 onload.js 中的开关；其它主题保持原有行为。
-    var tomatoOptions = window.CAMUS_THEME === "tomato" ? window.CAMUS_TOMATO : null;
 
     function controlEnabled(name) {
         var item = tomatoOptions && tomatoOptions[name];

@@ -17,6 +17,7 @@
     --tm-sidebar-width: 336px;
     --tm-reader-width: 960px;
     --tm-font-size: 14px;
+    --tm-font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, Georgia, "Times New Roman", serif;
     --tm-line-height: 2;
     --tm-radius: 12px;
     --tm-code-keyword: #d73a49;
@@ -462,7 +463,7 @@ body.tomato {
 /* ── 正文排版 ───────────────────────────────────────────── */
 
 .tm-content {
-    font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, Georgia, "Times New Roman", serif;
+    font-family: var(--tm-font-family);
     font-size: var(--tm-font-size);
     line-height: var(--tm-line-height);
     color: var(--tm-text);

@@ -11,6 +11,10 @@
         volume: { enabled: true },
         month: { enabled: true },
         reverse: { enabled: true, default: false },
-        index: { enabled: true, default: false }
+        index: { enabled: true, default: false },
+        font: {
+            family: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, Georgia, "Times New Roman", serif',
+            size: 14
+        }
     };
 })();
