@@ -224,6 +224,7 @@ PDF 的 HTML 模板与打印样式不再硬编码在 `writer.cpp`，而是作为
 - 站点资源 `assets/fonts/`（构建后位于 `dist/html/fonts/`）会在写 `dist/pdf/index.html` 前递归复制到 `dist/pdf/assets/fonts/`，因此 `url("assets/fonts/<file>.ttf")` 相对 `dist/pdf/index.html` 可正常加载；目录缺失时跳过复制。
 - 默认模板的封面/扉页/目录/文章分页样式保持一致，其中封面为整页满铺图片（来源为根 `SUMMARY.md` 的 `cover`）、扉页字号较封面缩小且内容靠上、内容区占满可用宽度、目录按真实目录树多级缩进；用户可整体替换 `page.html`，或只覆盖 `style.css` / `fonts.css`（字体文件放在站点 `assets/fonts/`）。
 - 默认 `style.css` 的所有字号均以 `calc(var(--pdf-font-size) * <比例>)` 表示（页脚、正文、标题、代码、表格、封面、扉页、目录等），根元素 `font-size` 也取该变量，因此修改 `pdf.page.font_size` 会整体等比例缩放，最终排版单位为 `pt`。
+- PDF 中的围栏代码块会**逐行显示行号**：程序在页面 HTML 中把每个 `<pre><code>` 的内容按行拆成 `<span class="pdf-code-line">`（空行也保留），默认 `style.css` 用 CSS counter（`pre { counter-reset: pdf-code-line }` + `.pdf-code-line { counter-increment }`）在每行左侧渲染灰色行号。行内容由 cmark 输出、仅对 `<pre><code>` 处理，行内 `<code>` 不受影响；该处理只作用于 PDF 中间 HTML，不改变站点输出。
 - 输出 `dist/pdf/index.html` 是模板渲染结果；`dist/pdf/index.md` 仍由程序生成，不受模板影响。
 - 页面写入成功与否只影响 PDF 阶段；`page.html`/`style.css` 缺失属于配置错误，会以致命错误退出（与普通主题缺失一致）。
 - 模板/样式/字体源文件持久于工作目录 `theme/pdf`、`.camus` 或数据目录；生成的 `dist/pdf` 产物可随时重建。

@@ -560,6 +560,44 @@ namespace
 		return truthy("GITHUB_ACTIONS") || truthy("GITLAB_CI") || truthy("CI");
 	}
 
+	// 给 PDF 中的代码块逐行加行号（仅处理 PDF 中间 HTML，不影响站点输出）。
+	void add_pdf_code_line_numbers(std::string &html)
+	{
+		const std::regex pattern(R"RE(<pre([^>]*)><code([^>]*)>([\s\S]*?)</code></pre>)RE");
+		std::string output;
+		output.reserve(html.size());
+
+		std::size_t cursor = 0;
+		for (auto it = std::sregex_iterator(html.begin(), html.end(), pattern); it != std::sregex_iterator();
+			 ++it) {
+			const std::smatch &match = *it;
+			output.append(html, cursor, match.position() - cursor);
+			cursor = match.position() + match.length();
+
+			std::string code = strings::replace(match[3].str(), "\r\n", "\n");
+			if (!code.empty() && code.back() == '\n') {
+				code.pop_back();
+			}
+
+			output += "<pre" + match[1].str() + "><code" + match[2].str() + ">";
+			std::size_t start = 0;
+			while (true) {
+				const std::size_t newline = code.find('\n', start);
+				const std::string line =
+					newline == std::string::npos ? code.substr(start) : code.substr(start, newline - start);
+				output += "<span class=\"pdf-code-line\">" + line + "</span>";
+				if (newline == std::string::npos) {
+					break;
+				}
+				start = newline + 1;
+			}
+			output += "</code></pre>";
+		}
+
+		output.append(html, cursor, std::string::npos);
+		html = std::move(output);
+	}
+
 	// 把 HTML 中的远程图片提前下载到 cache/images，并把 src 改写为相对 pdf 目录的本地路径。
 	// 已存在的缓存文件直接复用；下载失败时保留原 URL，避免中断构建。
 	void localize_pdf_images(
@@ -2152,6 +2190,8 @@ namespace camus
 				if (cache_remote_images) {
 					localize_pdf_images(article_html, cache_images_dir, conf_.camus().pdf_dir());
 				}
+
+				add_pdf_code_line_numbers(article_html);
 
 				article_items.push_back({
 					{"anchor", anchor},

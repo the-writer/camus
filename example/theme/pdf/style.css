@@ -57,8 +57,10 @@ blockquote { margin: 1em 0; padding: 0.6em 1em; border-left: 3px solid #c6c6c6; 
 ul, ol { margin: 0.7em 0 0.7em 1.5em; }
 li { margin: 0.25em 0; }
 code { font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace; font-size: var(--pdf-fs-code); background: #f4f4f4; padding: 0.1em 0.3em; }
-pre { margin: 1em 0; padding: 1em; background: #262626; color: #f4f4f4; overflow-x: auto; page-break-inside: avoid; }
-pre code { background: transparent; color: inherit; padding: 0; }
+pre { margin: 1em 0; padding: 1em; background: #262626; color: #f4f4f4; overflow-x: auto; page-break-inside: avoid; counter-reset: pdf-code-line; }
+pre code { display: block; background: transparent; color: inherit; padding: 0; }
+pre .pdf-code-line { display: block; position: relative; min-height: 1.5em; padding-left: 2.6em; counter-increment: pdf-code-line; }
+pre .pdf-code-line::before { content: counter(pdf-code-line); position: absolute; left: 0; width: 2em; text-align: right; color: #7d7d7d; font-variant-numeric: tabular-nums; }
 img { max-width: 100%; height: auto; }
 table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: var(--pdf-fs-table); page-break-inside: avoid; }
 th, td { padding: 0.4em 0.6em; border-bottom: 1px solid #e0e0e0; text-align: left; }
