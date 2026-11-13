@@ -42,6 +42,7 @@
             "font.decrease": "Decrease font size",
             "font.size": "Font size",
             "meta.wordsUnit": "words",
+            "meta.showTime": "Show time",
             "meta.readLess": "less than 1 min",
             "meta.readApprox": "~{n} min",
             "copy.link": "Copy link",
@@ -118,6 +119,7 @@
             "font.decrease": "减小字号",
             "font.size": "字号",
             "meta.wordsUnit": "字",
+            "meta.showTime": "显示时间",
             "meta.readLess": "小于1分钟",
             "meta.readApprox": "约 {n} 分钟",
             "copy.link": "复制链接",
@@ -1232,6 +1234,15 @@
     window.addEventListener("resize", clampBookSubtitle);
 
     // ── 复制当前文章链接 ──
+    // Meta 行日期：默认只显示日期，点击切换为完整日期时间（再次点击恢复）。
+    document.querySelectorAll(".tm-meta-date").forEach(function (el) {
+        el.addEventListener("click", function () {
+            var show = el.getAttribute("aria-pressed") !== "true";
+            el.setAttribute("aria-pressed", show ? "true" : "false");
+            el.textContent = show ? el.getAttribute("data-datetime") : el.getAttribute("data-date");
+        });
+    });
+
     var copyBtn = document.getElementById("tm-copy-link");
     if (copyBtn) {
         var copyTimer = null;

@@ -119,7 +119,7 @@
             <div class="tm-meta">
                 <span><span>{{ lead.word_count }}</span> <span data-i18n="meta.wordsUnit">words</span></span>
                 <span class="tm-readtime" data-read-min="{{ lead.read_min }}">{% if lead.read_min < 1 %}less than 1 min{% else %}~{{ lead.read_min }} min{% endif %}</span>
-                <span>{{ format_datetime(lead.write_time) }}</span>
+                <button class="tm-meta-date" type="button" data-date="{{ format_date(lead.write_time) }}" data-datetime="{{ format_datetime(lead.write_time) }}" data-i18n-title="meta.showTime" data-i18n-aria-label="meta.showTime">{{ format_date(lead.write_time) }}</button>
                 {% if length(lead.tags) > 0 %}<span class="tm-meta-tags">{{ join(lead.tags, " · ") }}</span>{% endif %}
                 <button id="tm-copy-link" class="tm-copy-link" type="button" data-i18n="copy.link">Copy link</button>
             </div>
