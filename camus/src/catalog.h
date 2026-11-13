@@ -55,8 +55,16 @@ namespace camus::catalog
 		std::string next_title;
 		std::string prev_path;
 		std::string prev_title;
+		// 按章节目录顺序（源路径升序）的相邻文章，供小说阅读主题使用。
+		std::string chapter_next_path;
+		std::string chapter_next_title;
+		std::string chapter_prev_path;
+		std::string chapter_prev_title;
 
-		NLOHMANN_DEFINE_TYPE_INTRUSIVE(render_nav, next_path, next_title, prev_path, prev_title);
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+			render_nav, next_path, next_title, prev_path, prev_title, chapter_next_path, chapter_next_title,
+			chapter_prev_path, chapter_prev_title
+		);
 	};
 
 	struct render_data {

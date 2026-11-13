@@ -114,15 +114,15 @@
         <article class="tm-content">{{ lead.contents }}</article>
 
         <nav class="tm-pager" aria-label="章节导航">
-            {% if lead.nav.prev_path != "" %}
-            <a href="{{ lead.nav.prev_path }}">
+            {% if lead.nav.chapter_prev_path != "" %}
+            <a href="{{ lead.nav.chapter_prev_path }}">
                 <span class="tm-pager-label">上一章</span>
             </a>
             {% else %}
             <span class="tm-pager-placeholder"></span>
             {% endif %}
-            {% if lead.nav.next_path != "" %}
-            <a class="tm-pager-next" href="{{ lead.nav.next_path }}">
+            {% if lead.nav.chapter_next_path != "" %}
+            <a class="tm-pager-next" href="{{ lead.nav.chapter_next_path }}">
                 <span class="tm-pager-label">下一章</span>
             </a>
             {% else %}

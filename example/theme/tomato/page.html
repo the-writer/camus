@@ -116,15 +116,15 @@
         </article>
 
         <nav class="tm-pager" aria-label="章节导航">
-            {% if nav.prev_path != "" %}
-            <a href="{{ nav.prev_path }}">
+            {% if nav.chapter_prev_path != "" %}
+            <a href="{{ nav.chapter_prev_path }}">
                 <span class="tm-pager-label">上一章</span>
             </a>
             {% else %}
             <span class="tm-pager-placeholder"></span>
             {% endif %}
-            {% if nav.next_path != "" %}
-            <a class="tm-pager-next" href="{{ nav.next_path }}">
+            {% if nav.chapter_next_path != "" %}
+            <a class="tm-pager-next" href="{{ nav.chapter_next_path }}">
                 <span class="tm-pager-label">下一章</span>
             </a>
             {% else %}
