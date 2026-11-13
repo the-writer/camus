@@ -1416,24 +1416,37 @@ namespace camus
 			}
 		});
 
-		// 按目录树顺序（路径升序）查找子目录中的第一篇文章，用于首页直接展示正文。
+		// 按章节列表顺序（更新时间降序，时间相同路径升序）查找子树中的第一篇文章，
+		// 使首页展示的正文与侧栏编号的第 1 篇保持一致。
+		const auto lead_before = [](const catalog::catalog_node *a, const catalog::catalog_node *b) {
+			if (a->property.write_time != b->property.write_time) {
+				return a->property.write_time > b->property.write_time;
+			}
+
+			return a->path.string() < b->path.string();
+		};
+
 		std::function<const catalog::catalog_node *(const catalog::catalog_node *)> find_lead =
 			[&](const catalog::catalog_node *node) -> const catalog::catalog_node * {
+			const catalog::catalog_node *best = nullptr;
 			for (const auto &child : node->children) {
 				if (child.property.visibility == catalog::hidden) {
 					continue;
 				}
 
+				const catalog::catalog_node *candidate = nullptr;
 				if (!child.is_directory()) {
-					return &child;
+					candidate = &child;
+				} else {
+					candidate = find_lead(&child);
 				}
 
-				if (const auto *found = find_lead(&child); found != nullptr) {
-					return found;
+				if (candidate != nullptr && (best == nullptr || lead_before(candidate, best))) {
+					best = candidate;
 				}
 			}
 
-			return nullptr;
+			return best;
 		};
 
 		const auto chapter_items = build_chapter_items();
