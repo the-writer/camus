@@ -50,7 +50,7 @@ jobs:
             -   name: Install dependencies
                 run: |
                     apt update -y
-                    apt install -y git ninja-build make cmake pkg-config gcc g++ mold dpkg-dev libssl-dev
+                    apt install -y git ninja-build make cmake pkg-config gcc g++ mold dpkg-dev libssl-dev zlib1g-dev
 
             -   uses: actions/checkout@v4
 

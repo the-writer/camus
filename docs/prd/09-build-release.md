@@ -12,6 +12,7 @@
 | Git | 读取分支与提交 hash；拉取 submodule |
 | mold | Linux Release 链接器（`-fuse-ld=mold`） |
 | pkg-config + OpenSSL | `cpp-httplib` 的 HTTPS 支持（`--update` / `--check-update`）；`common/CMakeLists.txt` 通过 `pkg_check_modules(OPENSSL ...)` 引入，macOS 另链接 `Security` / `CoreFoundation` |
+| zlib | 搜索索引的 gzip 压缩（`common/CMakeLists.txt` 的 `find_package(ZLIB REQUIRED)`）；Linux 安装 `zlib1g-dev`，macOS 由系统提供 |
 
 依赖来源：`third-party/` 下 yaml-cpp、cmark-gfm、nlohmann_json、inja、cpp-httplib；OpenSSL 由系统提供（Linux 安装 `libssl-dev`，macOS 安装 `openssl@3` 并设置 `PKG_CONFIG_PATH`）。
 
@@ -81,7 +82,7 @@
 | Job | Runner | 主要步骤 | 产物 |
 |---|---|---|---|
 | `check-main` | `ubuntu-24.04` | 全量 checkout → `safe.directory` → `git fetch origin main` → 用 `merge-base --is-ancestor` 判断 tag 提交是否在 `main` 上，输出 `build` | `build=true/false` |
-| `build-ubuntu` | `ubuntu-24.04` 容器 | 仅当 `check-main` 判定 `build=true`：安装依赖（含 `mold`、`libssl-dev`）→ submodule → `make package` → `dpkg -i` + `camus -v` + `camus --build -dw "$GITHUB_WORKSPACE/example"` + `camus -iw /tmp/site` + `camus -cw /tmp/site-copy` | `build/release/packages` |
+| `build-ubuntu` | `ubuntu-24.04` 容器 | 仅当 `check-main` 判定 `build=true`：安装依赖（含 `mold`、`libssl-dev`、`zlib1g-dev`）→ submodule → `make package` → `dpkg -i` + `camus -v` + `camus --build -dw "$GITHUB_WORKSPACE/example"` + `camus -iw /tmp/site` + `camus -cw /tmp/site-copy` | `build/release/packages` |
 | `build-macos` | `macos-15` | 仅当 `check-main` 判定 `build=true`：brew 安装依赖（含 `openssl@3`，并设置 `PKG_CONFIG_PATH`）→ submodule → `make package` → `sudo installer -pkg *.pkg -target /` + `camus -v` + `camus --build -dw "$GITHUB_WORKSPACE/example"` + `camus -iw /tmp/site` | `build/release/packages` |
 | `release` | `ubuntu-24.04` | 仅在 tag 上运行：下载并合并产物 → 生成 `latest.json`（`version` / `tag` / `published_at` / `assets`）→ `softprops/action-gh-release` 发布（含 `latest.json` 与 `*.dmg/*.pkg/*.rpm/*.deb/*.exe`） | GitHub Release |
 | `pages` | `ubuntu-24.04` 容器 | 仅在 tag 上运行且 tag 提交位于 `main` 历史时部署：安装 git → 全量 checkout → `safe.directory` 后校验 tag 在 `main` → `actions/configure-pages` 取得 `base_url` 并经 `CAMUS_PUBLIC_URL` 注入 → 安装 deb → `camus --build -dw example`（`CAMUS_AUTO_CHECK_UPDATE=false`）→ 上传并部署 GitHub Pages | `example/dist/html` |
