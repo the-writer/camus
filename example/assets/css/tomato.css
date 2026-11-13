@@ -429,6 +429,10 @@ body.tomato {
     text-decoration: none;
 }
 
+.tm-sidebar-footer a.tm-footer-version {
+    color: var(--tm-text-faint);
+}
+
 .tm-sidebar-footer a:hover {
     color: var(--tm-accent);
 }

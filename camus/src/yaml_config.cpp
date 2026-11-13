@@ -454,6 +454,12 @@ namespace camus::config
 )";
 
 		public_config_["build"]["powered_by"] = render::inja_render(powered_by, powered_by_data);
+		public_config_["build"]["powered_by_text"] = std::format(
+			"Home / Friends / {}Stats / GitHub\nPowered by Camus v{} built with {}",
+			camus_.render.theme_name == "pixel" ? "Search / " : "",
+			PROJECT_VERSION,
+			compiler_name
+		);
 	}
 
 	yaml_config::yaml_config(const std::string &filename) : camus_({}), filename_(filename)

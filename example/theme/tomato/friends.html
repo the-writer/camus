@@ -79,7 +79,7 @@
             <a href="{{ path_prefix }}/friends.html">友链</a> /
             <a href="{{ path_prefix }}/search.html">搜索</a>
         </span>
-        <span class="tm-footer-version">v{{ build.version }}</span>
+        <a class="tm-footer-version" href="{{ git.repo }}/releases/tag/v{{ build.version }}" target="_blank" rel="noopener" title="{{ build.powered_by_text }}">v{{ build.version }}</a>
     </footer>
 </aside>
 

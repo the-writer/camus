@@ -263,6 +263,7 @@ build:
 | `compiler` | 编译器版本字符串 |
 | `compiler_name` | 编译器名称（`clang` / `gcc` / `msvc` / `unknown`） |
 | `powered_by` | 预渲染的页脚 HTML 片段（Home / Friends / Stats / GitHub 链接、版本号与编译器名称）；`pixel` 主题会在 Friends 右侧额外加入 Search 链接 |
+| `powered_by_text` | 与 `powered_by` 对应的纯文本内容（`Home / Friends / [Search / ]Stats / GitHub` + `Powered by Camus v{version} built with {compiler}`），供 `title` 等属性使用 |
 
 示例（inja）：
 
