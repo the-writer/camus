@@ -810,38 +810,21 @@ namespace camus
 			auto &node = *articles[i];
 
 			if (i + 1 < articles.size()) {
-				node.render_data_.nav.next_path =
+				const std::string path =
 					filesystem::clean_path(articles[i + 1]->link_url(), conf_.camus().public_url.path_prefix);
+				node.render_data_.nav.next_path = path;
 				node.render_data_.nav.next_title = articles[i + 1]->property.display_name;
+				node.render_data_.nav.chapter_next_path = path;
+				node.render_data_.nav.chapter_next_title = articles[i + 1]->property.display_name;
 			}
 
 			if (i > 0) {
-				node.render_data_.nav.prev_path =
+				const std::string path =
 					filesystem::clean_path(articles[i - 1]->link_url(), conf_.camus().public_url.path_prefix);
+				node.render_data_.nav.prev_path = path;
 				node.render_data_.nav.prev_title = articles[i - 1]->property.display_name;
-			}
-		}
-
-		// 章节目录按源路径升序（与 chapters 列表一致），单独提供上/下一章，
-		// 避免按更新时间生成的导航与侧栏章节目录顺序不一致。
-		std::vector<catalog::catalog_node *> chapter_order = articles;
-		std::ranges::sort(chapter_order, [](const catalog::catalog_node *a, const catalog::catalog_node *b) {
-			return a->path.string() < b->path.string();
-		});
-
-		for (int i = 0; i < chapter_order.size(); ++i) {
-			auto &nav = chapter_order[i]->render_data_.nav;
-
-			if (i + 1 < chapter_order.size()) {
-				nav.chapter_next_path =
-					filesystem::clean_path(chapter_order[i + 1]->link_url(), conf_.camus().public_url.path_prefix);
-				nav.chapter_next_title = chapter_order[i + 1]->property.display_name;
-			}
-
-			if (i > 0) {
-				nav.chapter_prev_path =
-					filesystem::clean_path(chapter_order[i - 1]->link_url(), conf_.camus().public_url.path_prefix);
-				nav.chapter_prev_title = chapter_order[i - 1]->property.display_name;
+				node.render_data_.nav.chapter_prev_path = path;
+				node.render_data_.nav.chapter_prev_title = articles[i - 1]->property.display_name;
 			}
 		}
 	}
@@ -886,7 +869,12 @@ namespace camus
 			}
 		});
 
+		// 目录默认按更新时间降序（最新在前），时间相同按源路径升序保证确定性。
 		std::ranges::sort(articles, [](const catalog::catalog_node *a, const catalog::catalog_node *b) {
+			if (a->property.write_time != b->property.write_time) {
+				return a->property.write_time > b->property.write_time;
+			}
+
 			return a->path.string() < b->path.string();
 		});
 
