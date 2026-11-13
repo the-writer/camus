@@ -24,7 +24,7 @@
 - **内存目录树**：构建开始时扫描源目录（`src`/`posts`）生成 `catalog_node` 树，文章 Front Matter、路由映射、导航、统计都在该树上完成（详见 §4）。
 - **模板引擎**：HTML 使用 inja，Markdown 使用 cmark-gfm；主题由 `theme/{name}/{home,page,stats,friends}.html` 组成，PDF 模板与样式位于 `theme/pdf/{page.html,style.css,fonts.css}`，字体使用站点 `assets/fonts/`，本地 `theme/` 可覆盖数据目录中的默认主题与 PDF 资源（详见 §5）。
 - **安全清理**：构建前清空输出目录；当输出目录文件数超过 200 时拒绝自动删除并以致命错误退出，避免误删（详见 §6.1）。
-- **干跑模式**：`-D/--dryrun` 下所有写文件操作被跳过，用于检查配置与渲染流程（详见 §6.10）。
+- **干跑模式**：`-D/--dryrun` 下所有写文件操作被跳过，用于检查配置与渲染流程（详见 §6.9）。
 
 ## 文档清单与阅读指南
 
@@ -35,7 +35,7 @@
 | `docs/prd/03-configuration.md` | 3. 配置系统 | 改动 `camus.yaml` 与模板可用变量的解析时 |
 | `docs/prd/04-catalog-and-posts.md` | 4. 内容目录树与文章解析 | 改动扫描、Front Matter、可见性、路由、URL、统计时 |
 | `docs/prd/05-rendering.md` | 5. 模板与渲染 | 改动 Markdown/HTML 渲染、主题、inja 函数、渲染数据时 |
-| `docs/prd/06-output.md` | 6. 输出产物 | 改动页面、目录页、stats、friends、sitemap、meta、assets 输出时 |
+| `docs/prd/06-output.md` | 6. 输出产物 | 改动页面、目录页、stats、friends、sitemap、assets 输出时 |
 | `docs/prd/07-watch-mode.md` | 7. 监听模式与本地服务 | 改动 `-W` 热更新与服务端口时 |
 | `docs/prd/08-template-install.md` | 8. 资源安装与数据目录 | 改动资源安装位置、数据目录解析、主题/资源查找时 |
 | `docs/prd/09-build-release.md` | 9. 构建、测试与发布 | 改动 CMake、Makefile、CTest、CPack、CI 时 |

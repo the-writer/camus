@@ -95,7 +95,7 @@
 | `path resource_assets_dir()` | 返回第一个存在且非空的数据目录 `assets/`（不含 `.camus` 覆盖）；找不到返回空路径 |
 
 - 常量来源：`config.h.in` 的 `CAMUS_LOCAL_DATA_DIR`、`CAMUS_DATA_DIR_MACOS` 与 `CAMUS_DATA_DIR_LINUX`。
-- 供 `-i` 安装示例文件、`-c` 复制最小/完整资源（§8.2）、主题查找（§5.1、§8.3）与静态资源输出（§6.9、§8.3）使用；构建过程不写入数据目录。
+- 供 `-i` 安装示例文件、`-c` 复制最小/完整资源（§8.2）、主题查找（§5.1、§8.3）与静态资源输出（§6.8、§8.3）使用；构建过程不写入数据目录。
 
 ## 10.7 命令行 `cmdline`（`common/common/cmdline/cmdline.h`）
 

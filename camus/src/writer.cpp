@@ -1173,7 +1173,7 @@ namespace camus
 				return;
 			}
 
-			// 按先序遍历顺序记录目录，保证 meta.json 等输出稳定
+			// 按先序遍历顺序记录目录，保证页面输出稳定
 			order.push_back(&node);
 
 			auto &[parent, children] = dirs[&node];
@@ -1210,9 +1210,6 @@ namespace camus
 		};
 
 		const auto chapter_items = build_chapter_items();
-
-		nlohmann::json toc_full;
-		toc_full["config"] = conf_.json();
 
 		for (const auto *dir_node : order) {
 			const auto &ctx = dirs.at(dir_node);
@@ -1277,7 +1274,6 @@ namespace camus
 			// 使用相对目录树的原始路径，而不是带 public_url 前缀的 URL。
 			toc_item["current"]["path"] = filesystem::clean_path(dir_node->path, "");
 
-			toc_full["catalog"].push_back(toc_item);
 			toc_item.update(conf_.json());
 
 			add_write(
@@ -1287,10 +1283,6 @@ namespace camus
 				),
 				render::inja_render(inja_, conf_.camus().get_theme(config::CAMUS_THEME_TYPE_HOME), toc_item)
 			);
-		}
-
-		if (conf_.camus().output.meta) {
-			add_write(filesystem::clean_path("meta.json", conf_.camus().dest_dir()), toc_full.dump(4));
 		}
 	}
 

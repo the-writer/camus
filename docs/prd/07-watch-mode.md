@@ -40,7 +40,7 @@ flowchart TD
   - 扩展名为 `.md`、`.yaml`、`.json`；
   - **或**路径字符串中包含 `/theme/` 的任意文件；
   - **或**路径字符串中包含 `/assets/` 的任意文件（图片、字体等静态资源修改也会触发重建）。
-- 遍历前对 `workdir`、`dest_dir`（`./dist/html`）与 `pdf_dir`（`./dist/pdf`）统一做 `weakly_canonical` 规范化；遍历时同时跳过这两个输出目录（目录本身不进入、子目录不再递归）。因此 `meta.json`、`index.md`、`index.html` 等构建产物都不会参与 hash，符号链接工作目录（如 macOS `/tmp` → `/private/tmp`）也不会因前缀不匹配而漏排除。
+- 遍历前对 `workdir`、`dest_dir`（`./dist/html`）与 `pdf_dir`（`./dist/pdf`）统一做 `weakly_canonical` 规范化；遍历时同时跳过这两个输出目录（目录本身不进入、子目录不再递归）。因此 `index.md`、`index.html` 等构建产物都不会参与 hash，符号链接工作目录（如 macOS `/tmp` → `/private/tmp`）也不会因前缀不匹配而漏排除。
 - hash 汇总方式：收集每个命中文件的「规范化绝对路径 + 内容 hash」，按路径排序后拼接，再整体做 hash；避免文件系统目录遍历顺序变化造成 hash 抖动而反复编译。
 - 首次 hash 在进入循环前用当前内容初始化；只有汇总 hash 变化才触发 `build()`。
 - 不存在内容级构建缓存：命中变化后执行完整 `build()`，每次构建都会清空并重写输出目录，因此资源新增 / 修改 / 删除都会反映到 `dist/html`。
@@ -61,6 +61,6 @@ watch server listen on http://localhost:3001 or http://<addr>:3001
 
 - `quit_` 为 `std::atomic<bool>`，当前代码中**没有任何地方将其置为 true**，也没有注册信号处理；因此监听模式只能由外部终止进程（如 Ctrl+C）结束，`watch_server_.stop()` 分支实际上不可达。
 - 端口固定 3001，不支持配置；被占用时 `listen` 失败，服务线程退出，但主循环仍继续轮询。
-- 输出目录 `./dist/html` 与 PDF 目录 `./dist/pdf` 已在哈希计算中排除（含 `meta.json`、PDF 的 `index.md` 等产物），构建不会触发持续重建。
+- 输出目录 `./dist/html` 与 PDF 目录 `./dist/pdf` 已在哈希计算中排除（含 PDF 的 `index.md` 等产物），构建不会触发持续重建。
 - 每次 `build()` 会重新 `reload()` 配置；注意配置重载的列表累积问题（§3.9）。
 - `-W` 下首次构建失败不会阻止进入监听循环。

@@ -382,7 +382,6 @@ namespace camus::config
 
 		public_config_["source_dir"] = camus_.source_dir;
 		public_config_["assets_dir"] = camus_.assets_dir;
-		public_config_["meta"] = camus_.output.meta;
 		public_config_["sitemap"] = camus_.output.sitemap;
 		public_config_["filename_case"] = camus_.output.filename_case;
 		public_config_["public_url"] = camus_.public_url.url;
@@ -726,13 +725,6 @@ namespace camus::config
 				continue;
 			}
 
-			if (key == "meta") {
-				if (it.second.IsScalar()) {
-					camus_.output.meta = it.second.as<bool>();
-				}
-				continue;
-			}
-
 			if (key == "sitemap") {
 				if (it.second.IsScalar()) {
 					camus_.output.sitemap = it.second.as<bool>();
@@ -769,10 +761,6 @@ namespace camus::config
 
 		// 所有标量配置项都可由 CAMUS_<PATH> 环境变量覆盖（优先于 camus.yaml）。
 		// 数组 / 列表字段不参与注入。
-		if (const auto value = env_override("meta"); value.has_value()) {
-			camus_.output.meta = parse_bool_override(*value).value_or(camus_.output.meta);
-		}
-
 		if (const auto value = env_override("sitemap"); value.has_value()) {
 			camus_.output.sitemap = parse_bool_override(*value).value_or(camus_.output.sitemap);
 		}
@@ -1059,7 +1047,7 @@ namespace camus::config
 			}
 		}
 
-		// 根路由优先，其余按 path 排序，保证 route / meta.json 输出稳定
+		// 根路由优先，其余按 path 排序，保证 route 输出稳定
 		std::ranges::sort(routes_, [](const route_conf &a, const route_conf &b) {
 			if (const bool a_root = a.path == "/", b_root = b.path == "/"; a_root != b_root) {
 				return a_root;
@@ -1111,7 +1099,6 @@ namespace camus::config
 			camus_json["site"]["logo"] = html_image;
 			camus_json["site"]["cover_image"] = html_image;
 		}
-		camus_json["meta"] = camus_.output.meta;
 		camus_json["sitemap"] = camus_.output.sitemap;
 		camus_json["filename_case"] = camus_.output.filename_case;
 		camus_json["auto_check_update"] = camus_.auto_check_update;

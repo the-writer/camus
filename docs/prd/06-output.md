@@ -29,7 +29,7 @@ empty_path(pdf_dir(),   safe_check=true)   // ./dist/pdf
 
 ## 6.2 输出文件布局
 
-以示例站点（启用 sitemap/meta 与 PDF）为例：
+以示例站点（启用 sitemap 与 PDF）为例：
 
 ```text
 dist/
@@ -42,7 +42,6 @@ dist/
 │   ├── search.html                 # 主题提供 search.html 时（tomato / pixel）
 │   ├── search.gz                   # 搜索索引（XOR + gzip）
 │   ├── sitemap.xml                 # sitemap=true
-│   ├── meta.json                   # meta=true
 │   └── <assets 内容提升到根>        # css/ js/ fonts/ robots.txt favicon.ico ...
 └── pdf/                            # pdf.engine 非空且不为 disable 时
     ├── index.md                    # 合并后的 Markdown
@@ -61,7 +60,6 @@ dist/
 | `friends.html` | 始终（除非 dryrun） | `writer.cpp:461` |
 | `search.html` / `search.gz` | 主题存在 `search.html`（tomato / pixel）且非 dryrun | `writer.cpp` `emit_search()` |
 | `sitemap.xml` | `sitemap: true` | `writer.cpp:555` |
-| `meta.json` | `meta: true` | `writer.cpp:540-545` |
 | 静态资源 | 数据目录 `assets/` 或本地 `./assets` 非空 | `writer.cpp` `emit_assets()` |
 | `index.md` / `index.pdf` / `index.html`（均位于 `dist/pdf`） | `pdf.engine` 非空、不为 `disable` 且引擎可用 | `writer.cpp` `emit_pdf()` |
 | `dist/pdf/assets.css` | 站点输出中存在 `css/style.css` | `writer.cpp` `copy_pdf_asset_style()` |
@@ -127,29 +125,7 @@ dist/
 - 包含 `open` 与 `hidden_in_toc` 的文章，不包含 `hidden`。
 - 输出为 `dest_dir/sitemap.xml`。
 
-## 6.8 `meta.json`
-
-`emit_toc()` 内当 `meta` 为 true 时生成（`writer.cpp:540-545`），内容为：
-
-```json
-{
-  "config": { "...": "conf_.json()" },
-  "catalog": [
-    {
-      "parent": { "url": "...", "label": "..." },
-      "items": [ { "title": "...", "path": "...", "is_dir": true, "...": "..." } ],
-      "current": { "...": "目录节点 JSON" }
-    }
-  ]
-}
-```
-
-- `config` 为完整站点配置 JSON（§3.8）。
-- `catalog` 每项对应一个目录节点，按目录遍历顺序（先序）追加。
-- 每条记录仅含 `parent`、`items`、`current`（`config` 的合并发生在入数组之后，不会污染数组项）。
-- 以 4 空格缩进输出。
-
-## 6.9 静态资源
+## 6.8 静态资源
 
 `emit_assets()`（`writer.cpp`）：
 
@@ -176,7 +152,7 @@ flowchart TD
 - 仅 `.css`、`.js`、`.txt`、`.json` 会做 inja 变量替换，其它文件原样复制。
 - 最终资源被**提升到输出根目录**（如 `dist/html/css/...`、`dist/html/robots.txt`），不保留 `assets/` 前缀。
 
-## 6.10 dryrun 的影响
+## 6.9 dryrun 的影响
 
 `-D/--dryrun` 下：
 
@@ -185,14 +161,14 @@ flowchart TD
 | `prepare_output_dir` | 不清理输出目录 |
 | `add_write` | 直接返回，不排队 |
 | `flush_writes` | 队列为空，无写入 |
-| `emit_toc` | 提前返回（不生成目录页/meta） |
+| `emit_toc` | 提前返回（不生成目录页） |
 | `emit_assets` | 提前返回 |
 | `emit_pdf` | 提前返回 |
 | 文章/统计/友链/sitemap | 正常计算并调用 `add_write`，但不落盘 |
 
 因此 dryrun 可用于验证配置与渲染流程而不改变磁盘。
 
-## 6.11 PDF 输出
+## 6.10 PDF 输出
 
 `emit_pdf()` 在 `flush_writes()` 之后执行，仅在顶层 `pdf.engine` 非空且不为 `disable` 时生效：
 

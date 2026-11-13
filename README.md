@@ -84,7 +84,6 @@ A site uses one main config file plus optional per-directory metadata:
 ### `camus.yaml`
 
 ```yaml
-meta: true                 # generate meta.json
 sitemap: true              # generate sitemap.xml
 filename_case: keep        # keep | uuid
 
@@ -224,6 +223,6 @@ Themes contain `home.html`, `page.html`, `stats.html` and `friends.html`, loaded
 
 ```text
 dist/
-├── html/            # static HTML site (index pages, articles, stats, friends, sitemap, meta)
+├── html/            # static HTML site (index pages, articles, stats, friends, sitemap)
 └── pdf/             # when pdf.engine is configured and not "disable"
 ```

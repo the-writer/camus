@@ -14,7 +14,7 @@
 | `CAMUS_THEME_TYPE_FRIENDS` | `friends.html` | 友链页 |
 | `CAMUS_THEME_TYPE_SEARCH` | `search.html` | 搜索页（可选；仅 tomato / pixel 提供） |
 
-`search.html` 为可选主题类型：主题目录存在该文件时才生成搜索页与索引，缺失时跳过（不会 fatal）。构建时若有搜索页，会把所有 `visibility != hidden` 的文章打包为 `search.gz`：内容为 `标题\t链接\t时间\t标签\t正文` 的逐行文本（时间为 `YYYY-MM-DD`，标签以逗号分隔，制表符/换行已替换为空格），先 gzip 压缩再对每个字节 XOR `0x5A`，避免下载后直接按普通 gzip 解出整站文本。运行时 `assets/js/search.js` 读取 `search.gz`，XOR 还原后用 `DecompressionStream("gzip")` 解压，按 `indexOf`（默认）或用户开启的正则表达式（`RegExp(..., "i")`）匹配标题与正文，最多渲染 100 条结果链接；每条结果第一行为标题链接，第二行显示发布时间与标签列表（`search-result-meta`），不再显示 URL。搜索关键词与正则开关会实时同步到 URL 的 `q` 与 `re=1` 查询参数（`history.replaceState`，输入为空 / 关闭正则时移除对应参数），带 `?q=关键词`、`?re=1` 的链接打开后会自动恢复输入内容与正则状态，并在索引加载完成后执行搜索。`tomato` 的搜索结果区包在 `.tm-panel`（`.tm-search-panel`，最小高度 240px）内：输入框为空（默认）时显示「输入关键词开始搜索」空状态，无匹配时显示「暂无搜索结果」，始终渲染空状态而非隐藏结果区；搜索输入框字号略小（`0.9rem`），正则开关为输入框内部最右侧的图标按钮（`assets/icons/regex.svg`，通过 CSS mask 跟随文字颜色，激活时高亮）。搜索页复用完整左侧章节目录与控件，入口使用主题色 SVG 放大镜（`assets/icons/search.svg`，通过 CSS mask 跟随文字颜色）；`pixel` 的搜索页复用像素风格容器，并由 `.cover` 限定内容最大宽度 1100px（移动端按断点收窄内边距）。
+`search.html` 为可选主题类型：主题目录存在该文件时才生成搜索页与索引，缺失时跳过（不会 fatal）。构建时若有搜索页，会把所有 `visibility != hidden` 的文章打包为 `search.gz`：内容为 `标题\t链接\t时间\t标签\t正文` 的逐行文本（时间为 `YYYY-MM-DD`，标签以逗号分隔，制表符/换行已替换为空格），先 gzip 压缩再对每个字节 XOR `0x5A`，避免下载后直接按普通 gzip 解出整站文本。运行时 `assets/js/search.js` 读取 `search.gz`，XOR 还原后用 `DecompressionStream("gzip")` 解压，按 `indexOf`（默认）或用户开启的正则表达式（`RegExp(..., "i")`）匹配标题与正文，最多渲染 100 条结果链接；每条结果第一行为标题链接，第二行显示发布时间与标签列表（`search-result-meta`），不再显示 URL。搜索关键词与正则开关会实时同步到 URL 的 `q` 与 `re=1` 查询参数（`history.replaceState`，输入为空 / 关闭正则时移除对应参数），带 `?q=关键词`、`?re=1` 的链接打开后会自动恢复输入内容与正则状态，并在索引加载完成后执行搜索。`tomato` 启用「序号」时，搜索结果标题会带上对应章节序号（`window.CAMUS_CHAPTER_INDEX`，切换序号后即时刷新）。`tomato` 的搜索结果区包在 `.tm-panel`（`.tm-search-panel`，最小高度 240px）内：输入框为空（默认）时显示「输入关键词开始搜索」空状态，无匹配时显示「暂无搜索结果」，始终渲染空状态而非隐藏结果区；搜索输入框字号略小（`0.9rem`），正则开关为输入框内部最右侧的图标按钮（`assets/icons/regex.svg`，通过 CSS mask 跟随文字颜色，激活时高亮）。搜索页复用完整左侧章节目录与控件，入口使用主题色 SVG 放大镜（`assets/icons/search.svg`，通过 CSS mask 跟随文字颜色）；`pixel` 的搜索页复用像素风格容器，并由 `.cover` 限定内容最大宽度 1100px（移动端按断点收窄内边距）。
 
 加载顺序（`yaml_config.cpp:244-264`）：
 
@@ -101,7 +101,7 @@ flowchart TD
 
 | 键 | 结构 | 说明 |
 |---|---|---|
-| `camus` / `source_dir` / `assets_dir` / `meta` / `sitemap` / `filename_case` / `public_url` / `protocol` / `domain_name` / `path_prefix` / `render` / `friends` / `site` / `route` / `git` / `build` | 见 §3.7 | 站点配置 |
+| `camus` / `source_dir` / `assets_dir` / `sitemap` / `filename_case` / `public_url` / `protocol` / `domain_name` / `path_prefix` / `render` / `friends` / `site` / `route` / `git` / `build` | 见 §3.7 | 站点配置 |
 | `title` | 字符串 | 文章显示名（来自节点 `to_json`） |
 | `write_time` | 数字 | 文章时间戳 |
 | `path` | 字符串 | 节点 `real_url` 加上 `public_url.path_prefix` 的完整链接（主题直接作 `href`） |
@@ -136,9 +136,8 @@ flowchart TD
 | `current` | 对象 | 当前目录节点 JSON（含 `render_data`）；其中 `current.path` 被覆盖为相对目录树路径（根为 `/`） |
 | `lead` | 对象 | 当前目录子树中按路径升序的第一篇非 `hidden` 文章（无则不存在）：`title`、`path`、`write_time`、`contents`（已渲染正文 HTML）、`word_count`、`read_min`、`nav`（上一章/下一章）；目录页由 `tomato` 用于直接展示正文 |
 | `chapters` | 数组 | 与文章页相同的扁平章节列表（含 `volume` / `volume_key`）；`tomato` 的目录页侧栏据此渲染分卷、倒序、序号等，并把 `lead` 标记为当前章节 |
-| 其余键 | — | `conf_.json()` 的顶层键（`camus/source_dir/assets_dir/meta/sitemap/filename_case/public_url/protocol/domain_name/path_prefix/render/friends/site/route/git/build`）被合并进来 |
+| 其余键 | — | `conf_.json()` 的顶层键（`camus/source_dir/assets_dir/sitemap/filename_case/public_url/protocol/domain_name/path_prefix/render/friends/site/route/git/build`）被合并进来 |
 
-`meta.json` 的 `catalog` 数组按目录树的先序顺序输出，保证结果稳定。
 
 注意：这些目录页数据是「父级 + 子项 + 当前目录」结构，不是完整递归树。
 

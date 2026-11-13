@@ -84,7 +84,6 @@ mkdir my-site && cd my-site
 ### `camus.yaml`
 
 ```yaml
-meta: true                 # 生成 meta.json
 sitemap: true              # 生成 sitemap.xml
 filename_case: keep        # keep | uuid
 
@@ -224,6 +223,6 @@ visibility: open
 
 ```text
 dist/
-├── html/            # 静态 HTML 站点（目录页、文章、stats、friends、sitemap、meta）
+├── html/            # 静态 HTML 站点（目录页、文章、stats、friends、sitemap）
 └── pdf/             # pdf.engine 非空且不为 disable 时生成
 ```
