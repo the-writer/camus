@@ -10,6 +10,14 @@ set(APP_DESCRIPTION "It reads Markdown posts and theme templates and renders the
 
 project(Camus VERSION ${APP_VERSION} LANGUAGES CXX DESCRIPTION ${APP_DESCRIPTION})
 
+# 可选的 ccache：重复构建时复用编译结果，未安装时不影响构建。
+find_program(CCACHE_PROGRAM ccache)
+if (CCACHE_PROGRAM)
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
+endif ()
+
 enable_testing()
 
 find_package(Git QUIET)
@@ -53,8 +61,15 @@ else ()
 endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_compile_options(-O3 -ffast-math -falign-functions=64 -flto=auto)
-    add_link_options(-ffunction-sections)
+    # Clang 使用 ThinLTO（链接速度显著快于全量 LTO），GCC 回退到 -flto=auto。
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        set(CAMUS_LTO_FLAG -flto=thin)
+    else ()
+        set(CAMUS_LTO_FLAG -flto=auto)
+    endif ()
+
+    add_compile_options(-O3 -ffast-math -falign-functions=64 ${CAMUS_LTO_FLAG})
+    add_link_options(-ffunction-sections ${CAMUS_LTO_FLAG})
 
     if (APPLE)
         add_compile_options(-march=native)

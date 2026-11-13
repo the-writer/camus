@@ -22,7 +22,8 @@
 
 - `project(Camus VERSION ...)`（具体版本号只在 `docs/PRD.md` 项目表与 `CMakeLists.txt` 中定义），`CMAKE_CXX_STANDARD 23`。
 - 通过 Git 获取 `GIT_COMMIT_LONG`、`GIT_BRANCH`；未找到 Git 时为 `unknown`。
-- Release 构建追加：`-O3 -ffast-math -falign-functions=64 -flto=auto`；macOS 加 `-march=native`；Linux 加 `-march=x86-64-v3 -fuse-ld=mold -fno-semantic-interposition`，链接选项 `--hash-style=gnu,--as-needed,--gc-sections,--print-gc-sections`。
+- 自动探测可选的 `ccache`（`find_program(ccache)`），存在时将其设为 `CMAKE_CXX_COMPILER_LAUNCHER` / `CMAKE_C_COMPILER_LAUNCHER`；未安装时静默跳过，不影响构建。
+- Release 构建追加：`-O3 -ffast-math -falign-functions=64` 与 LTO（Clang 家族使用 `-flto=thin` ThinLTO，GCC 回退 `-flto=auto`），LTO 标志同时加入编译与链接选项；macOS 加 `-march=native`；Linux 加 `-march=x86-64-v3 -fuse-ld=mold -fno-semantic-interposition`，链接选项 `--hash-style=gnu,--as-needed,--gc-sections,--print-gc-sections`。
 - `WORK_ON_DEBUG`：Debug/RelWithDebInfo 为 `true`，Release 为 `false`。
 - 构建顺序：`camus`、`common`、第三方库（`EXCLUDE_FROM_ALL SYSTEM`，作为系统组件，其头文件以 `-isystem` 引入以抑制警告）。
 
