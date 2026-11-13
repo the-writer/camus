@@ -5,9 +5,9 @@
     var body = document.body;
     var FONT_KEY = "tomato-font-size";
     var THEME_KEY = "tomato-theme";
-    var FONT_MIN = 16;
+    var FONT_MIN = 14;
     var FONT_MAX = 40;
-    var FONT_DEFAULT = 16;
+    var FONT_DEFAULT = 14;
 
     function read(key) {
         try {
