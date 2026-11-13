@@ -222,7 +222,7 @@ flowchart TD
 ```
 
 - 合并文档以 `# {site.title}` 开头，每篇文章为 `## {display_name}` + 正文，文章间用 `---` 分隔。
-- PDF 内文章与目录的排序由 `pdf.sort` 决定（`writer.cpp` `emit_pdf()` 的 `append_node`，见 §3.3.1）：`file_first`（默认）先文件后子目录、`dir_first` 先子目录后文件，`mixed` 不区分文件/目录；随后按 `time_asc` / `time_desc` 二次排序，最后按相对路径字符串字典序兜底。默认 `[file_first, time_asc]`（文件优先、时间正序）；未给时间键时仅按路径排序。该顺序同时决定 PDF 正文、目录页 `pdf.toc` 与书签大纲的排列；与 HTML 站点（TOC 目录优先、按 `write_time` 降序）不同。
+- PDF 内文章与目录的排序由 `pdf.sort` 决定（`writer.cpp` `emit_pdf()` 的 `append_node`，见 §3.3.1）：`file_first`（默认）先文件后子目录、`dir_first` 先子目录后文件，`mixed` 不区分文件/目录；随后按 `time_asc` / `time_desc` 二次排序，最后按相对路径字符串字典序兜底。默认 `[file_first, time_asc]`（文件优先、时间正序）；未给时间键时仅按路径排序。含时间键时还会自动按 UTC 年份分卷：年份为一级分组（目录与大纲），每个年份在正文前插入独立一页的年份页（标题为年份，副标题为日期跨度 · 文章数 · 字数）。该顺序同时决定 PDF 正文、目录页 `pdf.toc` 与书签大纲的排列；与 HTML 站点（TOC 目录优先、按 `write_time` 降序）不同。
 - PDF 中间 HTML 由 `theme/pdf/page.html`（inja）渲染，打印样式来自 `theme/pdf/style.css`，字体样式来自 `theme/pdf/fonts.css`；字体文件使用站点 `assets/fonts/`，构建时复制到 `dist/pdf/assets/fonts/`，`fonts.css` 以 `assets/fonts/<file>` 引用。PDF 模板/样式可被工作目录 `theme/pdf/`、`.camus/theme/pdf/` 或平台数据目录覆盖（详见 §5.10）。
 - `pdf.page.size` / `pdf.page.margin` 会生成 `@page { size: ...; margin: ...; }` 追加在打印样式末尾，覆盖未命名页的尺寸与边距；默认 `A4` / `20mm 18mm`。同时追加 `@page cover { size: ...; margin: 0; }`，封面页也使用配置的尺寸（边距仍为 0）。`pdf.page.font_size`（默认 `10pt`，仅支持 pt）生成 `:root { --pdf-font-size: <值>; }`，模板中所有字号基于该变量按 `calc()` 比例计算，根 `font-size` 也取该变量。
 - HTML 站点的 `assets/` 会复制并渲染到站点输出目录（如 `dist/html/`）；PDF 阶段再单独把 `dist/html/css/style.css` 复制为 `dist/pdf/assets.css` 并以 `<link>` 引用，PDF 主题样式仍内联在 `<style>` 中且位于该链接之后，因此不会被覆盖或反向压制。

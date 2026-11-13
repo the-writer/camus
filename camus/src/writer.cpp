@@ -101,6 +101,31 @@ namespace
 		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
 		"Chrome/131.0.0.0 Safari/537.36";
 
+	// 按 UTC 计算年份（用于 PDF 按年分卷，与统计口径一致）。
+	int utc_year(const std::time_t value)
+	{
+		if (value <= 0) {
+			return 0;
+		}
+
+		std::tm tm{};
+		gmtime_r(&value, &tm);
+		return tm.tm_year + 1900;
+	}
+
+	std::string utc_date(const std::time_t value)
+	{
+		std::tm tm{};
+		gmtime_r(&value, &tm);
+
+		char buffer[16] = {};
+		if (std::strftime(buffer, sizeof(buffer), "%Y-%m-%d", &tm) == 0) {
+			return "";
+		}
+
+		return buffer;
+	}
+
 	bool command_exists(const std::string &name)
 	{
 		if (name.empty()) {
@@ -2165,101 +2190,107 @@ namespace camus
 
 		nlohmann::json toc_items = nlohmann::json::array();
 		nlohmann::json article_items = nlohmann::json::array();
+		nlohmann::json sections = nlohmann::json::array();
 
 		// 目录按真实目录树多级输出：目录节点作为分组标题，文章节点作为可跳转条目。
-		// 根节点（depth 0）只是容器，depth - 1 为模板中的显示层级。
+		// 启用时间排序（time_asc / time_desc）时额外按年分卷，年份作为一级分组。
 		const pdf_sort_spec sort_spec = parse_pdf_sort_spec(conf_.camus().pdf.sort);
+		const bool group_by_year = sort_spec.has_time;
 		int index = 0;
-		std::function<void(const catalog::catalog_node &, int)> append_node;
-		append_node = [&](const catalog::catalog_node &node, const int depth) {
-			if (depth > 0 && node.is_directory()) {
-				toc_items.push_back({
-					{"anchor", ""},
-					{"index", 0},
-					{"number", ""},
-					{"title", html_escape(node.property.display_name)},
-					{"outline_title", node.property.display_name},
-					{"tags", ""},
-					{"page", ""},
-					{"page_label", ""},
-					{"depth", depth - 1},
-					{"is_dir", true},
-				});
-			}
 
-			if (!node.is_directory()) {
-				if (node.path.extension() != ".md" || node.property.visibility == catalog::hidden) {
-					return;
-				}
+		const auto push_directory = [&](const catalog::catalog_node &node, const int depth) {
+			toc_items.push_back({
+				{"anchor", ""},
+				{"index", 0},
+				{"number", ""},
+				{"title", html_escape(node.property.display_name)},
+				{"outline_title", node.property.display_name},
+				{"tags", ""},
+				{"page", ""},
+				{"page_label", ""},
+				{"depth", depth},
+				{"is_dir", true},
+			});
+		};
 
-				++index;
-
-				const std::string label = node.property.display_name;
-				const std::string article_markdown = strings::string_join(node.contents, "\n");
-				markdown += std::format("\n\n---\n\n## {}\n\n{}", label, article_markdown);
-
-				std::string tags;
-				for (const auto &tag : node.property.tags) {
-					if (!tags.empty()) {
-						tags += " · ";
-					}
-
-					tags += html_escape(tag);
-				}
-
-				const std::string anchor = std::format("pdf-article-{}", index);
-				const std::string number = std::format("{:02}", index);
-				const std::string toc_title = toc_index ? std::format("{}. {}", index, label) : label;
-
-				toc_items.push_back({
-					{"anchor", anchor},
-					{"index", index},
-					{"number", number},
-					{"title", html_escape(toc_title)},
-					{"outline_title", toc_title},
-					{"tags", tags},
-					{"page", ""},
-					{"page_label", ""},
-					{"depth", depth - 1},
-					{"is_dir", false},
-				});
-
-				const std::string body_markdown = std::format("## {}\n\n{}", label, article_markdown);
-				std::string article_html = render::render_markdown(
-					body_markdown.c_str(),
-					conf_.camus().render.markdown_engine,
-					conf_.camus().render.markdown_options
-				);
-
-				if (const std::string meta = article_meta(node); !meta.empty()) {
-					if (const auto heading_end = article_html.find("</h2>"); heading_end != std::string::npos) {
-						article_html.insert(
-							heading_end + 5,
-							std::format("<p class=\"pdf-article__meta\">{}</p>", meta)
-						);
-					}
-				}
-
-				if (cache_remote_images) {
-					localize_pdf_images(article_html, cache_images_dir, conf_.camus().pdf_dir());
-				}
-
-				add_pdf_code_line_numbers(article_html);
-
-				article_items.push_back({
-					{"anchor", anchor},
-					{"index", index},
-					{"number", number},
-					{"title", html_escape(label)},
-					{"tags", tags},
-					{"content", std::move(article_html)},
-				});
-
+		const auto emit_article = [&](const catalog::catalog_node &node, const int depth) {
+			if (node.path.extension() != ".md" || node.property.visibility == catalog::hidden) {
 				return;
 			}
 
-			// PDF 顺序由 pdf.sort 决定：file_first / dir_first 控制同层文件与目录的组顺序，
-			// mixed 不区分文件/目录；随后按 time_asc / time_desc 二次排序，最后按路径字典序兜底。
+			++index;
+
+			const std::string label = node.property.display_name;
+			const std::string article_markdown = strings::string_join(node.contents, "\n");
+			markdown += std::format("\n\n---\n\n## {}\n\n{}", label, article_markdown);
+
+			std::string tags;
+			for (const auto &tag : node.property.tags) {
+				if (!tags.empty()) {
+					tags += " · ";
+				}
+
+				tags += html_escape(tag);
+			}
+
+			const std::string anchor = std::format("pdf-article-{}", index);
+			const std::string number = std::format("{:02}", index);
+			const std::string toc_title = toc_index ? std::format("{}. {}", index, label) : label;
+
+			toc_items.push_back({
+				{"anchor", anchor},
+				{"index", index},
+				{"number", number},
+				{"title", html_escape(toc_title)},
+				{"outline_title", toc_title},
+				{"tags", tags},
+				{"page", ""},
+				{"page_label", ""},
+				{"depth", depth},
+				{"is_dir", false},
+			});
+
+			const std::string body_markdown = std::format("## {}\n\n{}", label, article_markdown);
+			std::string article_html = render::render_markdown(
+				body_markdown.c_str(),
+				conf_.camus().render.markdown_engine,
+				conf_.camus().render.markdown_options
+			);
+
+			if (const std::string meta = article_meta(node); !meta.empty()) {
+				if (const auto heading_end = article_html.find("</h2>"); heading_end != std::string::npos) {
+					article_html.insert(
+						heading_end + 5,
+						std::format("<p class=\"pdf-article__meta\">{}</p>", meta)
+					);
+				}
+			}
+
+			if (cache_remote_images) {
+				localize_pdf_images(article_html, cache_images_dir, conf_.camus().pdf_dir());
+			}
+
+			add_pdf_code_line_numbers(article_html);
+
+			nlohmann::json article_json = {
+				{"anchor", anchor},
+				{"index", index},
+				{"number", number},
+				{"title", html_escape(label)},
+				{"tags", tags},
+				{"content", std::move(article_html)},
+			};
+			article_items.push_back(article_json);
+
+			if (group_by_year) {
+				sections.push_back({
+					{"kind", "article"},
+					{"article", article_json},
+				});
+			}
+		};
+
+		const auto sort_children = [&](const catalog::catalog_node &node) {
 			std::vector<const catalog::catalog_node *> ordered;
 			ordered.reserve(node.children.size());
 			for (const auto &child : node.children) {
@@ -2279,12 +2310,158 @@ namespace camus
 				return a->path.string() < b->path.string();
 			});
 
-			for (const auto *child : ordered) {
-				append_node(*child, depth + 1);
-			}
+			return ordered;
 		};
 
-		append_node(catalog_, 0);
+		if (!group_by_year) {
+			std::function<void(const catalog::catalog_node &, int)> append_node;
+			append_node = [&](const catalog::catalog_node &node, const int depth) {
+				if (depth > 0 && node.is_directory()) {
+					push_directory(node, depth - 1);
+				}
+
+				if (!node.is_directory()) {
+					emit_article(node, depth - 1);
+					return;
+				}
+
+				for (const auto *child : sort_children(node)) {
+					append_node(*child, depth + 1);
+				}
+			};
+
+			append_node(catalog_, 0);
+		} else {
+			struct year_stats {
+				uint32_t articles = 0;
+				uint64_t words = 0;
+				time_t min_time = 0;
+				time_t max_time = 0;
+			};
+
+			std::map<int, year_stats> stats;
+			catalog::traverse_catalog_tree(catalog_, [&](const catalog::catalog_node &node, int) {
+				if (node.is_directory() || node.path.extension() != ".md" ||
+					node.property.visibility == catalog::hidden) {
+					return;
+				}
+
+				auto &item = stats[utc_year(node.property.write_time)];
+				++item.articles;
+				item.words += node.render_data_.stats.word_count;
+				if (node.property.write_time > 0) {
+					if (item.min_time == 0 || node.property.write_time < item.min_time) {
+						item.min_time = node.property.write_time;
+					}
+					if (node.property.write_time > item.max_time) {
+						item.max_time = node.property.write_time;
+					}
+				}
+			});
+
+			std::vector<int> years;
+			years.reserve(stats.size());
+			for (const auto &[year, _] : stats) {
+				years.push_back(year);
+			}
+			std::ranges::sort(years, [&](const int a, const int b) {
+				return sort_spec.time_desc ? a > b : a < b;
+			});
+
+			int year_index = 0;
+			for (const int year : years) {
+				const year_stats &item = stats.at(year);
+				const std::string title =
+					year > 0 ? std::to_string(year) : (use_chinese ? "未知时间" : "Unknown");
+
+				std::vector<std::string> meta;
+				if (item.min_time > 0) {
+					meta.push_back(
+						item.min_time == item.max_time
+							? utc_date(item.min_time)
+							: std::format("{} ~ {}", utc_date(item.min_time), utc_date(item.max_time))
+					);
+				}
+				meta.push_back(
+					use_chinese ? std::format("{} 篇", item.articles)
+								: std::format("{} articles", item.articles)
+				);
+				meta.push_back(
+					use_chinese ? std::format("{} 字", item.words) : std::format("{} words", item.words)
+				);
+				const std::string subtitle = strings::string_join(meta, " · ");
+				const std::string year_anchor = std::format("pdf-year-{}", ++year_index);
+
+				toc_items.push_back({
+					{"anchor", year_anchor},
+					{"index", 0},
+					{"number", ""},
+					{"title", html_escape(title)},
+					{"outline_title", title},
+					{"tags", ""},
+					{"page", ""},
+					{"page_label", ""},
+					{"depth", 0},
+					{"is_dir", true},
+					{"is_year", true},
+				});
+
+				sections.push_back({
+					{"kind", "year"},
+					{"anchor", year_anchor},
+					{"title", html_escape(title)},
+					{"subtitle", subtitle},
+				});
+
+				// index.md 同样用一级标题标记年份，便于人工检查合并结果。
+				markdown += std::format("\n\n---\n\n# {}\n", title);
+
+				std::function<bool(const catalog::catalog_node &)> has_year =
+					[&](const catalog::catalog_node &node) -> bool {
+					if (node.is_directory()) {
+						for (const auto &child : node.children) {
+							if (has_year(child)) {
+								return true;
+							}
+						}
+						return false;
+					}
+
+					return node.path.extension() == ".md" &&
+						   node.property.visibility != catalog::hidden &&
+						   utc_year(node.property.write_time) == year;
+				};
+
+				std::function<void(const catalog::catalog_node &, int)> append_year_node;
+				append_year_node = [&](const catalog::catalog_node &node, const int depth) {
+					if (node.is_directory()) {
+						if (depth > 0) {
+							push_directory(node, depth);
+						}
+
+						for (const auto *child : sort_children(node)) {
+							if (has_year(*child)) {
+								append_year_node(*child, depth + 1);
+							}
+						}
+						return;
+					}
+
+					if (utc_year(node.property.write_time) == year) {
+						emit_article(node, depth);
+					}
+				};
+
+				for (const auto *child : sort_children(catalog_)) {
+					if (has_year(*child)) {
+						append_year_node(*child, 1);
+					}
+				}
+			}
+		}
+
+		pdf["sections"] = std::move(sections);
+		pdf["has_year_sections"] = group_by_year;
 
 		pdf["labels"] = {
 			{"cover", label_cover},

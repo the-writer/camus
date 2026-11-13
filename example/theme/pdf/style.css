@@ -87,6 +87,9 @@ hr { border: none; border-top: 1px solid #e0e0e0; margin: 1.5em 0; }
 .pdf-toc__section { display: block; padding: 0.35em 0 0.2em; font-weight: 600; color: #161616; page-break-after: avoid; break-after: avoid; }
 .pdf-toc__link { display: flex; align-items: baseline; justify-content: space-between; gap: 1em; padding: 0.3em 0; color: #262626; text-decoration: none;}
 .pdf-toc__page { flex: none; min-width: 3em; text-align: right; color: #000; font-variant-numeric: tabular-nums; }
+.pdf-year { page: front; page-break-before: always; break-before: page; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 80vh; text-align: center; }
+.pdf-year__title { font-size: calc(var(--pdf-font-size) * 3.2); color: #161616; margin: 0 0 0.5em; }
+.pdf-year__meta { color: #525252; font-size: calc(var(--pdf-font-size) * 1.1); margin: 0; }
 .pdf-article { page-break-before: always; break-before: page; }
 
 .pdf-article__meta { margin: 0 0 1em; color: #6f6f6f; font-size: var(--pdf-fs-meta); }

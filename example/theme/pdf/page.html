@@ -44,9 +44,16 @@
 {% endif %}{% endfor %}</ul>
 </section>
 <main>
-{% for article in pdf.articles %}<section id="{{ article.anchor }}" class="pdf-article">
+{% if pdf.has_year_sections %}{% for section in pdf.sections %}{% if section.kind == "year" %}<section id="{{ section.anchor }}" class="pdf-year">
+<h2 class="pdf-year__title">{{ section.title }}</h2>
+<p class="pdf-year__meta">{{ section.subtitle }}</p>
+</section>
+{% else %}<section id="{{ section.article.anchor }}" class="pdf-article">
+{{ section.article.content }}
+</section>
+{% endif %}{% endfor %}{% else %}{% for article in pdf.articles %}<section id="{{ article.anchor }}" class="pdf-article">
 {{ article.content }}
 </section>
-{% endfor %}</main>
+{% endfor %}{% endif %}</main>
 </body>
 </html>

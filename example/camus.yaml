@@ -15,7 +15,7 @@ pdf:
     # toc:
     #     index: true                        # 目录与书签标题带 "1. " 序号（正文标题不变）
     engine: chrome                          # PDF 引擎：chromium/chrome/edge（Linux 自动按 PATH 查找）；disable 时不生成 PDF
-    sort: [file_first, time_asc]            # PDF 排序数组：组顺序 file_first/dir_first/mixed + 二次时间排序 time_asc/time_desc（默认文件优先、时间正序）
+    sort: [file_first, time_asc]            # PDF 排序数组：组顺序 + 二次时间排序；含 time_* 时自动按年份分卷（默认文件优先、时间正序）
     build:                                  # Chrome/Edge 启动参数
         - --headless
         - --enable-logging
