@@ -5,7 +5,7 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
     <meta name="description" content="{{ current.desc }}"/>
-    <title>{% if current.path != "/" and current.title %}{{ current.title }} - {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
+    <title>{% if current.path != "/" and current.title %}{{ current.title }} - {{ site.title }}{% else %}{% if lead %}{{ lead.title }} | {{ site.title }}{% else %}{{ site.title }}{% endif %}{% endif %}</title>
     <link rel="icon" href="{{ with_prefix("/favicon.ico") }}"/>
     <link rel="stylesheet" href="{{ with_prefix("/css/tomato.css") }}"/>
     <link rel="stylesheet" href="{{ with_prefix("/css/style.css") }}"/>
