@@ -106,7 +106,7 @@
             <div class="tm-meta">
                 <span>{{ lead.word_count }} 字</span>
                 <span>{% if lead.read_min < 1 %}小于1分钟{% else %}约 {{ lead.read_min }} 分钟{% endif %}</span>
-                <span>更新于 {{ format_datetime(lead.write_time) }}</span>
+                <span>{{ format_datetime(lead.write_time) }}</span>
                 {% if length(lead.tags) > 0 %}<span class="tm-meta-tags">{{ join(lead.tags, " · ") }}</span>{% endif %}
                 <button id="tm-copy-link" class="tm-copy-link" type="button">复制链接</button>
             </div>
