@@ -44,8 +44,57 @@
 
 namespace
 {
-	// 单篇文章内并发下载远程图片的最大线程数（不足时按实际图片数启动）。
+	// 单篇文章内并发下载远程图片的默认最大线程数（不足时按实际图片数启动）。
 	constexpr std::size_t PDF_IMAGE_DOWNLOAD_CONCURRENCY = 6;
+
+	// 支持 CAMUS_PDF_IMAGE_DOWNLOAD_CONCURRENCY 覆盖默认并发数（非法值回退默认，最大 64）。
+	std::size_t pdf_image_download_concurrency()
+	{
+		static const std::size_t concurrency = [] {
+			constexpr std::size_t max_concurrency = 64;
+			const char *raw = std::getenv("CAMUS_PDF_IMAGE_DOWNLOAD_CONCURRENCY");
+			if (raw == nullptr) {
+				return PDF_IMAGE_DOWNLOAD_CONCURRENCY;
+			}
+
+			const std::string value = strings::trim_space(raw);
+			if (value.empty()) {
+				return PDF_IMAGE_DOWNLOAD_CONCURRENCY;
+			}
+
+			try {
+				const unsigned long parsed = std::stoul(value);
+				if (parsed < 1) {
+					logging::warn(
+						"invalid CAMUS_PDF_IMAGE_DOWNLOAD_CONCURRENCY value={}, fallback={}",
+						value,
+						PDF_IMAGE_DOWNLOAD_CONCURRENCY
+					);
+					return PDF_IMAGE_DOWNLOAD_CONCURRENCY;
+				}
+
+				if (parsed > max_concurrency) {
+					logging::warn(
+						"CAMUS_PDF_IMAGE_DOWNLOAD_CONCURRENCY value={} too large, clamp to {}",
+						parsed,
+						max_concurrency
+					);
+					return max_concurrency;
+				}
+
+				return static_cast<std::size_t>(parsed);
+			} catch (const std::exception &) {
+				logging::warn(
+					"invalid CAMUS_PDF_IMAGE_DOWNLOAD_CONCURRENCY value={}, fallback={}",
+					value,
+					PDF_IMAGE_DOWNLOAD_CONCURRENCY
+				);
+				return PDF_IMAGE_DOWNLOAD_CONCURRENCY;
+			}
+		}();
+
+		return concurrency;
+	}
 
 	// 下载远程图片时使用的桌面 Chrome UA，避免被简单的 UA 规则拦截。
 	constexpr const char *IMAGE_USER_AGENT =
@@ -574,10 +623,10 @@ namespace
 			tasks.push_back({url, cache_file});
 		}
 
-		// 第二遍（并发）：按实际任务数启动线程，最多 6 个。
+		// 第二遍（并发）：按实际任务数启动线程，上限默认 6，可由环境变量覆盖。
 		std::vector<std::string> results(tasks.size());
 		const std::size_t worker_count =
-			std::min<std::size_t>(PDF_IMAGE_DOWNLOAD_CONCURRENCY, tasks.size());
+			std::min<std::size_t>(pdf_image_download_concurrency(), tasks.size());
 		if (worker_count > 0) {
 			std::atomic<std::size_t> next{0};
 			std::vector<std::thread> threads;
