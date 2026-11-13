@@ -65,7 +65,7 @@ namespace camus
 		// 扁平章节列表（按源路径升序，含分卷信息），current 统一为 false。
 		std::vector<nlohmann::json> build_chapter_items();
 		void accumulate_article_stats(
-			const catalog::catalog_node &node, size_t word_count, double read_mins,
+			const catalog::catalog_node &node, size_t word_count, uint16_t read_mins,
 			std::unordered_map<std::string, article_stats> &stats
 		);
 		void render_single_article(

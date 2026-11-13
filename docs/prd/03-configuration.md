@@ -82,7 +82,7 @@
   - `--print-to-pdf=book.pdf`：相对路径按 `<dest_dir>/book.pdf` 解析。
 - `pdf.page.size` 与 `pdf.page.margin` 会生成 `@page { size: ...; margin: ...; }` 追加到打印样式末尾，作用于未命名页；默认 `A4` / `20mm 18mm`。同时追加 `@page cover { size: ...; margin: 0; }`，使封面命名页也使用配置的尺寸（边距保持 0）；`front` 命名页继承全局尺寸。取值同时作为 `pdf.page.size` / `pdf.page.margin` 提供给模板（见 §5.10）。
 - `pdf.page.font_size` 为 PDF 正文字号，默认 `10pt`，**仅支持 `pt` 单位**（形如 `10pt` / `10.5pt`）；非法或非 pt 值输出 WARN 并回退默认。该值写入根 CSS 变量 `--pdf-font-size`，模板中的标题、代码、表格、页脚等字号均基于该变量按比例计算（见 §5.10）。
-- `pdf.page.meta` 为字符串数组，可选值 `words`（字数）、`read-times`（阅读时长）、`created-time`（创建日期）；可任意组合或为空（不显示）。每一项会在 PDF 文章标题（`## 标题`）下自动插入一行 `pdf-article__meta` 信息，使用 ` · ` 分隔；空数组 / 未配置时不插入。
+- `pdf.page.meta` 为字符串数组，可选值 `words`（字数）、`read-times`（阅读时长）、`created-time`（创建日期）；可任意组合或为空（不显示）。每一项会在 PDF 文章标题（`## 标题`）下自动插入一行 `pdf-article__meta` 信息，使用 ` · ` 分隔；空数组 / 未配置时不插入。`read-times` 显示整数分钟，不足 1 分钟时显示「小于1分钟」（英文语种为 `<1 min`），不输出小数。
 - `pdf.toc.index` 默认 `false`；为 `true` 时目录页与书签大纲中的文章标题显示为 `1. 标题`、`2. 标题` 的序号格式，正文内标题不自动加序号。
 - `pdf.sort` 控制 PDF 中同一层内文件与子目录的排列（同时影响正文、目录页与书签大纲），默认 `file_first`：
 

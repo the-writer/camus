@@ -889,7 +889,7 @@ namespace camus
 	}
 
 	void writer::accumulate_article_stats(
-		const catalog::catalog_node &node, const size_t word_count, const double read_mins,
+		const catalog::catalog_node &node, const size_t word_count, const uint16_t read_mins,
 		std::unordered_map<std::string, article_stats> &stats
 	)
 	{
@@ -938,7 +938,7 @@ namespace camus
 		std::string markdown = strings::string_join(node.contents, "\n");
 
 		const size_t word_count = strings::estimate_effective_length(markdown);
-		const double read_mins = strings::estimate_reading_minutes(markdown);
+		const uint16_t read_mins = strings::estimate_reading_minutes(markdown);
 
 		accumulate_article_stats(node, word_count, read_mins, stats);
 
@@ -1258,6 +1258,7 @@ namespace camus
 					{"contents", lead->render_data_.page.contents},
 					{"word_count", lead->render_data_.stats.word_count},
 					{"read_min", lead->render_data_.stats.read_min},
+					{"tags", lead->property.tags},
 					{"nav", lead->render_data_.nav},
 				};
 
@@ -1586,11 +1587,15 @@ namespace camus
 									: std::format("{} words", node.render_data_.stats.word_count)
 					);
 				} else if (token == "read-times") {
-					const auto read_minutes = std::max<uint32_t>(1, node.render_data_.stats.read_min);
-					parts.push_back(
-						use_chinese ? std::format("约 {} 分钟", read_minutes)
-									: std::format("~{} min", read_minutes)
-					);
+					const uint32_t read_minutes = node.render_data_.stats.read_min;
+					if (read_minutes < 1) {
+						parts.push_back(use_chinese ? "小于1分钟" : "<1 min");
+					} else {
+						parts.push_back(
+							use_chinese ? std::format("约 {} 分钟", read_minutes)
+										: std::format("~{} min", read_minutes)
+						);
+					}
 				} else if (token == "created-time" && node.property.write_time > 0) {
 					parts.push_back(functions::format_time_t(node.property.write_time, "%Y-%m-%d"));
 				}

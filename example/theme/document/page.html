@@ -203,7 +203,7 @@
         <div class="article-meta">
             <span>{{ render_data.stats.word_count }} words</span>
             <span>&#183;</span>
-            <span>~{{ render_data.stats.read_min }} min read</span>
+            <span>{% if render_data.stats.read_min < 1 %}<1 min read{% else %}~{{ render_data.stats.read_min }} min read{% endif %}</span>
             <span>&#183;</span>
             <span>{{ format_datetime(write_time) }}</span>
         </div>

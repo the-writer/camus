@@ -190,7 +190,8 @@ link_url():
 `render_single_article` 在 Markdown 渲染前对 Markdown 文本计算（`str.cpp:294-371`）：
 
 - 有效长度 `effective_length = CJK 字符数 + (英文字母数 + 数字数) / 5`，向上取整；其它字符（标点、空格、emoji 等）不计入。
-- 阅读时长 `read_mins = (uint16_t)(effective_length / 300.0)`，向下截断；有效长度小于 300 时为 0。
+- 阅读时长 `read_mins = (uint16_t)(effective_length / 300.0)`，向下截断，始终为整数（无小数）；有效长度小于 300 时为 0。
+- 展示规则：`read_min < 1` 时统一显示「小于1分钟」（英文主题 / PDF 显示 `<1 min` / `<1 min read`），不显示 `0 分钟` 或小数；`read_min >= 1` 时显示整数分钟。`stats.read_min` 与文章页 / 目录页 `lead.read_min` 均按此规则渲染。
 - 常量来源：`READING_SPEED = 300.0`（`str.cpp:294`）。
 - 统计累加到 `stats["all"]`，以及满足 `1996 < year < 2200` 的年份桶；年份公式为 `1970 + write_time / (365 * 86400)`（**近似年**，非日历精确值）。
 - 目录节点自身的 `render_stats` 不含字数/时长（文件才有）。

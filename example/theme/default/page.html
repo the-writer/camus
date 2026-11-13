@@ -15,7 +15,7 @@
             <center>
                 <small>{{ format_datetime(page.write_time) }}</small>
                 <h1>{{ page.title }}</h1>
-                <p><font size="-1" color="#888888">{{ stats.word_count }} words &middot; ~{{ stats.read_min }} min</font>
+                <p><font size="-1" color="#888888">{{ stats.word_count }} words &middot; {% if stats.read_min < 1 %}<1 min{% else %}~{{ stats.read_min }} min{% endif %}</font>
                 </p>
                 <hr width="40%">
             </center>

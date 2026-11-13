@@ -5,7 +5,7 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
     <meta name="description" content="{{ current.desc }}"/>
-    <title>{% if current.path != "/" and current.title %}{{ current.title }} - {{ site.title }}{% else %}{% if lead %}{{ lead.title }} | {{ site.title }}{% else %}{{ site.title }}{% endif %}{% endif %}</title>
+    <title>{% if current.path != "/" and current.title %}{{ current.title }} - {{ site.title }}{% else %}首页 | {{ site.title }}{% endif %}</title>
     <link rel="icon" href="{{ with_prefix("/favicon.ico") }}"/>
     <link rel="stylesheet" href="{{ with_prefix("/css/tomato.css") }}"/>
     <link rel="stylesheet" href="{{ with_prefix("/css/style.css") }}"/>
@@ -103,8 +103,10 @@
             <h1>{{ lead.title }}</h1>
             <div class="tm-meta">
                 <span>{{ lead.word_count }} 字</span>
-                <span>约 {{ lead.read_min }} 分钟</span>
+                <span>{% if lead.read_min < 1 %}小于1分钟{% else %}约 {{ lead.read_min }} 分钟{% endif %}</span>
                 <span>更新于 {{ format_datetime(lead.write_time) }}</span>
+                {% if length(lead.tags) > 0 %}<span class="tm-meta-tags">{{ join(lead.tags, " · ") }}</span>{% endif %}
+                <button id="tm-copy-link" class="tm-copy-link" type="button">复制链接</button>
             </div>
         </header>
         <article class="tm-content">{{ lead.contents }}</article>

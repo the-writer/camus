@@ -102,8 +102,9 @@
             <h1>{{ page.title }}</h1>
             <div class="tm-meta">
                 <span>{{ stats.word_count }} 字</span>
-                <span>约 {{ stats.read_min }} 分钟</span>
+                <span>{% if stats.read_min < 1 %}小于1分钟{% else %}约 {{ stats.read_min }} 分钟{% endif %}</span>
                 <span>更新于 {{ format_datetime(page.write_time) }}</span>
+                {% if length(tags) > 0 %}<span class="tm-meta-tags">{{ join(tags, " · ") }}</span>{% endif %}
                 <button id="tm-copy-link" class="tm-copy-link" type="button">复制链接</button>
             </div>
         </header>
