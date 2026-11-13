@@ -665,8 +665,7 @@ body.tomato {
 .tm-pager {
     display: flex;
     gap: 14px;
-    padding-top: 26px;
-    border-top: 1px solid var(--tm-border);
+    padding-top: 40px;
 }
 
 .tm-pager > a,
