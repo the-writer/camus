@@ -2147,6 +2147,7 @@ namespace camus
 		// chinese_ratio() 返回百分比，0.5 即 50%。
 		const bool use_chinese = cn_ratio > 50.0;
 		const std::string label_cover = use_chinese ? "封面" : "Cover";
+		const std::string label_title_page = use_chinese ? "扉页" : "Title Page";
 		const std::string label_contents = use_chinese ? "目录" : "Contents";
 		const std::string label_site = use_chinese ? "站点" : "Site";
 		const std::string label_generated = use_chinese ? "生成时间" : "Generated";
@@ -2465,6 +2466,7 @@ namespace camus
 
 		pdf["labels"] = {
 			{"cover", label_cover},
+			{"title_page", label_title_page},
 			{"contents", label_contents},
 			{"site", label_site},
 			{"generated", label_generated},
@@ -2745,9 +2747,10 @@ namespace camus
 
 		std::vector<pdf::outline_entry> outline_entries;
 
-		// 前置封面、目录页的顶层书签；仅当当前模板生成了对应命名目标时加入。
+		// 前置封面、扉页、目录页的顶层书签；仅当当前模板生成了对应命名目标时加入。
 		const std::pair<std::string, std::string> fixed_entries[] = {
 			{label_cover, "pdf-cover"},
+			{label_title_page, "pdf-title-page"},
 			{label_contents, "pdf-toc"},
 		};
 
