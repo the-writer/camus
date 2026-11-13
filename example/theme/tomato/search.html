@@ -158,12 +158,16 @@
             <button id="tm-month-btn" class="tm-toc-action" type="button" aria-haspopup="true" aria-expanded="false" hidden>
                 时间 <span class="tm-caret" aria-hidden="true">⌄</span>
             </button>
+            <button id="tm-tag-btn" class="tm-toc-action" type="button" aria-haspopup="true" aria-expanded="false" hidden>
+                标签 <span class="tm-caret" aria-hidden="true">⌄</span>
+            </button>
             <button id="tm-reverse-btn" class="tm-toc-action" type="button" aria-pressed="false">倒序</button>
             <button id="tm-index-btn" class="tm-toc-action" type="button" aria-pressed="false">序号</button>
             <a id="tm-search-btn" class="tm-toc-action" href="{{ path_prefix }}/search.html" aria-label="搜索" title="搜索"><span class="tm-search-icon" style="-webkit-mask-image: url('{{ with_prefix("/icons/search.svg") }}'); mask-image: url('{{ with_prefix("/icons/search.svg") }}');"></span></a>
         </div>
         <div id="tm-volume-menu" class="tm-volume-menu" hidden></div>
         <div id="tm-month-menu" class="tm-volume-menu" hidden></div>
+        <div id="tm-tag-menu" class="tm-volume-menu" hidden></div>
     </div>
 
     <nav class="tm-chapters" id="tm-chapters" aria-label="章节列表">
@@ -173,6 +177,7 @@
            data-volume="{{ chapter.volume }}"
            data-volume-key="{{ chapter.volume_key }}"
            data-write-time="{{ chapter.write_time }}"
+           data-tags="{{ join(chapter.tags, ",") }}"
            data-tip="{{ chapter.title }}"><span class="tm-chapter-title">{{ chapter.title }}</span></a>
         {% endfor %}
     </nav>

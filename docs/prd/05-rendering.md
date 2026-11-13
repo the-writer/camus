@@ -38,6 +38,7 @@
 window.CAMUS_TOMATO = {
   volume:  { enabled: true },
   month:   { enabled: true },
+  tag:     { enabled: true },
   reverse: { enabled: true, default: false },
   index:   { enabled: true, default: false },
   font: {
@@ -47,7 +48,7 @@ window.CAMUS_TOMATO = {
 };
 ```
 
-- `enabled=false` 时对应按钮直接隐藏（分卷 / 时间 / 倒序 / 序号四项都支持）。
+- `enabled=false` 时对应按钮直接隐藏（分卷 / 时间 / 标签 / 倒序 / 序号五项都支持）。
 - `reverse` / `index` 的 `default` 表示无本地记录时是否默认选中；已有 `localStorage` 记录优先。
 - `font.family` / `font.size` 为正文默认字体与字号：`font.size` 会限制在 14–40px，且已有 `localStorage` 字号记录优先；`font.family` 写入 CSS 变量 `--tm-font-family`。
 - 仅当 `window.CAMUS_THEME === "tomato"` 时 `tomato.js` 才应用这些开关；tomato 模板将 `onload.js` 放在 `tomato.js` 之前加载。
@@ -56,7 +57,7 @@ window.CAMUS_TOMATO = {
 
 `document` / `pixel` / `terminal` / `tomato` 的正文样式区分行内代码与围栏代码块：`pre` 内的 `code` 不再套用行内代码的边框、底色与内边距，代码块边框只由 `pre` 提供。四个主题均从 CDN 加载 highlight.js 进行语法高亮（`tomato` 同时覆盖首页正文），并在 `assets/js/highlight-init.js` 中把 `language-shell` 统一映射为 bash 语法后调用 `highlightAll()`，因此 `shell` / `ini` 等围栏代码会正常着色。
 
-`tomato` 是小说阅读主题：左侧为章节目录（桌面端可点击折叠，移动端默认隐藏并以遮罩抽屉展开），右侧为正文；上一章 / 下一章仅显示按钮文案，并按章节目录的源路径升序取相邻文章（`nav.chapter_prev_*` / `nav.chapter_next_*`），与侧栏目录顺序一致。侧栏底部「友链」右侧提供「搜索」入口，目录栏「序号」右侧提供放大镜按钮，均跳转独立搜索页（`search.html`）；目录支持按分卷筛选（`分卷` 下拉，含「全部分卷」「无分卷」与各不重复分卷；下拉菜单默认宽 200px、右对齐且菜单项行高紧凑）、按时间筛选（`分卷` 右侧的 `时间` 下拉，按文章 `write_time` 的 UTC 月份分组，已存在的月份显示为 `YYYY-MM`，含「全部时间」；每个时间项的右侧显示文章数量（含全部时间总数），与分卷筛选可叠加）、倒序（`倒序`）与数字序号（`序号`，右对齐，数字后带 `.`；列宽至少两位数字，并随全书章节数增长），分卷标题在目录中以单独一行的小标题展示；章节名过长时单行省略（`...`），副标题与章节名在内容被截断时，悬浮/聚焦会通过主题自绘的深色提示框（非系统原生 `title`）显示完整文本。提供字号调节（默认 `14px`，范围 `14–40px`）与主题模式（自动 / 白天 / 夜间，自动模式跟随系统深浅色），均通过 `localStorage` 持久化并在下次访问时自动恢复（键 `tomato-font-size`、`tomato-theme`（`auto` / `light` / `dark`）、`tomato-reverse`、`tomato-index`、`tomato-sidebar-collapsed`（桌面端目录折叠，`1` / `0`；移动端目录仍默认隐藏））。当根路由设置了非空 `logo`（未设置时回退 `cover`，兼容旧键 `cover_image`）时，目录顶部标题区分为左右两栏：标题区默认由内容与封面共同撑开，最高限制为 150px（`max-height`，含内边距）；左侧封面始终 70px 宽并按原图比例展示（不拉伸高度），且不会因标题/简介为空而被裁切；封面（LOGO）本身是链接，点击返回站点首页（`path_prefix` 根路径）；右侧显示标题与副标题，副标题超出可用高度时自动省略（`...`）。未设置封面时保持单栏。封面地址支持绝对 URL 原样使用，相对路径会去除 `assets/` 前缀并按输出根目录拼上 `path_prefix`（`assets/` 内容构建时提升到输出根目录），加载失败时回退为单栏。页面数据使用文章页的 `chapters` 扁平章节列表；目录页（首页）使用 `lead` 直接展示目录子树的第一篇文章正文（含上一章/下一章），侧栏使用 `chapters` 渲染与文章页一致的目录（分卷/倒序/序号），结构与文章页相同；统计页与友链页的侧栏也使用同一 `chapters` 列表与控件，保持目录完整、可用；侧边栏底部右侧显示 `v{{ build.version }}` 版本链接（`<a>`），新窗口跳转该版本的 GitHub Release 页面（`{git.repo}/releases/tag/v{version}`），悬浮提示（`title`）显示完整纯文本 `build.powered_by_text`。正文表格使用低饱和度主题色配色：表头为暗调番茄色（亮色 `--tm-table-head-bg: #ad5642`、暗色 `#8a4d3f`）底，亮色主题下白字、暗色主题下浅色字；边框与奇偶行条纹使用同色系但降低饱和度的独立变量（`--tm-table-border`、`--tm-table-stripe`），不再直接取高饱和强调色，避免白天 / 夜间过亮。文章页与目录页（首页）的 Meta 信息行在末尾展示文章标签（`tags` / `lead.tags`，多个标签以 ` · ` 分隔），并提供「复制链接」按钮（无额外样式，随 Meta 文本），点击复制当前页面 URL（优先 `navigator.clipboard`，不可用时回退 `execCommand`），成功后按钮短暂显示「已复制」。根目录（`/`）页面 `<title>` 固定为 `首页 | 主标题`（`site.title`），子目录页面仍为 `目录名 - 主标题`。样式位于 `assets/css/tomato.css`，交互位于 `assets/js/tomato.js`。
+`tomato` 是小说阅读主题：左侧为章节目录（桌面端可点击折叠，移动端默认隐藏并以遮罩抽屉展开），右侧为正文；上一章 / 下一章仅显示按钮文案，并按章节目录的源路径升序取相邻文章（`nav.chapter_prev_*` / `nav.chapter_next_*`），与侧栏目录顺序一致。侧栏底部「友链」右侧提供「搜索」入口，目录栏「序号」右侧提供放大镜按钮，均跳转独立搜索页（`search.html`）；目录支持按分卷筛选（`分卷` 下拉，含「全部分卷」「无分卷」与各不重复分卷；下拉菜单默认宽 200px、最高 400px、右对齐且菜单项行高紧凑）、按时间筛选（`时间` 下拉，按文章 `write_time` 的 UTC 月份分组，已存在的月份显示为 `YYYY-MM`，含「全部时间」；每个时间项的右侧显示文章数量（含全部时间总数），与分卷筛选可叠加）、按标签筛选（`标签` 下拉，列出全部标签并按文章数降序、同数按名称升序，含「全部标签」；每项右侧显示文章数量，可与分卷 / 时间筛选叠加）、倒序（`倒序`）与数字序号（`序号`，右对齐，数字后带 `.`；列宽至少两位数字，并随全书章节数增长），分卷标题在目录中以单独一行的小标题展示；章节名过长时单行省略（`...`），副标题与章节名在内容被截断时，悬浮/聚焦会通过主题自绘的深色提示框（非系统原生 `title`）显示完整文本。提供字号调节（默认 `14px`，范围 `14–40px`）与主题模式（自动 / 白天 / 夜间，自动模式跟随系统深浅色），均通过 `localStorage` 持久化并在下次访问时自动恢复（键 `tomato-font-size`、`tomato-theme`（`auto` / `light` / `dark`）、`tomato-reverse`、`tomato-index`、`tomato-sidebar-collapsed`（桌面端目录折叠，`1` / `0`；移动端目录仍默认隐藏））。当根路由设置了非空 `logo`（未设置时回退 `cover`，兼容旧键 `cover_image`）时，目录顶部标题区分为左右两栏：标题区默认由内容与封面共同撑开，最高限制为 150px（`max-height`，含内边距）；左侧封面始终 70px 宽并按原图比例展示（不拉伸高度），且不会因标题/简介为空而被裁切；封面（LOGO）本身是链接，点击返回站点首页（`path_prefix` 根路径）；右侧显示标题与副标题，副标题超出可用高度时自动省略（`...`）。未设置封面时保持单栏。封面地址支持绝对 URL 原样使用，相对路径会去除 `assets/` 前缀并按输出根目录拼上 `path_prefix`（`assets/` 内容构建时提升到输出根目录），加载失败时回退为单栏。页面数据使用文章页的 `chapters` 扁平章节列表；目录页（首页）使用 `lead` 直接展示目录子树的第一篇文章正文（含上一章/下一章），侧栏使用 `chapters` 渲染与文章页一致的目录（分卷/倒序/序号），结构与文章页相同；统计页与友链页的侧栏也使用同一 `chapters` 列表与控件，保持目录完整、可用；侧边栏底部右侧显示 `v{{ build.version }}` 版本链接（`<a>`），新窗口跳转该版本的 GitHub Release 页面（`{git.repo}/releases/tag/v{version}`），悬浮提示（`title`）显示完整纯文本 `build.powered_by_text`。正文表格使用低饱和度主题色配色：表头为暗调番茄色（亮色 `--tm-table-head-bg: #ad5642`、暗色 `#8a4d3f`）底，亮色主题下白字、暗色主题下浅色字；边框与奇偶行条纹使用同色系但降低饱和度的独立变量（`--tm-table-border`、`--tm-table-stripe`），不再直接取高饱和强调色，避免白天 / 夜间过亮。文章页与目录页（首页）的 Meta 信息行在末尾展示文章标签（`tags` / `lead.tags`，多个标签以 ` · ` 分隔），并提供「复制链接」按钮（无额外样式，随 Meta 文本），点击复制当前页面 URL（优先 `navigator.clipboard`，不可用时回退 `execCommand`），成功后按钮短暂显示「已复制」。根目录（`/`）页面 `<title>` 固定为 `首页 | 主标题`（`site.title`），子目录页面仍为 `目录名 - 主标题`。样式位于 `assets/css/tomato.css`，交互位于 `assets/js/tomato.js`。
 
 ## 5.2 Markdown 渲染
 
@@ -119,7 +120,7 @@ flowchart TD
 | `nav.prev_path` / `nav.prev_title` | 字符串 | 上一篇（按更新时间更新） |
 | `nav.chapter_prev_path` / `nav.chapter_prev_title` | 字符串 | 上一章（按章节目录的源路径升序） |
 | `nav.chapter_next_path` / `nav.chapter_next_title` | 字符串 | 下一章（按章节目录的源路径升序） |
-| `chapters` | 数组 | 全部非 `hidden` 文章的扁平章节列表，按源路径升序；每项含 `title`、`path`、`write_time`、`current`（是否为当前文章）、`volume`（所属目录显示名）与 `volume_key`（所属目录路径，用于分组；根目录下的文章均为空串）。供 `tomato` 等阅读主题渲染章节目录 |
+| `chapters` | 数组 | 全部非 `hidden` 文章的扁平章节列表，按源路径升序；每项含 `title`、`path`、`write_time`、`tags`（标签数组）、`current`（是否为当前文章）、`volume`（所属目录显示名）与 `volume_key`（所属目录路径，用于分组；根目录下的文章均为空串）。供 `tomato` 等阅读主题渲染章节目录与标签筛选 |
 | `render_data.stats/page/nav` | 对象 | 节点自带的渲染数据（与顶层 `stats/page/nav` 同源） |
 
 `page.html` 渲染后还会做 HTML 后处理（见 §5.8）。
@@ -137,7 +138,7 @@ flowchart TD
 | `items` | 数组 | 当前目录直接子节点（过滤 `hidden` 与 `hidden_in_toc`；目录优先，再按时间降序、`path` 升序） |
 | `current` | 对象 | 当前目录节点 JSON（含 `render_data`）；其中 `current.path` 被覆盖为相对目录树路径（根为 `/`） |
 | `lead` | 对象 | 当前目录子树中按路径升序的第一篇非 `hidden` 文章（无则不存在）：`title`、`path`、`write_time`、`contents`（已渲染正文 HTML）、`word_count`、`read_min`（整数）、`tags`（数组）、`nav`（上一章/下一章）；目录页由 `tomato` 用于直接展示正文 |
-| `chapters` | 数组 | 与文章页相同的扁平章节列表（含 `volume` / `volume_key`）；`tomato` 的目录页侧栏据此渲染分卷、倒序、序号等，并把 `lead` 标记为当前章节 |
+| `chapters` | 数组 | 与文章页相同的扁平章节列表（含 `tags` / `volume` / `volume_key`）；`tomato` 的目录页侧栏据此渲染分卷、时间、标签、倒序、序号等，并把 `lead` 标记为当前章节 |
 | 其余键 | — | `conf_.json()` 的顶层键（`camus/source_dir/assets_dir/sitemap/filename_case/public_url/protocol/domain_name/path_prefix/render/friends/site/route/git/build`）被合并进来 |
 
 

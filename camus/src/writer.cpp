@@ -898,6 +898,7 @@ namespace camus
 			item["title"] = article->property.display_name;
 			item["path"] = filesystem::clean_path(article->link_url(), conf_.camus().public_url.path_prefix);
 			item["write_time"] = article->property.write_time;
+			item["tags"] = article->property.tags;
 			item["current"] = false;
 
 			// volume_key 用于分组（目录路径），volume 为展示用标题。

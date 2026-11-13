@@ -10,6 +10,7 @@
     window.CAMUS_TOMATO = {
         volume: { enabled: true },
         month: { enabled: true },
+        tag: { enabled: true },
         reverse: { enabled: true, default: false },
         index: { enabled: true, default: false },
         font: {

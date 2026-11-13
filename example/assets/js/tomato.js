@@ -180,12 +180,14 @@
         });
     }
 
-    // ── 章节目录：分卷 / 时间 / 倒序 / 序号 ──
+    // ── 章节目录：分卷 / 时间 / 标签 / 倒序 / 序号 ──
     var chaptersNav = document.getElementById("tm-chapters");
     var volumeBtn = document.getElementById("tm-volume-btn");
     var volumeMenu = document.getElementById("tm-volume-menu");
     var monthBtn = document.getElementById("tm-month-btn");
     var monthMenu = document.getElementById("tm-month-menu");
+    var tagBtn = document.getElementById("tm-tag-btn");
+    var tagMenu = document.getElementById("tm-tag-menu");
     var reverseBtn = document.getElementById("tm-reverse-btn");
     var indexBtn = document.getElementById("tm-index-btn");
 
@@ -219,6 +221,7 @@
                 volume: link.getAttribute("data-volume") || "",
                 volumeKey: link.getAttribute("data-volume-key") || "",
                 writeTime: parseInt(link.getAttribute("data-write-time"), 10) || 0,
+                tags: (link.getAttribute("data-tags") || "").split(",").filter(Boolean),
                 current: link.classList.contains("tm-current"),
                 index: i + 1
             });
@@ -229,12 +232,14 @@
         var NONE_VOLUME = "__none__";
         var volumeEnabled = controlEnabled("volume");
         var monthEnabled = controlEnabled("month");
+        var tagEnabled = controlEnabled("tag");
         var reverseEnabled = controlEnabled("reverse");
         var indexEnabled = controlEnabled("index");
         var reverse = reverseEnabled && readToggle(REVERSE_KEY, controlDefault("reverse"));
         var showIndex = indexEnabled && readToggle(INDEX_KEY, controlDefault("index"));
         var volumeFilter = "";
         var monthFilter = "";
+        var tagFilter = "";
 
         // 供搜索页使用：按链接查询章节序号（序号开关关闭时返回 0）。
         var chapterIndexByHref = {};
@@ -288,11 +293,37 @@
             return !!item.month;
         }).length;
 
+        var tagCounts = {};
+        items.forEach(function (item) {
+            var seen = {};
+            item.tags.forEach(function (tag) {
+                if (!tag || seen[tag]) {
+                    return;
+                }
+                seen[tag] = true;
+                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+            });
+        });
+        var tags = Object.keys(tagCounts).sort(function (a, b) {
+            if (tagCounts[b] !== tagCounts[a]) {
+                return tagCounts[b] - tagCounts[a];
+            }
+            return a.localeCompare(b);
+        }).map(function (tag) {
+            return { key: tag, count: tagCounts[tag] };
+        });
+        var totalTagItems = items.filter(function (item) {
+            return item.tags.length > 0;
+        }).length;
+
         if (volumeBtn) {
             volumeBtn.hidden = !volumeEnabled || (volumes.length === 0 && !hasNoVolume);
         }
         if (monthBtn) {
             monthBtn.hidden = !monthEnabled || months.length === 0;
+        }
+        if (tagBtn) {
+            tagBtn.hidden = !tagEnabled || tags.length === 0;
         }
         if (reverseBtn) {
             reverseBtn.hidden = !reverseEnabled;
@@ -317,6 +348,7 @@
             renderChapters();
             closeVolumeMenu();
             closeMonthMenu();
+            closeTagMenu();
             chaptersNav.scrollTop = 0;
         }
 
@@ -366,12 +398,23 @@
             }
         }
 
+        function closeTagMenu() {
+            if (!tagMenu) {
+                return;
+            }
+            tagMenu.hidden = true;
+            if (tagBtn) {
+                tagBtn.setAttribute("aria-expanded", "false");
+            }
+        }
+
         function selectMonth(month) {
             monthFilter = month;
             buildMonthMenu();
             renderChapters();
             closeMonthMenu();
             closeVolumeMenu();
+            closeTagMenu();
             chaptersNav.scrollTop = 0;
         }
 
@@ -407,6 +450,48 @@
             });
         }
 
+        function selectTag(tag) {
+            tagFilter = tag;
+            buildTagMenu();
+            renderChapters();
+            closeTagMenu();
+            closeVolumeMenu();
+            closeMonthMenu();
+            chaptersNav.scrollTop = 0;
+        }
+
+        function appendTagItem(menu, label, value, count) {
+            var item = document.createElement("a");
+            item.className = "tm-volume-item tm-volume-item-split" + (tagFilter === value ? " is-active" : "");
+
+            var text = document.createElement("span");
+            text.className = "tm-volume-label";
+            text.textContent = label;
+            item.appendChild(text);
+
+            var number = document.createElement("span");
+            number.className = "tm-volume-count";
+            number.textContent = String(count);
+            item.appendChild(number);
+
+            item.addEventListener("click", function () {
+                selectTag(value);
+            });
+            menu.appendChild(item);
+        }
+
+        function buildTagMenu() {
+            if (!tagMenu) {
+                return;
+            }
+
+            tagMenu.innerHTML = "";
+            appendTagItem(tagMenu, "全部标签", "", totalTagItems);
+            tags.forEach(function (tag) {
+                appendTagItem(tagMenu, tag.key, tag.key, tag.count);
+            });
+        }
+
         function renderChapters() {
             var list = items.filter(function (item) {
                 if (volumeFilter === NONE_VOLUME) {
@@ -418,6 +503,10 @@
                 }
 
                 if (monthFilter !== "" && item.month !== monthFilter) {
+                    return false;
+                }
+
+                if (tagFilter !== "" && item.tags.indexOf(tagFilter) === -1) {
                     return false;
                 }
 
@@ -450,6 +539,7 @@
                 link.setAttribute("data-tip", item.title);
                 link.setAttribute("data-volume", item.volume);
                 link.setAttribute("data-volume-key", item.volumeKey);
+                link.setAttribute("data-tags", item.tags.join(","));
 
                 if (showIndex) {
                     var number = document.createElement("span");
@@ -467,7 +557,7 @@
                 bindTip(link);
             });
 
-            if (volumeFilter === "" && monthFilter === "") {
+            if (volumeFilter === "" && monthFilter === "" && tagFilter === "") {
                 var current = chaptersNav.querySelector(".tm-chapter.tm-current");
                 if (current) {
                     var navRect = chaptersNav.getBoundingClientRect();
@@ -502,6 +592,7 @@
                 }
                 if (volumeMenu.hidden) {
                     closeMonthMenu();
+                    closeTagMenu();
                     buildVolumeMenu();
                     volumeMenu.hidden = false;
                     volumeBtn.setAttribute("aria-expanded", "true");
@@ -519,11 +610,30 @@
                 }
                 if (monthMenu.hidden) {
                     closeVolumeMenu();
+                    closeTagMenu();
                     buildMonthMenu();
                     monthMenu.hidden = false;
                     monthBtn.setAttribute("aria-expanded", "true");
                 } else {
                     closeMonthMenu();
+                }
+            });
+        }
+
+        if (tagBtn) {
+            tagBtn.addEventListener("click", function (event) {
+                event.stopPropagation();
+                if (!tagMenu) {
+                    return;
+                }
+                if (tagMenu.hidden) {
+                    closeVolumeMenu();
+                    closeMonthMenu();
+                    buildTagMenu();
+                    tagMenu.hidden = false;
+                    tagBtn.setAttribute("aria-expanded", "true");
+                } else {
+                    closeTagMenu();
                 }
             });
         }
@@ -538,6 +648,11 @@
                 !monthMenu.contains(event.target) &&
                 !(monthBtn && monthBtn.contains(event.target))) {
                 closeMonthMenu();
+            }
+            if (tagMenu && !tagMenu.hidden &&
+                !tagMenu.contains(event.target) &&
+                !(tagBtn && tagBtn.contains(event.target))) {
+                closeTagMenu();
             }
         });
 

@@ -267,7 +267,7 @@ body.tomato {
     width: 200px;
     max-width: calc(100% - 24px);
     z-index: 60;
-    max-height: 60vh;
+    max-height: 400px;
     padding: 6px;
     overflow-y: auto;
     background: var(--tm-panel);
