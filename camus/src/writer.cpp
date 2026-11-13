@@ -1906,16 +1906,6 @@ namespace camus
 			return filesystem::clean_path(name, conf_.camus().public_url.path_prefix);
 		});
 
-		inja_.add_callback("with_cdn", 1, [&](const inja::Arguments &args) {
-			const std::string name = args.at(0)->get<std::string>();
-			const auto camus = conf_.camus();
-			const std::string path = filesystem::clean_path(name, camus.public_url.path_prefix);
-			if (camus.cdn_url.empty()) {
-				return path;
-			}
-
-			return std::format("{}{}", camus.cdn_url, path);
-		});
 	}
 
 	void writer::watch()

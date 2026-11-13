@@ -92,10 +92,6 @@ filename_case: keep        # keep | uuid
 # https://the-writer.github.io/camus/ -> https:// + the-writer.github.io + /camus
 public_url: https://the-writer.github.io/camus/
 
-# Optional CDN base URL used by with_cdn(). Empty by default; when empty,
-# with_cdn(path) returns with_prefix(path) (including path_prefix).
-cdn_url: ''                # e.g. https://the-writer.github.io/camus
-
 theme: terminal
 pdf:
   engine: chrome           # use "disable" to skip PDF generation
@@ -120,19 +116,20 @@ friends:
     image_url: https://the-writer.github.io/camus/logo.png
     desc: What's past is prologue.
 
-# Move directory contents to another output path
+# Move directory contents to another output path, and define text replacements
 build:
-  - path: /introduction
-    transfers:
-      - source: .
-        target: /intro/Well-known
+  transfer:
+    - path: /introduction
+      transfers:
+        - source: .
+          target: /intro/Well-known
+  env:
+    assets_cdn: ''         # ${env.ASSETS_CDN}; empty by default
 ```
 
 All scalar config values can be overridden by a `CAMUS_<PATH>` environment variable (e.g. `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`, `html.copy_pdf` → `CAMUS_HTML_COPY_PDF`, `html.download_cover` → `CAMUS_HTML_DOWNLOAD_COVER`, `theme` → `CAMUS_THEME`). Arrays/lists such as `html.build`, `pdf.build`, `friends` and `build` cannot be injected.
 
 `public_url` accepts with or without a protocol. Missing protocols default to `https://`; a trailing slash is normalized away. It drives absolute links, the sitemap, and PDF cover data.
-
-`cdn_url` is optional and empty by default. When set, `with_cdn(path)` returns `cdn_url + with_prefix(path)`; when empty it returns `with_prefix(path)`, so the `public_url.path_prefix` is always applied. In watch mode (`-W`), both `public_url` and `cdn_url` are ignored so local builds use root-relative paths.
 
 ### Directory metadata (`SUMMARY.md`)
 
@@ -220,7 +217,6 @@ Themes contain `home.html`, `page.html`, `stats.html` and `friends.html`, loaded
 | Helper | Description |
 |---|---|
 | `{{ with_prefix("/css/site.css") }}` | Prefix a path with `path_prefix` |
-| `{{ with_cdn("/css/site.css") }}` | Prefix with `cdn_url` plus `path_prefix`; falls back to `with_prefix(path)` when `cdn_url` is empty |
 
 ## Output
 

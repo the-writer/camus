@@ -92,9 +92,6 @@ filename_case: keep        # keep | uuid
 # https://the-writer.github.io/camus/ -> https:// + the-writer.github.io + /camus
 public_url: https://the-writer.github.io/camus/
 
-# 可选的 CDN 地址，供 with_cdn() 使用；默认空，为空时 with_cdn(path) 返回 with_prefix(path)（含 path_prefix）
-cdn_url: ''                # 例如 https://the-writer.github.io/camus
-
 theme: terminal
 pdf:
   engine: chrome           # 设为 disable 时跳过 PDF 生成
@@ -119,19 +116,20 @@ friends:
     image_url: https://the-writer.github.io/camus/logo.png
     desc: What's past is prologue.
 
-# 目录搬运规则：把 path 目录的内容映射到 target 输出路径
+# 目录搬运规则（build.transfer），并定义文本替换（build.env）
 build:
-  - path: /introduction
-    transfers:
-      - source: .
-        target: /intro/Well-known
+  transfer:
+    - path: /introduction
+      transfers:
+        - source: .
+          target: /intro/Well-known
+  env:
+    assets_cdn: ''         # ${env.ASSETS_CDN}，默认空
 ```
 
 所有标量配置项都可用 `CAMUS_<PATH>` 环境变量覆盖（如 `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`、`html.copy_pdf` → `CAMUS_HTML_COPY_PDF`、`html.download_cover` → `CAMUS_HTML_DOWNLOAD_COVER`、`theme` → `CAMUS_THEME`）；数组/列表（`html.build`、`pdf.build`、`friends`、`build`）不支持注入。
 
 `public_url` 可带协议也可省略：省略时默认 `https://`，末尾多余的 `/` 会被归一化。它用于绝对链接、sitemap 与 PDF 封面信息。
-
-`cdn_url` 可选、默认空。设置后 `with_cdn(path)` 返回 `cdn_url + with_prefix(path)`；为空时返回 `with_prefix(path)`，始终带上 `public_url.path_prefix`。监听模式（`-W`）下会忽略 `public_url` 与 `cdn_url`，本地构建使用根相对路径。
 
 ### 目录元信息（`SUMMARY.md`）
 
@@ -219,7 +217,6 @@ visibility: open
 | 函数 | 说明 |
 |---|---|
 | `{{ with_prefix("/css/site.css") }}` | 为路径加上 `path_prefix` |
-| `{{ with_cdn("/css/site.css") }}` | 用 `cdn_url + path_prefix` 拼接；`cdn_url` 为空时回退到 `with_prefix(path)`（含 `path_prefix`） |
 
 ## 输出
 

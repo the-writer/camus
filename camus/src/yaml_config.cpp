@@ -198,37 +198,64 @@ namespace camus::config
 			return std::nullopt;
 		}
 
-		// build.env 的键统一转为大写，生成 $KEY 与 ${KEY} 两种无条件替换模式；
-		// 长模式优先执行，避免 $KEY 抢先匹配 ${KEY} 或更长的键。
+		// build.env 的每个键生成多种无条件替换模式：
+		// $KEY、${KEY}、$ENV_KEY、${env.key}、${env.KEY}（KEY 为大写形式）。
+		// ASSETS_CDN 始终存在，未配置时以空串参与替换。
+		// 长模式优先执行，避免短模式抢先匹配更长的键。
 		std::vector<std::pair<std::string, std::string>> build_env_replacements(const YAML::Node &env)
 		{
+			struct env_entry {
+				std::string raw;
+				std::string upper;
+				std::string value;
+			};
+
+			std::vector<env_entry> entries;
+			if (env && !env.IsNull()) {
+				if (!env.IsMap()) {
+					logging::warn("ignore invalid build.env reason=not a map");
+				} else {
+					for (const auto &item : env) {
+						if (!item.first.IsScalar() || (!item.second.IsScalar() && !item.second.IsNull())) {
+							logging::warn("ignore invalid build.env entry reason=non-scalar");
+							continue;
+						}
+
+						std::string raw = item.first.as<std::string>();
+						if (raw.empty()) {
+							continue;
+						}
+
+						std::string upper = raw;
+						for (char &c : upper) {
+							c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+						}
+
+						entries.push_back({
+							.raw = std::move(raw),
+							.upper = std::move(upper),
+							.value = item.second.IsNull() ? "" : item.second.as<std::string>(),
+						});
+					}
+				}
+			}
+
+			const bool has_assets_cdn = std::ranges::any_of(entries, [](const env_entry &entry) {
+				return entry.upper == "ASSETS_CDN";
+			});
+			if (!has_assets_cdn) {
+				entries.push_back({.raw = "assets_cdn", .upper = "ASSETS_CDN", .value = ""});
+			}
+
 			std::vector<std::pair<std::string, std::string>> replacements;
-			if (!env || env.IsNull()) {
-				return replacements;
-			}
-
-			if (!env.IsMap()) {
-				logging::warn("ignore invalid build.env reason=not a map");
-				return replacements;
-			}
-
-			for (const auto &item : env) {
-				if (!item.first.IsScalar() || (!item.second.IsScalar() && !item.second.IsNull())) {
-					logging::warn("ignore invalid build.env entry reason=non-scalar");
-					continue;
+			for (const auto &entry : entries) {
+				replacements.emplace_back("${" + entry.upper + "}", entry.value);
+				replacements.emplace_back("$" + entry.upper, entry.value);
+				replacements.emplace_back("$ENV_" + entry.upper, entry.value);
+				replacements.emplace_back("${env." + entry.raw + "}", entry.value);
+				if (entry.upper != entry.raw) {
+					replacements.emplace_back("${env." + entry.upper + "}", entry.value);
 				}
-
-				std::string key = item.first.as<std::string>();
-				for (char &c : key) {
-					c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-				}
-				if (key.empty()) {
-					continue;
-				}
-
-				const std::string value = item.second.IsNull() ? "" : item.second.as<std::string>();
-				replacements.emplace_back("${" + key + "}", value);
-				replacements.emplace_back("$" + key, value);
 			}
 
 			std::ranges::sort(replacements, [](const auto &a, const auto &b) {
@@ -309,7 +336,6 @@ namespace camus::config
 		public_config_["protocol"] = camus_.public_url.protocol;
 		public_config_["domain_name"] = camus_.public_url.domain_name;
 		public_config_["path_prefix"] = camus_.public_url.path_prefix;
-		public_config_["cdn_url"] = camus_.cdn_url;
 		public_config_["render"] = camus_.render;
 		public_config_["pdf"] = camus_.pdf;
 		public_config_["friends"] = camus_.friends;
@@ -667,13 +693,6 @@ namespace camus::config
 				continue;
 			}
 
-			if (key == "cdn_url") {
-				camus_.cdn_url = strings::trim_space(get_string(it.second));
-				while (camus_.cdn_url.size() > 1 && camus_.cdn_url.ends_with('/')) {
-					camus_.cdn_url.pop_back();
-				}
-				continue;
-			}
 		}
 
 		// 所有标量配置项都可由 CAMUS_<PATH> 环境变量覆盖（优先于 camus.yaml）。
@@ -703,13 +722,6 @@ namespace camus::config
 
 		if (const auto value = env_override("public_url"); value.has_value()) {
 			camus_.public_url = parse_public_url(*value);
-		}
-
-		if (const auto value = env_override("cdn_url"); value.has_value()) {
-			camus_.cdn_url = strings::trim_space(*value);
-			while (camus_.cdn_url.size() > 1 && camus_.cdn_url.ends_with('/')) {
-				camus_.cdn_url.pop_back();
-			}
 		}
 
 		if (const auto value = env_override("theme"); value.has_value()) {
@@ -754,10 +766,9 @@ namespace camus::config
 		// 监听模式由本地服务访问，公网地址无意义，按未配置处理
 		if (watch_mode_) {
 			camus_.public_url = {};
-			camus_.cdn_url.clear();
 		}
 
-		// build.env：配置文件中以 $KEY / ${KEY}（KEY 为环境变量名大写）的形式
+		// build.env：配置文件中以 $KEY / ${KEY} / $ENV_KEY / ${env.key} 的形式
 		// 在后续读取的文本文件里无条件替换为对应值。
 		if (const YAML::Node build = root["build"]; build && build.IsMap()) {
 			filesystem::set_text_replacements(build_env_replacements(build["env"]));
@@ -1023,7 +1034,6 @@ namespace camus::config
 		camus_json["protocol"] = camus_.public_url.protocol;
 		camus_json["domain_name"] = camus_.public_url.domain_name;
 		camus_json["path_prefix"] = camus_.public_url.path_prefix;
-		camus_json["cdn_url"] = camus_.cdn_url;
 		camus_json["render"] = camus_.render;
 		camus_json["html"] = camus_.html;
 		camus_json["pdf"] = camus_.pdf;

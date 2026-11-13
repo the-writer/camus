@@ -166,8 +166,6 @@ namespace camus::config
 		output_conf output;
 		// 对外访问地址（自动拆解为 protocol/domain_name/path_prefix）
 		public_url_conf public_url;
-		// CDN 地址，为空时 with_cdn 原样返回
-		std::string cdn_url;
 		// 渲染
 		render_conf render;
 		// HTML 渲染选项（build）与 PDF 回拷开关（copy_pdf）
@@ -206,7 +204,7 @@ namespace camus::config
 
 		const std::string filename_;
 
-		// 监听模式：本地访问时 public_url / cdn_url 无效，解析后清空
+		// 监听模式：本地访问时 public_url 无效，解析后清空
 		bool watch_mode_ = false;
 
 		void supplement_other_vars();
