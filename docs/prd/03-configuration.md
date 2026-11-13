@@ -112,7 +112,7 @@
 
   兼容旧写法：标量 `sort: dir_first` 等价于单元素数组（无时间排序），也接受逗号分隔标量。取值不区分大小写并忽略首尾空格；未知值 WARN 并忽略，数组为空 / 全非法时回退默认。环境变量 `CAMUS_PDF_SORT` 用逗号分隔，例如 `CAMUS_PDF_SORT='mixed,time_desc'`。启用时间键（`time_asc` / `time_desc`）时，PDF 还会自动按 UTC 年份分卷：年份作为一级分组（目录/大纲），该年文章的组内顺序仍按本数组规则；年份页副标题显示日期跨度、文章数与字数。未给时间键时不按年分卷。该顺序仅作用于 PDF，与 HTML 站点排序（目录优先、按 `write_time` 降序）互不影响。
 - 未显式提供 `--headless` 时自动追加。示例配置在 `pdf.build` 中显式声明 `--user-data-dir={{dist_dir}}/cache/{{engine}}_userdata`，跨构建复用 profile（HTTP / 代码 / GPU 缓存）；用户改写该项即直接生效。若配置未提供任何 `--user-data-dir`，程序兜底追加同一路径，避免使用系统默认浏览器 profile。
-- PDF 中间 HTML 使用 `theme/pdf/page.html` 模板、`theme/pdf/style.css` 样式与 `theme/pdf/fonts.css` 字体样式；字体文件放在站点 `assets/fonts/`，构建时复制到 `dist/pdf/assets/fonts/`。该目录不通过 `camus.yaml` 配置，查找顺序与可用模板变量见 §5.10、§8.3。
+- PDF 中间 HTML 使用 `theme/pdf/page.html` 模板、`theme/pdf/style.css` 样式与 `theme/pdf/fonts.css` 字体样式；字体文件放在站点 `assets/fonts/`，构建时复制到 `dist/pdf/fonts/`。该目录不通过 `camus.yaml` 配置，查找顺序与可用模板变量见 §5.10、§8.3。
 
 ### 3.4 html.build 映射
 

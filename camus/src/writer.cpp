@@ -330,7 +330,7 @@ namespace
 	}
 
 	// PDF 复用站点 assets/fonts：站点构建后已提升到 dest_dir/fonts，
-	// 这里复制为 pdf_dir/assets/fonts，供 theme/pdf/fonts.css 以 assets/fonts/... 引用。
+	// 这里复制为 pdf_dir/fonts，与 HTML 使用统一的 fonts/... 相对路径。
 	void copy_pdf_asset_fonts(const std::filesystem::path &dest_dir, const std::filesystem::path &pdf_dir)
 	{
 		const std::filesystem::path source = dest_dir / CAMUS_PDF_FONTS_DIR;
@@ -340,7 +340,7 @@ namespace
 			return;
 		}
 
-		const std::filesystem::path target = pdf_dir / "assets" / CAMUS_PDF_FONTS_DIR;
+		const std::filesystem::path target = pdf_dir / CAMUS_PDF_FONTS_DIR;
 		std::filesystem::create_directories(target.parent_path());
 		std::filesystem::copy(
 			source,

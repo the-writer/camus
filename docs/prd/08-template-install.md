@@ -137,7 +137,7 @@ PDF 模板、样式与字体（`writer.cpp` 的 `read_pdf_theme_file()` / `copy_
 1. 工作目录 `theme/pdf/{page.html,style.css,fonts.css}`（显式本地覆盖，可只覆盖单个文件）。
 2. `paths::find_resource("theme/pdf/<file>")`：先 `.camus/theme/pdf/...`，再数据目录。
 3. `page.html` / `style.css` 均不存在时 `logging::fatal("read pdf theme content failed name=...")`，退出 127；`fonts.css` 可选。
-4. 字体不放在 `theme/pdf/`：使用站点 `assets/fonts/`，构建后由 `copy_pdf_asset_fonts()` 复制到 `dist/pdf/assets/fonts/`，`fonts.css` 以 `assets/fonts/<file>` 引用。
+4. 字体不放在 `theme/pdf/`：使用站点 `assets/fonts/`，构建后由 `copy_pdf_asset_fonts()` 复制到 `dist/pdf/fonts/`，`fonts.css` 以 `fonts/<file>` 引用。
 
 静态资源（`writer::emit_assets()`）：
 
