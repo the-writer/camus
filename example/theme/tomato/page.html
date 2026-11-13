@@ -26,7 +26,7 @@
         })();
     </script>
 </head>
-<body class="tomato">
+<body class="tomato" data-camus-theme="{{ render.theme_name }}">
 
 <button id="tm-menu" class="tm-menu-btn" type="button" aria-label="切换章节目录" title="切换章节目录">☰</button>
 
@@ -48,10 +48,14 @@
             <button id="tm-volume-btn" class="tm-toc-action" type="button" aria-haspopup="true" aria-expanded="false" hidden>
                 分卷 <span class="tm-caret" aria-hidden="true">⌄</span>
             </button>
+            <button id="tm-month-btn" class="tm-toc-action" type="button" aria-haspopup="true" aria-expanded="false" hidden>
+                时间 <span class="tm-caret" aria-hidden="true">⌄</span>
+            </button>
             <button id="tm-reverse-btn" class="tm-toc-action" type="button" aria-pressed="false">倒序</button>
             <button id="tm-index-btn" class="tm-toc-action" type="button" aria-pressed="false">序号</button>
         </div>
         <div id="tm-volume-menu" class="tm-volume-menu" hidden></div>
+        <div id="tm-month-menu" class="tm-volume-menu" hidden></div>
     </div>
 
     <nav class="tm-chapters" id="tm-chapters" aria-label="章节列表">
@@ -60,6 +64,7 @@
            href="{{ chapter.path }}"
            data-volume="{{ chapter.volume }}"
            data-volume-key="{{ chapter.volume_key }}"
+           data-write-time="{{ chapter.write_time }}"
            data-tip="{{ chapter.title }}"><span class="tm-chapter-title">{{ chapter.title }}</span></a>
         {% endfor %}
     </nav>
@@ -125,7 +130,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script src="{{ with_prefix("/js/highlight-init.js") }}"></script>
-<script src="{{ with_prefix("/js/tomato.js") }}"></script>
 <script src="{{ with_prefix("/js/onload.js") }}"></script>
+<script src="{{ with_prefix("/js/tomato.js") }}"></script>
 </body>
 </html>

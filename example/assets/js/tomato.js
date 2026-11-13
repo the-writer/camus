@@ -169,12 +169,38 @@
         });
     }
 
-    // ── 章节目录：分卷 / 倒序 / 序号 ──
+    // ── 章节目录：分卷 / 时间 / 倒序 / 序号 ──
     var chaptersNav = document.getElementById("tm-chapters");
     var volumeBtn = document.getElementById("tm-volume-btn");
     var volumeMenu = document.getElementById("tm-volume-menu");
+    var monthBtn = document.getElementById("tm-month-btn");
+    var monthMenu = document.getElementById("tm-month-menu");
     var reverseBtn = document.getElementById("tm-reverse-btn");
     var indexBtn = document.getElementById("tm-index-btn");
+
+    // 仅 tomato 主题读取 onload.js 中的开关；其它主题保持原有行为。
+    var tomatoOptions = window.CAMUS_THEME === "tomato" ? window.CAMUS_TOMATO : null;
+
+    function controlEnabled(name) {
+        var item = tomatoOptions && tomatoOptions[name];
+        return !item || item.enabled !== false;
+    }
+
+    function controlDefault(name) {
+        var item = tomatoOptions && tomatoOptions[name];
+        return !!(item && item.default);
+    }
+
+    function readToggle(key, fallback) {
+        var value = read(key);
+        if (value === "1") {
+            return true;
+        }
+        if (value === "0") {
+            return false;
+        }
+        return fallback;
+    }
 
     if (chaptersNav) {
         var items = [];
@@ -184,6 +210,7 @@
                 href: link.getAttribute("href"),
                 volume: link.getAttribute("data-volume") || "",
                 volumeKey: link.getAttribute("data-volume-key") || "",
+                writeTime: parseInt(link.getAttribute("data-write-time"), 10) || 0,
                 current: link.classList.contains("tm-current"),
                 index: i + 1
             });
@@ -192,9 +219,23 @@
         var REVERSE_KEY = "tomato-reverse";
         var INDEX_KEY = "tomato-index";
         var NONE_VOLUME = "__none__";
-        var reverse = read(REVERSE_KEY) === "1";
-        var showIndex = read(INDEX_KEY) === "1";
+        var volumeEnabled = controlEnabled("volume");
+        var monthEnabled = controlEnabled("month");
+        var reverseEnabled = controlEnabled("reverse");
+        var indexEnabled = controlEnabled("index");
+        var reverse = reverseEnabled && readToggle(REVERSE_KEY, controlDefault("reverse"));
+        var showIndex = indexEnabled && readToggle(INDEX_KEY, controlDefault("index"));
         var volumeFilter = "";
+        var monthFilter = "";
+
+        function pad2(value) {
+            return String(value).padStart(2, "0");
+        }
+
+        function monthKey(timestamp) {
+            var date = new Date(timestamp * 1000);
+            return date.getUTCFullYear() + "-" + pad2(date.getUTCMonth() + 1);
+        }
 
         var volumes = [];
         var hasNoVolume = false;
@@ -211,8 +252,28 @@
             }
         });
 
+        var months = [];
+        items.forEach(function (item) {
+            if (item.writeTime > 0) {
+                item.month = monthKey(item.writeTime);
+                if (months.indexOf(item.month) === -1) {
+                    months.push(item.month);
+                }
+            }
+        });
+        months.sort().reverse();
+
         if (volumeBtn) {
-            volumeBtn.hidden = volumes.length === 0 && !hasNoVolume;
+            volumeBtn.hidden = !volumeEnabled || (volumes.length === 0 && !hasNoVolume);
+        }
+        if (monthBtn) {
+            monthBtn.hidden = !monthEnabled || months.length === 0;
+        }
+        if (reverseBtn) {
+            reverseBtn.hidden = !reverseEnabled;
+        }
+        if (indexBtn) {
+            indexBtn.hidden = !indexEnabled;
         }
 
         function closeVolumeMenu() {
@@ -230,6 +291,7 @@
             buildVolumeMenu();
             renderChapters();
             closeVolumeMenu();
+            closeMonthMenu();
             chaptersNav.scrollTop = 0;
         }
 
@@ -269,15 +331,66 @@
             });
         }
 
+        function closeMonthMenu() {
+            if (!monthMenu) {
+                return;
+            }
+            monthMenu.hidden = true;
+            if (monthBtn) {
+                monthBtn.setAttribute("aria-expanded", "false");
+            }
+        }
+
+        function selectMonth(month) {
+            monthFilter = month;
+            buildMonthMenu();
+            renderChapters();
+            closeMonthMenu();
+            closeVolumeMenu();
+            chaptersNav.scrollTop = 0;
+        }
+
+        function buildMonthMenu() {
+            if (!monthMenu) {
+                return;
+            }
+
+            monthMenu.innerHTML = "";
+
+            var all = document.createElement("a");
+            all.className = "tm-volume-item" + (monthFilter === "" ? " is-active" : "");
+            all.textContent = "全部时间";
+            all.addEventListener("click", function () {
+                selectMonth("");
+            });
+            monthMenu.appendChild(all);
+
+            months.forEach(function (month) {
+                var item = document.createElement("a");
+                item.className = "tm-volume-item" + (monthFilter === month ? " is-active" : "");
+                item.textContent = month;
+                item.addEventListener("click", function () {
+                    selectMonth(month);
+                });
+                monthMenu.appendChild(item);
+            });
+        }
+
         function renderChapters() {
             var list = items.filter(function (item) {
-                if (volumeFilter === "") {
-                    return true;
-                }
                 if (volumeFilter === NONE_VOLUME) {
-                    return item.volumeKey === "";
+                    if (item.volumeKey !== "") {
+                        return false;
+                    }
+                } else if (volumeFilter !== "" && item.volumeKey !== volumeFilter) {
+                    return false;
                 }
-                return item.volumeKey === volumeFilter;
+
+                if (monthFilter !== "" && item.month !== monthFilter) {
+                    return false;
+                }
+
+                return true;
             });
 
             if (reverse) {
@@ -323,7 +436,7 @@
                 bindTip(link);
             });
 
-            if (volumeFilter === "") {
+            if (volumeFilter === "" && monthFilter === "") {
                 var current = chaptersNav.querySelector(".tm-chapter.tm-current");
                 if (current) {
                     var navRect = chaptersNav.getBoundingClientRect();
@@ -357,6 +470,7 @@
                     return;
                 }
                 if (volumeMenu.hidden) {
+                    closeMonthMenu();
                     buildVolumeMenu();
                     volumeMenu.hidden = false;
                     volumeBtn.setAttribute("aria-expanded", "true");
@@ -366,14 +480,34 @@
             });
         }
 
+        if (monthBtn) {
+            monthBtn.addEventListener("click", function (event) {
+                event.stopPropagation();
+                if (!monthMenu) {
+                    return;
+                }
+                if (monthMenu.hidden) {
+                    closeVolumeMenu();
+                    buildMonthMenu();
+                    monthMenu.hidden = false;
+                    monthBtn.setAttribute("aria-expanded", "true");
+                } else {
+                    closeMonthMenu();
+                }
+            });
+        }
+
         document.addEventListener("click", function (event) {
-            if (!volumeMenu || volumeMenu.hidden) {
-                return;
+            if (volumeMenu && !volumeMenu.hidden &&
+                !volumeMenu.contains(event.target) &&
+                !(volumeBtn && volumeBtn.contains(event.target))) {
+                closeVolumeMenu();
             }
-            if (volumeMenu.contains(event.target) || (volumeBtn && volumeBtn.contains(event.target))) {
-                return;
+            if (monthMenu && !monthMenu.hidden &&
+                !monthMenu.contains(event.target) &&
+                !(monthBtn && monthBtn.contains(event.target))) {
+                closeMonthMenu();
             }
-            closeVolumeMenu();
         });
 
         if (reverseBtn) {
@@ -402,6 +536,7 @@
 
         syncButtons();
         buildVolumeMenu();
+        buildMonthMenu();
         renderChapters();
     } else {
         // 点击章节后关闭移动端侧边栏
