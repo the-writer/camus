@@ -17,6 +17,8 @@
     var records = [];
     var regexMode = false;
     var timer = null;
+    var lastResults = null;
+    var lastTotal = 0;
 
     function setStatus(text) {
         status.textContent = text;
@@ -60,7 +62,17 @@
         }
     }
 
+    function chapterIndex(url) {
+        var index = window.CAMUS_CHAPTER_INDEX;
+        if (!index || typeof index.enabled !== "function" || !index.enabled()) {
+            return 0;
+        }
+        return index.get(url) || 0;
+    }
+
     function renderEmpty(text) {
+        lastResults = null;
+        lastTotal = 0;
         list.textContent = "";
 
         var empty = document.createElement("li");
@@ -124,13 +136,17 @@
     function renderResults(results, total) {
         list.textContent = "";
 
+        lastResults = results;
+        lastTotal = total;
+
         results.forEach(function (record) {
             var item = document.createElement("li");
             item.className = "search-result";
 
+            var number = chapterIndex(record.url);
             var link = document.createElement("a");
             link.href = record.url;
-            link.textContent = record.title;
+            link.textContent = number ? number + ". " + record.title : record.title;
 
             item.appendChild(link);
 
@@ -245,6 +261,12 @@
             search();
         });
     }
+
+    document.addEventListener("tomato-index-toggle", function () {
+        if (lastResults) {
+            renderResults(lastResults, lastTotal);
+        }
+    });
 
     loadIndex();
 })();

@@ -236,6 +236,20 @@
         var volumeFilter = "";
         var monthFilter = "";
 
+        // 供搜索页使用：按链接查询章节序号（序号开关关闭时返回 0）。
+        var chapterIndexByHref = {};
+        items.forEach(function (item) {
+            chapterIndexByHref[item.href] = item.index;
+        });
+        window.CAMUS_CHAPTER_INDEX = {
+            enabled: function () {
+                return showIndex;
+            },
+            get: function (href) {
+                return chapterIndexByHref[href] || 0;
+            }
+        };
+
         function pad2(value) {
             return String(value).padStart(2, "0");
         }
@@ -542,6 +556,7 @@
                 write(INDEX_KEY, showIndex ? "1" : "0");
                 syncButtons();
                 renderChapters();
+                document.dispatchEvent(new CustomEvent("tomato-index-toggle"));
             });
         }
 
