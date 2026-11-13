@@ -97,7 +97,7 @@
 
 ### 3.4 html.build 映射
 
-Markdown 引擎固定为 `cmark-gfm`，顶层 `html.build` 始终按本表解析；未知名会被收集用于展示但不产生标志位。`DEFAULT` 对应 `CMARK_OPT_DEFAULT`；Debug/RelWithDebInfo 构建默认追加 `SOURCEPOS`。旧键 `markdown` / `markdown_options` 仍被接受（输出弃用 WARN；`markdown` 在存在 `html.build` 时忽略，`markdown_options` 在存在 `html` 或 `markdown` 时忽略）。
+Markdown 引擎固定为 `cmark-gfm`，解析器始终启用 `table` / `strikethrough` / `autolink` / `tasklist` 常用扩展；顶层 `html.build` 始终按本表解析；未知名会被收集用于展示但不产生标志位。`DEFAULT` 对应 `CMARK_OPT_DEFAULT`；Debug/RelWithDebInfo 构建默认追加 `SOURCEPOS`。旧键 `markdown` / `markdown_options` 仍被接受（输出弃用 WARN；`markdown` 在存在 `html.build` 时忽略，`markdown_options` 在存在 `html` 或 `markdown` 时忽略）。
 
 | 配置名 | cmark 标志 |
 |---|---|

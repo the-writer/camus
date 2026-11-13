@@ -29,11 +29,13 @@ target_include_directories(common PUBLIC
 
 target_include_directories(common SYSTEM PUBLIC
         ${CMAKE_SOURCE_DIR}/third-party/cmark-gfm/src
+        ${CMAKE_SOURCE_DIR}/third-party/cmark-gfm/extensions
         ${CMAKE_BINARY_DIR}/third-party/cmark-gfm/src
         ../third-party/cpp-httplib
 )
 
 target_link_libraries(common PUBLIC
+        libcmark-gfm-extensions_static
         libcmark-gfm_static
         yaml-cpp::yaml-cpp
         nlohmann_json

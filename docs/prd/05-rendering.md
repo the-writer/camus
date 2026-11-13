@@ -40,8 +40,9 @@
 `render_markdown(html, engine, opt)`（`render.cpp`）：
 
 - 仅支持 `engine == "cmark-gfm"`；其它引擎 `logging::fatal("unsupported engine type ...")`。
-- 调用 `cmark_markdown_to_html`，失败返回空串。
-- 选项位由顶层 `markdown` 映射（见 §3.4），Debug/RelWithDebInfo 构建默认带 `CMARK_OPT_SOURCEPOS`。
+- 使用 cmark-gfm 解析器 API（`cmark_parser_new` / `feed` / `finish` / `cmark_render_html`），失败返回空串。
+- 固定注册并启用常用 GFM 扩展：`table`（表格）、`strikethrough`（删除线）、`autolink`（自动链接）、`tasklist`（任务列表）；因此 HTML 与 PDF 均支持这些语法。
+- 选项位由顶层 `html.build` 映射（见 §3.4），Debug/RelWithDebInfo 构建默认带 `CMARK_OPT_SOURCEPOS`；启用表格后 `TABLE_PREFER_STYLE_ATTRIBUTES` 生效（输出 `style="text-align: ..."` 而非 `align`）。
 
 ## 5.3 文章渲染流程
 
