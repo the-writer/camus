@@ -120,7 +120,9 @@ namespace camus::config
 		std::vector<std::string> build;
 		pdf_page_conf page;
 		pdf_toc_conf toc;
-		pdf_sort_mode sort = PDF_SORT_FILE_FIRST;
+		// 排序键数组：组顺序（file_first / dir_first / mixed）+ 可选的二次时间排序
+		// （time_asc / time_desc）。默认文件优先、时间正序。
+		std::vector<std::string> sort = {"file_first", "time_asc"};
 
 		NLOHMANN_DEFINE_TYPE_INTRUSIVE(pdf_conf, engine, build, page, toc, sort);
 	};

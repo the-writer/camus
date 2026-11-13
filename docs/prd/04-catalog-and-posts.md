@@ -182,7 +182,7 @@ link_url():
   - 移除 `invalid()` 的文件节点（`display_name` 为空，即隐藏文章与非 `.md` 文件）；
   - 移除因此变空的目录节点（`directory = true` 且 `children` 为空）。
 - TOC 排序：目录优先，然后按 `write_time` 降序，时间相同按 `path` 升序。
-- 以上为 HTML 站点排序；PDF 的排列规则不同，由 `pdf.sort` 控制（默认 `file_first`：同层先文件后目录、各自按路径字典序），见 §3.3.1 / §6.10。
+- 以上为 HTML 站点排序；PDF 的排列规则不同，由 `pdf.sort` 控制（默认 `[file_first, time_asc]`：同层先文件后目录，组内按时间正序、时间相同按路径），见 §3.3.1 / §6.10。
 - 上一篇/下一篇（`fill_article_nav`）：
   - `prev` / `next`：在按更新时间降序的文章列表中，`prev` 指向更新的一篇（索引 - 1），`next` 指向更旧的一篇（索引 + 1）。
   - `chapter_prev` / `chapter_next`：同样按更新时间降序（最新在前，时间相同按源路径升序），与 `chapters` 章节目录顺序一致；分别指向前一章（更新）/ 后一章（更旧），供 `tomato` 等阅读主题的上/下一章按钮使用。

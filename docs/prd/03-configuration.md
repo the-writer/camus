@@ -29,7 +29,7 @@
   - HTML 输出固定为 `./dist/html`，PDF 输出固定为 `./dist/pdf`。
 - `html_engine` 固定为 `default`，`markdown_engine` 固定为 `cmark-gfm`，均不从配置读取。
 - 路径在解析后转为绝对路径供内部使用；模板 JSON 中保留解析后的值（见 §3.7）。
-- **环境变量注入**：所有标量配置项都可用环境变量覆盖，变量名为 `CAMUS_` + 配置路径（大写、层级与非法字符转为 `_`），例如 `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`、`pdf.engine` → `CAMUS_PDF_ENGINE`、`pdf.sort` → `CAMUS_PDF_SORT`、`html.copy_pdf` → `CAMUS_HTML_COPY_PDF`、`html.download_cover` → `CAMUS_HTML_DOWNLOAD_COVER`、`theme` → `CAMUS_THEME`、`build.sitemap` → `CAMUS_BUILD_SITEMAP`、`build.filename_case` → `CAMUS_BUILD_FILENAME_CASE`、`build.rss` → `CAMUS_BUILD_RSS`、`build.safe_clean_limit` → `CAMUS_BUILD_SAFE_CLEAN_LIMIT`。环境变量优先于 `camus.yaml` 中的值；即使配置文件中没有该键，也可注入已知标量项（`build.sitemap`、`build.filename_case`、`build.rss`、`build.safe_clean_limit`、`auto_check_update`、`public_url`、`theme`、`pdf.engine`、`pdf.page.size`、`pdf.page.margin`、`pdf.page.font_size`、`pdf.sort`、`html.copy_pdf`、`html.download_cover`）。为兼容旧配置，仍接受 `CAMUS_PDF_ENGINE`（对应旧 `pdf_engine`，与 `pdf.engine` 同名）与 `CAMUS_PDF_OPTIONS_PAGE_SIZE` / `CAMUS_PDF_OPTIONS_PAGE_MARGIN`（旧 `pdf_options.page.*`），新键优先。数组 / 列表字段（`html.build`、`pdf.build`、`friends`、`build.transfer` / `transfer` 及其元素字段）**不支持**注入。`-W` 监听模式仍会清空 `public_url`。
+- **环境变量注入**：所有标量配置项都可用环境变量覆盖，变量名为 `CAMUS_` + 配置路径（大写、层级与非法字符转为 `_`），例如 `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`、`pdf.engine` → `CAMUS_PDF_ENGINE`、`pdf.sort` → `CAMUS_PDF_SORT`、`html.copy_pdf` → `CAMUS_HTML_COPY_PDF`、`html.download_cover` → `CAMUS_HTML_DOWNLOAD_COVER`、`theme` → `CAMUS_THEME`、`build.sitemap` → `CAMUS_BUILD_SITEMAP`、`build.filename_case` → `CAMUS_BUILD_FILENAME_CASE`、`build.rss` → `CAMUS_BUILD_RSS`、`build.safe_clean_limit` → `CAMUS_BUILD_SAFE_CLEAN_LIMIT`。环境变量优先于 `camus.yaml` 中的值；即使配置文件中没有该键，也可注入已知标量项（`build.sitemap`、`build.filename_case`、`build.rss`、`build.safe_clean_limit`、`auto_check_update`、`public_url`、`theme`、`pdf.engine`、`pdf.page.size`、`pdf.page.margin`、`pdf.page.font_size`、`pdf.sort`、`html.copy_pdf`、`html.download_cover`）。为兼容旧配置，仍接受 `CAMUS_PDF_ENGINE`（对应旧 `pdf_engine`，与 `pdf.engine` 同名）与 `CAMUS_PDF_OPTIONS_PAGE_SIZE` / `CAMUS_PDF_OPTIONS_PAGE_MARGIN`（旧 `pdf_options.page.*`），新键优先。数组 / 列表字段（`html.build`、`pdf.build`、`friends`、`build.transfer` / `transfer` 及其元素字段）**不支持**注入；例外是 `pdf.sort`，`CAMUS_PDF_SORT` 用逗号分隔多个键（如 `mixed,time_desc`）。`-W` 监听模式仍会清空 `public_url`。
 
 ## 3.3 顶层配置字段
 
@@ -44,7 +44,7 @@
 | `html` | 对象 | 可选 | HTML 输出配置：`build`（cmark-gfm 选项名数组，见 §3.4）、`copy_pdf`（bool，默认 `false`，为 `true` 时把最终 PDF 复制到 HTML 输出根目录）、`download_cover`（bool，默认 `false`，仅控制 HTML：为 `true` 时 HTML 图片（`logo`，未设置时回退 `cover`）使用下载到本地的文件；PDF 不受该项影响，始终在构建前强制下载远程 `cover`，下载失败中止构建） | `yaml_config.cpp`、`writer.cpp` |
 | `markdown` | 字符串数组 | 可选（已弃用） | 兼容旧配置：等价于 `html.build`；存在 `html.build` 时被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
 | `markdown_options` | 旧键 | 可选（已弃用） | 兼容旧配置：等价于 `html.build`；存在 `html` 或顶层 `markdown` 时被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
-| `pdf` | 对象 | 可选 | PDF 配置：`engine`（字符串）、`build`（字符串数组）、`page`（`size` / `margin` / `font_size` / `meta`）、`toc.index`（默认 `false`）、`sort`（`file_first` / `dir_first` / `mixed`，默认 `file_first`），见 §3.3.1 | `yaml_config.cpp` |
+| `pdf` | 对象 | 可选 | PDF 配置：`engine`（字符串）、`build`（字符串数组）、`page`（`size` / `margin` / `font_size` / `meta`）、`toc.index`（默认 `false`）、`sort`（字符串数组，元素为 `file_first` / `dir_first` / `mixed` 与 `time_asc` / `time_desc`，默认 `[file_first, time_asc]`），见 §3.3.1 | `yaml_config.cpp` |
 | `pdf_engine` / `pdf_options` | 旧键 | 可选（已弃用） | 兼容旧配置：分别等价于 `pdf.engine` 与 `pdf.build` / `pdf.page`；存在顶层 `pdf` 时旧键被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
 
 `public_url` 拆解规则（`parse_public_url()`）：
@@ -91,15 +91,26 @@
 - `pdf.page.font_size` 为 PDF 正文字号，默认 `10pt`，**仅支持 `pt` 单位**（形如 `10pt` / `10.5pt`）；非法或非 pt 值输出 WARN 并回退默认。该值写入根 CSS 变量 `--pdf-font-size`，模板中的标题、代码、表格、页脚等字号均基于该变量按比例计算（见 §5.10）。
 - `pdf.page.meta` 为字符串数组，可选值 `words`（字数）、`read-times`（阅读时长）、`created-time`（创建日期）；可任意组合或为空（不显示）。每一项会在 PDF 文章标题（`## 标题`）下自动插入一行 `pdf-article__meta` 信息，使用 ` · ` 分隔；空数组 / 未配置时不插入。`read-times` 显示整数分钟，不足 1 分钟时显示「小于1分钟」（英文语种为 `<1 min`），不输出小数。
 - `pdf.toc.index` 默认 `false`；为 `true` 时目录页与书签大纲中的文章标题显示为 `1. 标题`、`2. 标题` 的序号格式，正文内标题不自动加序号。
-- `pdf.sort` 控制 PDF 中同一层内文件与子目录的排列（同时影响正文、目录页与书签大纲），默认 `file_first`：
+- `pdf.sort` 为**排序键数组**，控制 PDF 中同一层内文件与子目录的排列（同时影响正文、目录页与书签大纲），默认 `[file_first, time_asc]`：
 
-  | 取值 | 效果 |
+  | 键 | 作用 |
   |---|---|
-  | `file_first` | 先文件、后子目录；两组内部按相对路径字符串字典序升序 |
-  | `dir_first` | 先子目录、后文件；两组内部按相对路径字符串字典序升序 |
-  | `mixed` | 不区分文件 / 目录，完全按相对路径字符串字典序升序 |
+  | `file_first` | 组顺序：先文件、后子目录 |
+  | `dir_first` | 组顺序：先子目录、后文件 |
+  | `mixed` | 不区分文件 / 目录（此时时间键直接作为排序键） |
+  | `time_asc` | 二次排序：按 `write_time` 正序（旧→新） |
+  | `time_desc` | 二次排序：按 `write_time` 倒序（新→旧） |
 
-  取值不区分大小写并忽略首尾空格；未知值输出 WARN 并回退 `file_first`。该顺序仅作用于 PDF，与 HTML 站点排序（目录优先、按 `write_time` 降序）互不影响。
+  规则：数组可同时包含一个组顺序键（`file_first` / `dir_first` / `mixed`）和一个时间键（`time_asc` / `time_desc`），顺序无关；时间相同或未给时间键时按相对路径字符串字典序升序兜底。默认 `[file_first, time_asc]` 即「文件优先、组内按时间正序」。写法示例：
+
+  ```yaml
+  sort: [file_first, time_asc]
+  sort: [dir_first, time_desc]
+  sort: [mixed, time_desc]
+  sort: [file_first]          # 仅路径排序（无时间二次排序）
+  ```
+
+  兼容旧写法：标量 `sort: dir_first` 等价于单元素数组（无时间排序），也接受逗号分隔标量。取值不区分大小写并忽略首尾空格；未知值 WARN 并忽略，数组为空 / 全非法时回退默认。环境变量 `CAMUS_PDF_SORT` 用逗号分隔，例如 `CAMUS_PDF_SORT='mixed,time_desc'`。该顺序仅作用于 PDF，与 HTML 站点排序（目录优先、按 `write_time` 降序）互不影响。
 - 未显式提供 `--headless` 时自动追加。示例配置在 `pdf.build` 中显式声明 `--user-data-dir={{dist_dir}}/cache/{{engine}}_userdata`，跨构建复用 profile（HTTP / 代码 / GPU 缓存）；用户改写该项即直接生效。若配置未提供任何 `--user-data-dir`，程序兜底追加同一路径，避免使用系统默认浏览器 profile。
 - PDF 中间 HTML 使用 `theme/pdf/page.html` 模板、`theme/pdf/style.css` 样式与 `theme/pdf/fonts.css` 字体样式；字体文件放在站点 `assets/fonts/`，构建时复制到 `dist/pdf/assets/fonts/`。该目录不通过 `camus.yaml` 配置，查找顺序与可用模板变量见 §5.10、§8.3。
 
@@ -256,7 +267,7 @@ build:
 | `domain_name` | 字符串 | `public_url` 的域名部分 |
 | `path_prefix` | 字符串 | `public_url` 的路径前缀 |
 | `render` | 对象 | 模板兼容聚合对象（`theme_name`、`html_engine`、`markdown_engine`）；对应配置项在 `camus.yaml` 顶层，此对象仅用于模板数据 |
-| `pdf` | 对象 | PDF 配置：`engine`、`build`、`page`（`size`/`margin`/`font_size`/`meta`）、`toc`（`index`）、`sort`（序列化为 `file_first` / `dir_first` / `mixed`）；PDF 模板中的 `pdf` 会被页面数据覆盖，见 §5.10 |
+| `pdf` | 对象 | PDF 配置：`engine`、`build`、`page`（`size`/`margin`/`font_size`/`meta`）、`toc`（`index`）、`sort`（序列化为排序键数组，如 `["file_first","time_asc"]`）；PDF 模板中的 `pdf` 会被页面数据覆盖，见 §5.10 |
 | `friends` | 数组 | 友情链接 |
 | `site` | 对象 | 根路由（`path/title/subtitle/description/cover/logo/transfers`；另含兼容旧模板的 `cover_image` 别名，值为 HTML 实际使用的图片） |
 | `route` | 数组 | 全部路由（继承后） |

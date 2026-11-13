@@ -355,23 +355,16 @@ namespace camus::config
 			return std::nullopt;
 		}
 
-		pdf_sort_mode parse_pdf_sort(const std::string &raw)
+		// 解析逗号分隔的排序键（用于标量写法与环境变量），写入 target。
+		void parse_sort_values(const std::string &raw, std::vector<std::string> &target)
 		{
-			const std::string value = strings::to_lower(strings::trim_space(raw));
-			if (value.empty() || value == "file_first") {
-				return PDF_SORT_FILE_FIRST;
+			target.clear();
+			for (const auto &part : strings::split(raw, ',')) {
+				const std::string value = strings::to_lower(strings::trim_space(part));
+				if (!value.empty()) {
+					target.push_back(value);
+				}
 			}
-
-			if (value == "dir_first") {
-				return PDF_SORT_DIR_FIRST;
-			}
-
-			if (value == "mixed") {
-				return PDF_SORT_MIXED;
-			}
-
-			logging::warn("invalid pdf.sort value, fallback to file_first value={}", raw);
-			return PDF_SORT_FILE_FIRST;
 		}
 	} // namespace
 
@@ -624,8 +617,23 @@ namespace camus::config
 				}
 			}
 
-			if (const YAML::Node sort = node["sort"]; sort && sort.IsScalar()) {
-				camus_.pdf.sort = parse_pdf_sort(sort.as<std::string>());
+			if (const YAML::Node sort = node["sort"]; sort) {
+				camus_.pdf.sort.clear();
+				if (sort.IsSequence()) {
+					for (const auto &item : sort) {
+						if (!item.IsScalar()) {
+							continue;
+						}
+
+						const std::string value =
+							strings::to_lower(strings::trim_space(item.as<std::string>()));
+						if (!value.empty()) {
+							camus_.pdf.sort.push_back(value);
+						}
+					}
+				} else if (sort.IsScalar()) {
+					parse_sort_values(sort.as<std::string>(), camus_.pdf.sort);
+				}
 			}
 		};
 
@@ -830,7 +838,7 @@ namespace camus::config
 		}
 
 		if (const auto value = env_override("pdf.sort"); value.has_value()) {
-			camus_.pdf.sort = parse_pdf_sort(*value);
+			parse_sort_values(*value, camus_.pdf.sort);
 		}
 
 		if (const auto value = env_override("html.copy_pdf"); value.has_value()) {

@@ -176,6 +176,59 @@ namespace
 		return "";
 	}
 
+	// PDF 排序配置：组顺序（文件/目录优先级）与可选的二次时间排序。
+	struct pdf_sort_spec {
+		camus::config::pdf_sort_mode group = camus::config::PDF_SORT_FILE_FIRST;
+		bool has_time = false;
+		bool time_desc = false;
+	};
+
+	pdf_sort_spec parse_pdf_sort_spec(const std::vector<std::string> &values)
+	{
+		pdf_sort_spec spec;
+		bool group_set = false;
+		bool time_set = false;
+		bool any_valid = false;
+
+		for (const auto &raw : values) {
+			const std::string value = strings::to_lower(strings::trim_space(raw));
+			if (value.empty()) {
+				continue;
+			}
+
+			if (value == "file_first" || value == "dir_first" || value == "mixed") {
+				const camus::config::pdf_sort_mode mode = value == "dir_first" ? camus::config::PDF_SORT_DIR_FIRST
+												   : value == "mixed" ? camus::config::PDF_SORT_MIXED
+																	  : camus::config::PDF_SORT_FILE_FIRST;
+				if (group_set && spec.group != mode) {
+					logging::warn("multiple pdf.sort group values, using last value={}", value);
+				}
+				spec.group = mode;
+				group_set = true;
+				any_valid = true;
+			} else if (value == "time_asc" || value == "time_desc") {
+				const bool desc = value == "time_desc";
+				if (time_set && spec.time_desc != desc) {
+					logging::warn("multiple pdf.sort time values, using last value={}", value);
+				}
+				spec.has_time = true;
+				spec.time_desc = desc;
+				time_set = true;
+				any_valid = true;
+			} else {
+				logging::warn("invalid pdf.sort value, ignored value={}", raw);
+			}
+		}
+
+		// 空 / 全部非法时使用默认：文件优先 + 时间正序。
+		if (!any_valid) {
+			spec = {};
+			spec.has_time = true;
+		}
+
+		return spec;
+	}
+
 	std::string path_to_file_url(const std::filesystem::path &path)
 	{
 		std::string url = "file://";
@@ -2115,7 +2168,7 @@ namespace camus
 
 		// 目录按真实目录树多级输出：目录节点作为分组标题，文章节点作为可跳转条目。
 		// 根节点（depth 0）只是容器，depth - 1 为模板中的显示层级。
-		const config::pdf_sort_mode sort_mode = conf_.camus().pdf.sort;
+		const pdf_sort_spec sort_spec = parse_pdf_sort_spec(conf_.camus().pdf.sort);
 		int index = 0;
 		std::function<void(const catalog::catalog_node &, int)> append_node;
 		append_node = [&](const catalog::catalog_node &node, const int depth) {
@@ -2205,17 +2258,22 @@ namespace camus
 				return;
 			}
 
-			// PDF 顺序由 pdf.sort 决定：file_first / dir_first 分别把同层文件或目录
-			// 排在前面，groups 内部按相对路径字典序升序；mixed 完全按路径字典序。
+			// PDF 顺序由 pdf.sort 决定：file_first / dir_first 控制同层文件与目录的组顺序，
+			// mixed 不区分文件/目录；随后按 time_asc / time_desc 二次排序，最后按路径字典序兜底。
 			std::vector<const catalog::catalog_node *> ordered;
 			ordered.reserve(node.children.size());
 			for (const auto &child : node.children) {
 				ordered.push_back(&child);
 			}
 
-			std::ranges::sort(ordered, [sort_mode](const catalog::catalog_node *a, const catalog::catalog_node *b) {
-				if (sort_mode != config::PDF_SORT_MIXED && a->is_directory() != b->is_directory()) {
-					return sort_mode == config::PDF_SORT_DIR_FIRST ? a->is_directory() : !a->is_directory();
+			std::ranges::sort(ordered, [sort_spec](const catalog::catalog_node *a, const catalog::catalog_node *b) {
+				if (sort_spec.group != config::PDF_SORT_MIXED && a->is_directory() != b->is_directory()) {
+					return sort_spec.group == config::PDF_SORT_DIR_FIRST ? a->is_directory() : !a->is_directory();
+				}
+
+				if (sort_spec.has_time && a->property.write_time != b->property.write_time) {
+					return sort_spec.time_desc ? a->property.write_time > b->property.write_time
+											   : a->property.write_time < b->property.write_time;
 				}
 
 				return a->path.string() < b->path.string();
