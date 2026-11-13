@@ -22,6 +22,31 @@
         status.textContent = text;
     }
 
+    function initialQuery() {
+        try {
+            return new URLSearchParams(window.location.search).get("q") || "";
+        } catch (error) {
+            return "";
+        }
+    }
+
+    function syncUrl(query) {
+        if (!window.history || !window.history.replaceState) {
+            return;
+        }
+
+        try {
+            var url = new URL(window.location.href);
+            if (query) {
+                url.searchParams.set("q", query);
+            } else {
+                url.searchParams.delete("q");
+            }
+            window.history.replaceState(null, "", url.toString());
+        } catch (error) {
+        }
+    }
+
     function renderEmpty(text) {
         list.textContent = "";
 
@@ -161,14 +186,19 @@
         renderResults(results, total);
     }
 
+    input.value = initialQuery();
+
     if (form) {
         form.addEventListener("submit", function (event) {
             event.preventDefault();
+            syncUrl(input.value.trim());
             search();
         });
     }
 
     input.addEventListener("input", function () {
+        syncUrl(input.value.trim());
+
         if (timer) {
             window.clearTimeout(timer);
         }
