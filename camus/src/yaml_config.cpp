@@ -40,7 +40,8 @@ namespace camus::config
 			std::string title;
 			std::string subtitle;
 			std::string description;
-			std::string cover_image;
+			std::string cover;
+			std::string logo;
 		};
 
 		std::string normalize_meta(std::string value)
@@ -93,7 +94,12 @@ namespace camus::config
 							meta.title = read("title");
 							meta.subtitle = read("subtitle");
 							meta.description = read("description");
-							meta.cover_image = read("cover_image");
+							// 新键 cover 优先，未设置时兼容旧键 cover_image。
+							meta.cover = read("cover");
+							if (meta.cover.empty()) {
+								meta.cover = read("cover_image");
+							}
+							meta.logo = read("logo");
 						}
 					} catch (const std::exception &e) {
 						logging::warn(
@@ -132,7 +138,8 @@ namespace camus::config
 			meta.title = normalize_meta(meta.title);
 			meta.subtitle = normalize_meta(meta.subtitle);
 			meta.description = normalize_meta(meta.description);
-			meta.cover_image = strings::trim_space(meta.cover_image);
+			meta.cover = strings::trim_space(meta.cover);
+			meta.logo = strings::trim_space(meta.logo);
 			return meta;
 		}
 
@@ -354,6 +361,25 @@ namespace camus::config
 
 		public_config_["site"] = camus_.site;
 		public_config_["route"] = routes_;
+
+		// 兼容旧模板：site/route 中的 cover_image 仍指向 HTML 实际使用的图片
+		// （新字段 logo，未设置时回退 cover）。
+		if (public_config_["site"].is_object()) {
+			const std::string html_image = camus_.site.html_image();
+			public_config_["site"]["logo"] = html_image;
+			public_config_["site"]["cover_image"] = html_image;
+		}
+
+		for (size_t i = 0; i < routes_.size() && i < public_config_["route"].size(); ++i) {
+			if (!public_config_["route"][i].is_object()) {
+				continue;
+			}
+
+			const std::string html_image = routes_[i].html_image();
+			public_config_["route"][i]["logo"] = html_image;
+			public_config_["route"][i]["cover_image"] = html_image;
+		}
+
 		public_config_["source_dir"] = camus_.source_dir;
 		public_config_["assets_dir"] = camus_.assets_dir;
 		public_config_["meta"] = camus_.output.meta;
@@ -921,8 +947,12 @@ namespace camus::config
 				route.description = meta.description;
 			}
 
-			if (!meta.cover_image.empty()) {
-				route.cover_image = meta.cover_image;
+			if (!meta.cover.empty()) {
+				route.cover = meta.cover;
+			}
+
+			if (!meta.logo.empty()) {
+				route.logo = meta.logo;
 			}
 		};
 
@@ -1076,6 +1106,11 @@ namespace camus::config
 		camus_json["source_dir"] = camus_.source_dir;
 		camus_json["assets_dir"] = camus_.assets_dir;
 		camus_json["site"] = camus_.site;
+		if (camus_json["site"].is_object()) {
+			const std::string html_image = camus_.site.html_image();
+			camus_json["site"]["logo"] = html_image;
+			camus_json["site"]["cover_image"] = html_image;
+		}
 		camus_json["meta"] = camus_.output.meta;
 		camus_json["sitemap"] = camus_.output.sitemap;
 		camus_json["filename_case"] = camus_.output.filename_case;
@@ -1105,14 +1140,16 @@ namespace camus::config
 		return public_config_;
 	}
 
-	void yaml_config::set_cover_display_path(const std::string &path)
+	void yaml_config::set_logo_display_path(const std::string &path)
 	{
 		if (public_config_.contains("site") && public_config_["site"].is_object()) {
+			public_config_["site"]["logo"] = path;
 			public_config_["site"]["cover_image"] = path;
 		}
 
 		if (public_config_.contains("camus") && public_config_["camus"].is_object() &&
 			public_config_["camus"].contains("site") && public_config_["camus"]["site"].is_object()) {
+			public_config_["camus"]["site"]["logo"] = path;
 			public_config_["camus"]["site"]["cover_image"] = path;
 		}
 	}

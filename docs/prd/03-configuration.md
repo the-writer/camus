@@ -7,7 +7,7 @@
 | 文件/目录 | 位置 | 作用 | 是否持久 |
 |---|---|---|---|
 | `camus.yaml` | 运行时当前工作目录 | 主配置 | 是 |
-| `SUMMARY.md` | 源目录及任意子目录 | 目录页元信息（`title`/`subtitle`/`description`/`cover_image`），不参与文章渲染 | 是 |
+| `SUMMARY.md` | 源目录及任意子目录 | 目录页元信息（`title`/`subtitle`/`description`/`cover`/`logo`），不参与文章渲染 | 是 |
 | `theme/{name}/*.html` | 工作目录 | 本地主题覆盖 | 是 |
 | `theme/pdf/{page.html,style.css,fonts.css}` | 工作目录 | 本地 PDF 模板/样式覆盖 | 是 |
 | `assets/{css/style.css,js/onload.js,fonts/}` | 工作目录 | 本地静态资源覆盖；`-c` 最小复制目标 | 是 |
@@ -22,7 +22,7 @@
 
 - 根节点必须是映射，顶层直接包含 `meta`、`sitemap`、`filename_case`、`auto_check_update`、`public_url`、`theme`、`pdf`、`html`、`friends` 等配置项，否则 `error::panic("config file parse failed")`（退出 127）。不再接受 `render` 嵌套段；出现时打印 WARN 并忽略其内容。
 - `SUMMARY.md` 在目录扫描时跳过，不进入文章树。
-- 字符串值会做 `trim_space`；`SUMMARY.md` 中 `title`/`subtitle`/`description` 的换行符替换为 `<br />`；`cover_image` 只做 `trim_space`，保留原始路径。
+- 字符串值会做 `trim_space`；`SUMMARY.md` 中 `title`/`subtitle`/`description` 的换行符替换为 `<br />`；`cover` / `logo` 只做 `trim_space`，保留原始路径。
 - 源目录、资源目录与输出目录不再可配置：
   - 源目录固定按 `src` → `posts` 顺序探测，存在即使用，否则回退 `src`（随后若不存在则报错）；
   - 本地资源目录固定为 `./assets`，不存在时回退 `.camus/assets`，再回退数据目录的 `assets/`；
@@ -44,7 +44,7 @@
 | `domain_name` | 字符串（只读派生） | 空 | `public_url` 的域名部分（含端口，去除空格） | 同上 |
 | `path_prefix` | 字符串（只读派生） | 空 | `public_url` 的路径部分，以 `/` 开头且不带尾斜杠 | 同上 |
 | `theme` | 字符串 | 默认 `default` | 主题目录名 | `yaml_config.cpp` |
-| `html` | 对象 | 可选 | HTML 输出配置：`build`（cmark-gfm 选项名数组，见 §3.4）、`copy_pdf`（bool，默认 `false`，为 `true` 时把最终 PDF 复制到 HTML 输出根目录）、`download_cover`（bool，默认 `false`，仅控制 HTML：为 `true` 时 HTML 使用下载到本地的封面；PDF 不受该项影响，始终在构建前强制下载远程封面，下载失败中止构建） | `yaml_config.cpp`、`writer.cpp` |
+| `html` | 对象 | 可选 | HTML 输出配置：`build`（cmark-gfm 选项名数组，见 §3.4）、`copy_pdf`（bool，默认 `false`，为 `true` 时把最终 PDF 复制到 HTML 输出根目录）、`download_cover`（bool，默认 `false`，仅控制 HTML：为 `true` 时 HTML 图片（`logo`，未设置时回退 `cover`）使用下载到本地的文件；PDF 不受该项影响，始终在构建前强制下载远程 `cover`，下载失败中止构建） | `yaml_config.cpp`、`writer.cpp` |
 | `markdown` | 字符串数组 | 可选（已弃用） | 兼容旧配置：等价于 `html.build`；存在 `html.build` 时被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
 | `markdown_options` | 旧键 | 可选（已弃用） | 兼容旧配置：等价于 `html.build`；存在 `html` 或顶层 `markdown` 时被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
 | `pdf` | 对象 | 可选 | PDF 配置：`engine`（字符串）、`build`（字符串数组）、`page`（`size` / `margin` / `font_size` / `meta`）、`toc.index`（默认 `false`）、`sort`（`file_first` / `dir_first` / `mixed`，默认 `file_first`），见 §3.3.1 | `yaml_config.cpp` |
@@ -123,20 +123,22 @@ Markdown 引擎固定为 `cmark-gfm`，解析器始终启用 `table` / `striketh
 
 ### 3.5.1 `SUMMARY.md` 元信息
 
-构建时会递归扫描源目录（含根目录）中的 `SUMMARY.md`，为对应目录生成 `route_conf`（序列化字段：`path`、`title`、`subtitle`、`description`、`cover_image`、`transfers`）。`SUMMARY.md` 本身不会作为文章渲染。
+构建时会递归扫描源目录（含根目录）中的 `SUMMARY.md`，为对应目录生成 `route_conf`（序列化字段：`path`、`title`、`subtitle`、`description`、`cover`、`logo`、`transfers`；同时输出兼容旧模板的 `cover_image` 别名）。`SUMMARY.md` 本身不会作为文章渲染。
 
 | 来源 | 说明 |
 |---|---|
 | Front Matter `title` | 目录显示名 / 页面标题 |
 | Front Matter `subtitle` | 目录副标题 |
 | Front Matter `description` | 目录描述 |
-| Front Matter `cover_image` | 封面图片路径（仅根目录 `SUMMARY.md` 生效）；支持 `http://` / `https://` 绝对 URL：HTML 主题直接引用，PDF 在构建开始前下载到本地（失败则中止构建，退出 127）；相对路径以 `camus.yaml` 所在目录为起点，找不到时依次回退到源目录与站点 `assets` 目录，供 PDF 封面使用 |
+| Front Matter `cover` | PDF 封面图片路径（仅根目录 `SUMMARY.md` 生效）；支持 `http://` / `https://` 绝对 URL：PDF 在构建开始前下载到本地（失败则中止构建，退出 127）；相对路径以 `camus.yaml` 所在目录为起点，找不到时依次回退到源目录与站点 `assets` 目录 |
+| Front Matter `cover_image` | 旧键，作为 `cover` 的别名兼容；`cover` 为空时才读取 |
+| Front Matter `logo` | HTML 主题图片路径；未设置时 HTML 回退使用 `cover`（从而兼容旧键 `cover_image`） |
 | 正文第一个 `# 标题` | `title` 缺失时的回退值 |
 | 正文剩余内容 | `description` 缺失时的回退值 |
 
 - Front Matter 使用 YAML 映射解析（`---` 包裹），非法 YAML 会打印 WARN 并忽略该段。
 - 字段会 `trim_space`，内部换行替换为 `<br />`。
-- 子路由未设置的 `title` / `subtitle` / `description` 继承根路由（`source_dir/SUMMARY.md`）的对应值；`cover_image` 不继承。
+- 子路由未设置的 `title` / `subtitle` / `description` 继承根路由（`source_dir/SUMMARY.md`）的对应值；`cover` / `logo` 不继承。
 - 根路由 `path` 固定为 `/`；根 `SUMMARY.md` 缺失时 `site` 默认为 `{path: "/", title: "A mysterious site"}`。
 - 路由列表按 `path` 排序，根路由始终排在最前，保证 `route` 与 `meta.json` 输出稳定。
 - `path` 中包含 `private` 段的目录会被忽略并打印 WARN。
@@ -241,7 +243,7 @@ build:
 | `render` | 对象 | 模板兼容聚合对象（`theme_name`、`html_engine`、`markdown_engine`）；对应配置项在 `camus.yaml` 顶层，此对象仅用于模板数据 |
 | `pdf` | 对象 | PDF 配置：`engine`、`build`、`page`（`size`/`margin`/`font_size`/`meta`）、`toc`（`index`）、`sort`（序列化为 `file_first` / `dir_first` / `mixed`）；PDF 模板中的 `pdf` 会被页面数据覆盖，见 §5.10 |
 | `friends` | 数组 | 友情链接 |
-| `site` | 对象 | 根路由（`path/title/subtitle/description/cover_image/transfers`） |
+| `site` | 对象 | 根路由（`path/title/subtitle/description/cover/logo/transfers`；另含兼容旧模板的 `cover_image` 别名，值为 HTML 实际使用的图片） |
 | `route` | 数组 | 全部路由（继承后） |
 | `git` | 对象 | `repo`、`branch`、`commit_hash` |
 | `build` | 对象 | 见下表 |
@@ -287,7 +289,7 @@ PDF 模板在上述配置 JSON 之外额外接收 `pdf` 对象（封面、目录
 
 1. 将 `cmd_.dryrun` 置为 true，切到 `--workdir` 并 `reload()` 配置。
 2. 在日志抑制为 ERROR 的情况下执行一次干跑构建，验证完整渲染流水线且不写文件。
-3. 统计目录/文章/隐藏文章/字数，并校验资源目录、output/pdf 目录文件数保护、PDF 引擎、PDF 模板/样式/字体与 `cover_image`。
+3. 统计目录/文章/隐藏文章/字数，并校验资源目录、output/pdf 目录文件数保护、PDF 引擎、PDF 模板/样式/字体与 `cover`。
 4. 打印精炼报告：`workdir`、`config`、`source`、`theme`、`site`、`public`、`output`、`assets`、`pdf`、`catalog`、`build` 以及按树形展示的 `Catalog`。
 5. 汇总 `Issues`（error/warn），最后输出 `Result: OK` 或 `Result: FAILED`，并返回 0/1。
 

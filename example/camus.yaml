@@ -23,7 +23,7 @@ pdf:
         meta: []                            # 标题下信息行：可选 words / read-times / created-time 任意组合；留空不显示
 html:
     copy_pdf: false                         # 为 true 时把生成的 PDF 复制到 HTML 输出根目录
-    download_cover: false                    # 为 true 时 HTML 使用本地封面；PDF 始终会下载 URL 封面
+    download_cover: false                    # 为 true 时 HTML 使用本地的 logo（未设置时回退 cover）；PDF 始终会下载 URL cover
     build:                                  # cmark-gfm 引擎参数
         - DEFAULT                               # 默认选项，采用安全模式（过滤原始HTML和危险链接）
         - VALIDATE_UTF8                         # 解析前验证 UTF-8 编码，将非法序列替换为替换字符 U+FFFD

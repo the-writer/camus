@@ -46,8 +46,10 @@ namespace camus
 		std::map<std::filesystem::path, std::string> pending_writes_;
 		// 启动时自动检测更新只执行一次（watch 重建时不重复）
 		bool auto_update_checked_ = false;
-		// 远程封面下载到本地的临时路径（构建结束后清理）
+		// 远程 PDF 封面下载到本地的临时路径（构建结束后清理）
 		std::filesystem::path remote_cover_path_;
+		// 远程 HTML 图片（logo）下载到本地的临时路径（构建结束后清理）
+		std::filesystem::path remote_logo_path_;
 
 		void add_write(const std::filesystem::path &path, std::string_view content);
 		void flush_writes();

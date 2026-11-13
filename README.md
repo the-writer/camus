@@ -79,7 +79,7 @@ mkdir my-site && cd my-site
 A site uses one main config file plus optional per-directory metadata:
 
 - `camus.yaml` — site, output, rendering, friends and transfer configuration
-- `SUMMARY.md` — optional metadata for a directory (`title`, `subtitle`, `description`, `cover_image`)
+- `SUMMARY.md` — optional metadata for a directory (`title`, `subtitle`, `description`, `cover`, `logo`)
 
 ### `camus.yaml`
 
@@ -108,7 +108,7 @@ html:
     - SMART
     - FOOTNOTES
   copy_pdf: false          # copy the generated PDF into the HTML output root
-  download_cover: false    # make HTML use a downloaded local copy of a URL cover (PDF always downloads)
+  download_cover: false    # make HTML use a downloaded local copy of a URL logo (falls back to cover; PDF always downloads cover)
 
 friends:
   - title: Alex
@@ -139,7 +139,8 @@ Every directory in the source tree may contain a `SUMMARY.md` that describes it.
 ---
 title: Well-known musicals
 subtitle: Optional short summary
-cover_image: assets/cover.jpg
+cover: assets/cover.jpg
+logo: assets/logo.png
 ---
 
 Optional description shown on the directory page.
@@ -147,8 +148,9 @@ Optional description shown on the directory page.
 
 Parsing rules:
 
-- `title`, `subtitle`, `description` and `cover_image` may be provided in an optional YAML front matter block.
-- `cover_image` in the root `SUMMARY.md` sets the PDF cover. Relative paths are resolved from the directory containing `camus.yaml`, then fall back to the source directory and the site `assets` directory; absolute paths are used as-is.
+- `title`, `subtitle`, `description`, `cover` and `logo` may be provided in an optional YAML front matter block. The legacy key `cover_image` is still accepted as an alias for `cover`.
+- `cover` in the root `SUMMARY.md` sets the PDF cover. Relative paths are resolved from the directory containing `camus.yaml`, then fall back to the source directory and the site `assets` directory; absolute paths are used as-is.
+- `logo` sets the image used by HTML themes; when it is unset, HTML falls back to `cover` (and thus legacy `cover_image`).
 - If `title` is missing, the first `# Heading` in the body is used.
 - If `description` is missing, the remaining body is used.
 - Unset fields inherit from the root route; the root `SUMMARY.md` (`posts/SUMMARY.md` or `src/SUMMARY.md`) defines the site title/subtitle/description.

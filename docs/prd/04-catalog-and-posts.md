@@ -40,7 +40,6 @@
 | `display_name` | 显示名，同时决定输出文件名 |
 | `short_path` | 短链接标识 |
 | `subtitle` / `description` | 目录副标题/描述 |
-| `cover_image` | 目录/站点封面图路径（根目录的该字段供 PDF 封面使用） |
 | `tags` | 文章标签 |
 | `invalid()` | `display_name.empty()` |
 
@@ -52,7 +51,7 @@
 
 1. 根目录：`path_prefix = public_url.path_prefix`，`external_path = "/"`，`display_name` 取目录名（根为空，收尾时回退 `site.title`）。
 2. 子目录：默认继承父目录的 `external_path` 并追加自身目录名；文件默认继承父目录的 `external_path`（因此父目录的搬运会完整作用到所有后代）。
-3. 若命中 `SUMMARY.md` 生成的路由（`match_route`），用路由的 `title/subtitle/description` 覆盖元信息（非空字段才覆盖）；`cover_image` 作为路由字段保留供 PDF 封面使用。
+3. 若命中 `SUMMARY.md` 生成的路由（`match_route`），用路由的 `title/subtitle/description` 覆盖元信息（非空字段才覆盖）；路由的 `cover` / `logo` 不写入目录节点，仅保留在站点配置中供 PDF 封面与 HTML 主题使用。
 4. 搬运匹配（`yaml_config::match_transfer`）在 `camus.yaml` 的 `build.transfer`（兼容旧 `build` 序列 / `transfer`）展平后的规则中查找当前目录路径：支持 `source: .`（路由目录自身）与 `source: 子目录`（路由路径下拼接的子目录）；命中则覆盖当前目录的 `external_path`。
 5. 当前目录的 `external_path` 会写给它下面的直接子节点（目录追加目录名，文件直接继承）。
 

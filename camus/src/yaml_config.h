@@ -32,10 +32,19 @@ namespace camus::config
 		std::string title;
 		std::string subtitle;
 		std::string description;
-		std::string cover_image;
+		// PDF 封面图（Front Matter `cover`，兼容旧键 `cover_image`）
+		std::string cover;
+		// HTML 主题用图（Front Matter `logo`，为空时回退 `cover`）
+		std::string logo;
 		std::vector<route_transfer_conf> transfers;
 
-		NLOHMANN_DEFINE_TYPE_INTRUSIVE(route_conf, path, title, subtitle, description, cover_image, transfers);
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(route_conf, path, title, subtitle, description, cover, logo, transfers);
+
+		// HTML 实际使用的图片：优先 logo，未设置时回退 cover（兼容旧站点的封面图）。
+		[[nodiscard]] std::string html_image() const
+		{
+			return logo.empty() ? cover : logo;
+		}
 
 		[[nodiscard]] std::filesystem::path match_transfer(const std::filesystem::path &path) const
 		{
@@ -227,8 +236,8 @@ namespace camus::config
 
 		[[nodiscard]] camus_conf camus() const;
 		[[nodiscard]] nlohmann::json json() const;
-		// 覆盖模板中的 site.cover_image（用于下载后的本地封面路径）
-		void set_cover_display_path(const std::string &path);
+		// 覆盖模板中的 site.logo（及旧字段 site.cover_image），用于下载后的本地图片路径
+		void set_logo_display_path(const std::string &path);
 		[[nodiscard]] std::map<std::string, std::string> map() const;
 		[[nodiscard]] std::string render_var(const std::string &data) const;
 		[[nodiscard]] std::expected<route_conf, std::string> match_route(const std::filesystem::path &path) const;

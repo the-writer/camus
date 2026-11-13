@@ -31,7 +31,7 @@
 │   ├── js/onload.js           # 公共脚本入口，默认空文件
 │   └── fonts/                 # 站点与 PDF 共用的字体文件
 ├── posts/                     # 示例文章
-│   ├── SUMMARY.md              # 示例站点与目录元信息（可配置 PDF cover_image）
+│   ├── SUMMARY.md              # 示例站点与目录元信息（可配置 PDF cover 与 HTML logo）
 │   └── private/                # 不参与构建的私有内容目录（安装时自动创建，含 README.md）
 ├── camus.yaml                 # 示例配置
 ├── .gitignore                 # 示例忽略规则

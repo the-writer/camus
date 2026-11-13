@@ -79,7 +79,7 @@ mkdir my-site && cd my-site
 站点由一个主配置文件与可选的目录元信息驱动：
 
 - `camus.yaml`：站点、输出、渲染、友链与搬运配置
-- `SUMMARY.md`：可选的目录元信息（`title` / `subtitle` / `description` / `cover_image`）
+- `SUMMARY.md`：可选的目录元信息（`title` / `subtitle` / `description` / `cover` / `logo`）
 
 ### `camus.yaml`
 
@@ -108,7 +108,7 @@ html:
     - SMART
     - FOOTNOTES
   copy_pdf: false          # 为 true 时把生成的 PDF 复制到 HTML 输出根目录
-  download_cover: false    # 为 true 时 HTML 使用下载到本地的 URL 封面（PDF 始终下载）
+  download_cover: false    # 为 true 时 HTML 使用下载到本地的 URL logo（未设置时回退 cover；PDF 始终下载 cover）
 
 friends:
   - title: Alex
@@ -139,7 +139,8 @@ build:
 ---
 title: Well-known musicals
 subtitle: 可选的简短摘要
-cover_image: assets/cover.jpg
+cover: assets/cover.jpg
+logo: assets/logo.png
 ---
 
 可选的目录页简介。
@@ -147,8 +148,9 @@ cover_image: assets/cover.jpg
 
 解析规则：
 
-- `title` / `subtitle` / `description` / `cover_image` 可写在可选的 YAML Front Matter 中。
-- 根目录 `SUMMARY.md` 的 `cover_image` 用作 PDF 封面；相对路径以 `camus.yaml` 所在目录为起点，找不到时依次回退到源目录与站点 `assets` 目录，绝对路径直接使用。
+- `title` / `subtitle` / `description` / `cover` / `logo` 可写在可选的 YAML Front Matter 中；旧键 `cover_image` 仍作为 `cover` 的别名兼容。
+- 根目录 `SUMMARY.md` 的 `cover` 用作 PDF 封面；相对路径以 `camus.yaml` 所在目录为起点，找不到时依次回退到源目录与站点 `assets` 目录，绝对路径直接使用。
+- `logo` 用作 HTML 主题图片；未设置时 HTML 回退到 `cover`（从而兼容旧的 `cover_image`）。
 - 缺少 `title` 时使用正文中第一个 `# 标题`。
 - 缺少 `description` 时使用剩余正文。
 - 未设置的字段继承根目录；根目录的 `SUMMARY.md`（`posts/SUMMARY.md` 或 `src/SUMMARY.md`）定义站点标题/副标题/简介。
