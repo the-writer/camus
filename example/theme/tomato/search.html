@@ -27,20 +27,20 @@
     </script>
     <style>
         .tm-search-form {
+            position: relative;
             display: flex;
-            gap: 10px;
         }
 
         #search-input {
             flex: 1;
             min-width: 0;
-            padding: 12px 16px;
+            padding: 9px 44px 9px 14px;
             border: 1px solid var(--tm-border);
             border-radius: var(--tm-radius);
             background: var(--tm-panel);
             color: var(--tm-text);
             font: inherit;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
 
         #search-input:focus {
@@ -49,26 +49,41 @@
         }
 
         #search-regex {
-            flex: none;
-            padding: 0 16px;
-            border: 1px solid var(--tm-border);
-            border-radius: var(--tm-radius);
-            background: var(--tm-panel);
-            color: var(--tm-text-secondary);
+            position: absolute;
+            top: 50%;
+            right: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--tm-text-faint);
             font: inherit;
-            font-size: 0.82rem;
             cursor: pointer;
+            transform: translateY(-50%);
         }
 
         #search-regex:hover,
         #search-regex.is-active {
             color: var(--tm-accent);
-            border-color: var(--tm-accent);
             background: var(--tm-accent-soft);
         }
 
+        .tm-regex-icon {
+            width: 15px;
+            height: 15px;
+        }
+
+        .tm-search-panel {
+            min-height: 240px;
+        }
+
         #search-status {
-            margin: 18px 0 8px;
+            margin: 0 0 8px;
             color: var(--tm-text-faint);
             font-size: 0.82rem;
         }
@@ -193,11 +208,13 @@
 
         <form id="search-form" class="tm-search-form" role="search">
             <input id="search-input" type="search" placeholder="输入关键词" autocomplete="off" autofocus/>
-            <button id="search-regex" type="button" aria-pressed="false" title="使用正则表达式">正则</button>
+            <button id="search-regex" type="button" aria-pressed="false" aria-label="使用正则表达式" title="使用正则表达式"><span class="tm-search-icon tm-regex-icon" style="-webkit-mask-image: url('{{ with_prefix("/icons/regex.svg") }}'); mask-image: url('{{ with_prefix("/icons/regex.svg") }}');"></span></button>
         </form>
 
-        <p id="search-status"></p>
-        <ul id="search-results"></ul>
+        <div class="tm-panel tm-search-panel">
+            <p id="search-status"></p>
+            <ul id="search-results"><li class="search-result-empty">输入关键词开始搜索</li></ul>
+        </div>
     </div>
 </main>
 

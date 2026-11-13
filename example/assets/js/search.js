@@ -22,6 +22,15 @@
         status.textContent = text;
     }
 
+    function renderEmpty(text) {
+        list.textContent = "";
+
+        var empty = document.createElement("li");
+        empty.className = "search-result-empty";
+        empty.textContent = text;
+        list.appendChild(empty);
+    }
+
     function loadIndex() {
         var url = window.CAMUS_SEARCH_URL || "/search.gz";
         setStatus("正在加载搜索索引...");
@@ -93,10 +102,7 @@
         });
 
         if (!results.length) {
-            var empty = document.createElement("li");
-            empty.className = "search-result-empty";
-            empty.textContent = "暂无搜索结果";
-            list.appendChild(empty);
+            renderEmpty("暂无搜索结果");
             setStatus("");
         } else if (total > results.length) {
             setStatus("找到 " + total + " 条，仅显示前 " + results.length + " 条");
@@ -108,7 +114,7 @@
     function search() {
         var query = input.value.trim();
         if (!query) {
-            list.textContent = "";
+            renderEmpty("输入关键词开始搜索");
             setStatus("");
             return;
         }
@@ -122,7 +128,7 @@
             try {
                 matcher = new RegExp(query, "i");
             } catch (error) {
-                list.textContent = "";
+                renderEmpty("请输入有效的正则表达式");
                 setStatus("正则表达式无效：" + error.message);
                 return;
             }

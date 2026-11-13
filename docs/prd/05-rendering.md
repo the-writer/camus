@@ -14,7 +14,7 @@
 | `CAMUS_THEME_TYPE_FRIENDS` | `friends.html` | 友链页 |
 | `CAMUS_THEME_TYPE_SEARCH` | `search.html` | 搜索页（可选；仅 tomato / pixel 提供） |
 
-`search.html` 为可选主题类型：主题目录存在该文件时才生成搜索页与索引，缺失时跳过（不会 fatal）。构建时若有搜索页，会把所有 `visibility != hidden` 的文章打包为 `search.gz`：内容为 `标题\t链接\t正文` 的逐行文本（制表符/换行已替换为空格），先 gzip 压缩再对每个字节 XOR `0x5A`，避免下载后直接按普通 gzip 解出整站文本。运行时 `assets/js/search.js` 读取 `search.gz`，XOR 还原后用 `DecompressionStream("gzip")` 解压，按 `indexOf`（默认）或用户开启的正则表达式（`RegExp(..., "i")`）匹配标题与正文，最多渲染 100 条结果链接；无匹配时显示「暂无搜索结果」空状态列表。`tomato` 的搜索页复用完整左侧章节目录与控件，入口使用主题色 SVG 放大镜（`assets/icons/search.svg`，通过 CSS mask 跟随文字颜色）；`pixel` 的搜索页复用像素风格容器。
+`search.html` 为可选主题类型：主题目录存在该文件时才生成搜索页与索引，缺失时跳过（不会 fatal）。构建时若有搜索页，会把所有 `visibility != hidden` 的文章打包为 `search.gz`：内容为 `标题\t链接\t正文` 的逐行文本（制表符/换行已替换为空格），先 gzip 压缩再对每个字节 XOR `0x5A`，避免下载后直接按普通 gzip 解出整站文本。运行时 `assets/js/search.js` 读取 `search.gz`，XOR 还原后用 `DecompressionStream("gzip")` 解压，按 `indexOf`（默认）或用户开启的正则表达式（`RegExp(..., "i")`）匹配标题与正文，最多渲染 100 条结果链接。`tomato` 的搜索结果区包在 `.tm-panel`（`.tm-search-panel`，最小高度 240px）内：输入框为空（默认）时显示「输入关键词开始搜索」空状态，无匹配时显示「暂无搜索结果」，始终渲染空状态而非隐藏结果区；搜索输入框字号略小（`0.9rem`），正则开关为输入框内部最右侧的图标按钮（`assets/icons/regex.svg`，通过 CSS mask 跟随文字颜色，激活时高亮）。搜索页复用完整左侧章节目录与控件，入口使用主题色 SVG 放大镜（`assets/icons/search.svg`，通过 CSS mask 跟随文字颜色）；`pixel` 的搜索页复用像素风格容器。
 
 加载顺序（`yaml_config.cpp:244-264`）：
 
