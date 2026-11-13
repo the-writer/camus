@@ -153,6 +153,9 @@
     <div class="tm-toc-head">
         <span class="tm-toc-title"><span data-i18n="toc.title">Contents</span> <span class="tm-count">{{ length(chapters) }}</span></span>
         <div class="tm-toc-actions">
+            <button id="tm-filter-btn" class="tm-toc-action" type="button" aria-haspopup="true" aria-expanded="false" data-clear-icon="{{ with_prefix("/icons/filter-clear.svg") }}" hidden>
+                <span data-i18n="filter.button">Filter</span> <span class="tm-caret" aria-hidden="true">⌄</span>
+            </button>
             <button id="tm-volume-btn" class="tm-toc-action" type="button" aria-haspopup="true" aria-expanded="false" hidden>
                 <span data-i18n="filter.volume">Volumes</span> <span class="tm-caret" aria-hidden="true">⌄</span>
             </button>
@@ -169,6 +172,7 @@
         <div id="tm-volume-menu" class="tm-volume-menu" hidden></div>
         <div id="tm-month-menu" class="tm-volume-menu" hidden></div>
         <div id="tm-tag-menu" class="tm-volume-menu" hidden></div>
+        <div id="tm-filter-menu" class="tm-filter-menu" hidden></div>
     </div>
 
     <nav class="tm-chapters" id="tm-chapters" aria-label="Chapters" data-i18n-aria-label="nav.chapters">

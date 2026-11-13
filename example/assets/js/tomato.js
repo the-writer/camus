@@ -21,6 +21,8 @@
             "filter.volume": "Volumes",
             "filter.month": "Time",
             "filter.tag": "Tags",
+            "filter.button": "Filter",
+            "filter.clear": "Clear filters",
             "action.reverse": "Reverse",
             "action.index": "Index",
             "action.search": "Search",
@@ -95,6 +97,8 @@
             "filter.volume": "分卷",
             "filter.month": "时间",
             "filter.tag": "标签",
+            "filter.button": "筛选",
+            "filter.clear": "清除筛选",
             "action.reverse": "倒序",
             "action.index": "序号",
             "action.search": "搜索",
@@ -364,6 +368,9 @@
     var monthMenu = document.getElementById("tm-month-menu");
     var tagBtn = document.getElementById("tm-tag-btn");
     var tagMenu = document.getElementById("tm-tag-menu");
+    var filterBtn = document.getElementById("tm-filter-btn");
+    var filterMenu = document.getElementById("tm-filter-menu");
+    var filterClearIcon = filterBtn ? filterBtn.getAttribute("data-clear-icon") || "" : "";
     var reverseBtn = document.getElementById("tm-reverse-btn");
     var indexBtn = document.getElementById("tm-index-btn");
 
@@ -419,6 +426,8 @@
         var volumeFilter = "";
         var monthFilter = "";
         var tagFilter = "";
+        // 合并筛选模式下当前展开的二级分类（volume / month / tag）。
+        var filterActiveCat = "volume";
 
         // 供搜索页使用：按链接查询章节序号（序号开关关闭时返回 0）。
         var chapterIndexByHref = {};
@@ -495,14 +504,23 @@
             return item.tags.length > 0;
         }).length;
 
+        var hasVolume = volumes.length > 0 || hasNoVolume;
+        var hasMonth = months.length > 0;
+        var hasTag = tags.length > 0;
+        // 三个筛选都启用且有数据时，收拢为单个 Filter 二级级联下拉，避免工具栏超宽。
+        var combinedFilter = volumeEnabled && monthEnabled && tagEnabled && hasVolume && hasMonth && hasTag;
+
         if (volumeBtn) {
-            volumeBtn.hidden = !volumeEnabled || (volumes.length === 0 && !hasNoVolume);
+            volumeBtn.hidden = combinedFilter || !volumeEnabled || !hasVolume;
         }
         if (monthBtn) {
-            monthBtn.hidden = !monthEnabled || months.length === 0;
+            monthBtn.hidden = combinedFilter || !monthEnabled || !hasMonth;
         }
         if (tagBtn) {
-            tagBtn.hidden = !tagEnabled || tags.length === 0;
+            tagBtn.hidden = combinedFilter || !tagEnabled || !hasTag;
+        }
+        if (filterBtn) {
+            filterBtn.hidden = !combinedFilter;
         }
         if (reverseBtn) {
             reverseBtn.hidden = !reverseEnabled;
@@ -528,6 +546,7 @@
             closeVolumeMenu();
             closeMonthMenu();
             closeTagMenu();
+            closeFilterMenu();
             chaptersNav.scrollTop = 0;
         }
 
@@ -587,6 +606,16 @@
             }
         }
 
+        function closeFilterMenu() {
+            if (!filterMenu) {
+                return;
+            }
+            filterMenu.hidden = true;
+            if (filterBtn) {
+                filterBtn.setAttribute("aria-expanded", "false");
+            }
+        }
+
         function selectMonth(month) {
             monthFilter = month;
             buildMonthMenu();
@@ -594,6 +623,7 @@
             closeMonthMenu();
             closeVolumeMenu();
             closeTagMenu();
+            closeFilterMenu();
             chaptersNav.scrollTop = 0;
         }
 
@@ -636,6 +666,7 @@
             closeTagMenu();
             closeVolumeMenu();
             closeMonthMenu();
+            closeFilterMenu();
             chaptersNav.scrollTop = 0;
         }
 
@@ -669,6 +700,115 @@
             tags.forEach(function (tag) {
                 appendTagItem(tagMenu, tag.key, tag.key, tag.count);
             });
+        }
+
+        // 一键清空全部分卷 / 时间 / 标签筛选。
+        function clearFilters() {
+            volumeFilter = "";
+            monthFilter = "";
+            tagFilter = "";
+            buildVolumeMenu();
+            buildMonthMenu();
+            buildTagMenu();
+            renderChapters();
+            closeFilterMenu();
+            chaptersNav.scrollTop = 0;
+        }
+
+        // 统一筛选下拉：左侧一级分类（分卷 / 时间 / 标签），右侧二级选项。
+        function buildFilterMenu() {
+            if (!filterMenu) {
+                return;
+            }
+
+            filterMenu.innerHTML = "";
+
+            var clear = document.createElement("button");
+            clear.type = "button";
+            clear.className = "tm-filter-clear";
+            clear.setAttribute("aria-label", translate("filter.clear"));
+            clear.title = translate("filter.clear");
+            clear.disabled = !(volumeFilter || monthFilter || tagFilter);
+            var clearIcon = document.createElement("span");
+            clearIcon.className = "tm-filter-clear-icon";
+            if (filterClearIcon) {
+                clearIcon.style.webkitMaskImage = "url('" + filterClearIcon + "')";
+                clearIcon.style.maskImage = "url('" + filterClearIcon + "')";
+            }
+            clear.appendChild(clearIcon);
+            clear.addEventListener("click", function (event) {
+                event.stopPropagation();
+                clearFilters();
+            });
+
+            var cats = document.createElement("div");
+            cats.className = "tm-filter-cats";
+            var values = document.createElement("div");
+            values.className = "tm-filter-values";
+            var body = document.createElement("div");
+            body.className = "tm-filter-body";
+            body.appendChild(cats);
+            body.appendChild(values);
+
+            [
+                { key: "volume", label: translate("filter.volume") },
+                { key: "month", label: translate("filter.month") },
+                { key: "tag", label: translate("filter.tag") }
+            ].forEach(function (cat) {
+                var btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "tm-filter-cat" + (filterActiveCat === cat.key ? " is-active" : "");
+                btn.textContent = cat.label;
+                btn.addEventListener("click", function (event) {
+                    event.stopPropagation();
+                    filterActiveCat = cat.key;
+                    buildFilterMenu();
+                });
+                cats.appendChild(btn);
+            });
+            cats.appendChild(clear);
+
+            if (filterActiveCat === "volume") {
+                var all = document.createElement("a");
+                all.className = "tm-volume-item" + (volumeFilter === "" ? " is-active" : "");
+                all.textContent = translate("menu.allVolumes");
+                all.addEventListener("click", function () {
+                    selectVolume("");
+                });
+                values.appendChild(all);
+
+                if (hasNoVolume) {
+                    var none = document.createElement("a");
+                    none.className = "tm-volume-item" + (volumeFilter === NONE_VOLUME ? " is-active" : "");
+                    none.textContent = translate("menu.noVolume");
+                    none.addEventListener("click", function () {
+                        selectVolume(NONE_VOLUME);
+                    });
+                    values.appendChild(none);
+                }
+
+                volumes.forEach(function (volume) {
+                    var item = document.createElement("a");
+                    item.className = "tm-volume-item" + (volumeFilter === volume.key ? " is-active" : "");
+                    item.textContent = volume.label;
+                    item.addEventListener("click", function () {
+                        selectVolume(volume.key);
+                    });
+                    values.appendChild(item);
+                });
+            } else if (filterActiveCat === "month") {
+                appendMonthItem(values, translate("menu.allTime"), "", totalMonthItems);
+                months.forEach(function (month) {
+                    appendMonthItem(values, month.key, month.key, month.count);
+                });
+            } else {
+                appendTagItem(values, translate("menu.allTags"), "", totalTagItems);
+                tags.forEach(function (tag) {
+                    appendTagItem(values, tag.key, tag.key, tag.count);
+                });
+            }
+
+            filterMenu.appendChild(body);
         }
 
         function renderChapters() {
@@ -759,6 +899,7 @@
             closeVolumeMenu();
             closeMonthMenu();
             closeTagMenu();
+            closeFilterMenu();
         };
 
         function syncFilterButtons() {
@@ -770,6 +911,12 @@
             }
             if (tagBtn) {
                 tagBtn.classList.toggle("is-active", tagFilter !== "");
+            }
+            if (filterBtn) {
+                filterBtn.classList.toggle(
+                    "is-active",
+                    volumeFilter !== "" || monthFilter !== "" || tagFilter !== ""
+                );
             }
         }
 
@@ -838,7 +985,38 @@
             });
         }
 
+        if (filterBtn) {
+            filterBtn.addEventListener("click", function (event) {
+                event.stopPropagation();
+                if (!filterMenu) {
+                    return;
+                }
+                if (filterMenu.hidden) {
+                    closeVolumeMenu();
+                    closeMonthMenu();
+                    closeTagMenu();
+                    if (volumeFilter !== "") {
+                        filterActiveCat = "volume";
+                    } else if (monthFilter !== "") {
+                        filterActiveCat = "month";
+                    } else if (tagFilter !== "") {
+                        filterActiveCat = "tag";
+                    }
+                    buildFilterMenu();
+                    filterMenu.hidden = false;
+                    filterBtn.setAttribute("aria-expanded", "true");
+                } else {
+                    closeFilterMenu();
+                }
+            });
+        }
+
         document.addEventListener("click", function (event) {
+            if (filterMenu && !filterMenu.hidden &&
+                !filterMenu.contains(event.target) &&
+                !(filterBtn && filterBtn.contains(event.target))) {
+                closeFilterMenu();
+            }
             if (volumeMenu && !volumeMenu.hidden &&
                 !volumeMenu.contains(event.target) &&
                 !(volumeBtn && volumeBtn.contains(event.target))) {

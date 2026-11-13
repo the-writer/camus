@@ -276,6 +276,117 @@ body.tomato {
     box-shadow: var(--tm-shadow);
 }
 
+/* 合并筛选：左侧一级分类 + 右侧二级选项的级联下拉 */
+.tm-filter-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 12px;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    width: 320px;
+    max-width: calc(100% - 24px);
+    height: 200px;
+    padding: 6px;
+    background: var(--tm-panel);
+    border: 1px solid var(--tm-border);
+    border-radius: 12px;
+    box-shadow: var(--tm-shadow);
+}
+
+.tm-filter-menu[hidden] {
+    display: none;
+}
+
+.tm-filter-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-top: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--tm-text-secondary);
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.tm-filter-clear:hover:not(:disabled) {
+    color: var(--tm-accent);
+    background: var(--tm-accent-soft);
+}
+
+.tm-filter-clear:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.tm-filter-clear-icon {
+    width: 14px;
+    height: 14px;
+    background: currentColor;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+}
+
+.tm-filter-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.tm-filter-cats {
+    flex: 0 0 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 6px;
+    border-right: 1px solid var(--tm-border);
+}
+
+.tm-filter-cat {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--tm-text-secondary);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 500;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.tm-filter-cat:hover {
+    color: var(--tm-text);
+    background: var(--tm-panel-soft);
+}
+
+.tm-filter-cat.is-active {
+    color: var(--tm-accent);
+    background: var(--tm-accent-soft);
+}
+
+.tm-filter-values {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding-left: 6px;
+}
+
 .tm-volume-item {
     display: block;
     padding: 6px 10px;
