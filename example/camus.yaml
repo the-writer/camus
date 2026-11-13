@@ -1,4 +1,12 @@
 # 输出相关配置（以下配置会自动加载默认值，可按需取消注释）
+#
+# 环境变量覆盖：任意标量配置都可用 CAMUS_ + 配置路径（大写、点号换成下划线）覆盖，例如：
+#   build.safe_clean_limit -> CAMUS_BUILD_SAFE_CLEAN_LIMIT
+#   pdf.engine             -> CAMUS_PDF_ENGINE
+#   html.copy_pdf          -> CAMUS_HTML_COPY_PDF
+# 用法：CAMUS_PDF_ENGINE=edge CAMUS_BUILD_SAFE_CLEAN_LIMIT=500 camus -b
+# 环境变量优先于本文件；数组 / 列表字段（pdf.build、html.build、friends、transfer）不支持覆盖。
+#
 # public_url: ''                            # 对外访问地址，默认空；示例：https://the-writer.github.io/camus/（自动拆解为 protocol/domain_name/path_prefix）
 auto_check_update: auto                     # 启动自动更新：auto 下载并安装、check-only 仅检测、disable 关闭
 # 页面渲染配置
