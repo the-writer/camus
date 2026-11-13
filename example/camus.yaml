@@ -51,9 +51,8 @@ friends:
         image_url: https://i.loli.net/2020/02/07/kDIUWCQpKEdFTP8.png
         desc: 一言网（hitokoto.cn）创立于 2016 年，隶属于萌创团队，目前网站主要提供一句话服务。
 
-# 目录搬运规则：把 path 目录的内容映射到 target 输出路径
+# 构建配置：build.transfer 定义目录搬运，build.env 定义文本替换
 # 每个目录的 title / subtitle / description 来自该目录下的 SUMMARY.md
-# 新格式为 build.transfer；旧的顶层 build 序列仍兼容
 build:
     transfer:
         -   path: /introduction                       # 指定源目录
