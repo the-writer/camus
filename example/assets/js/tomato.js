@@ -750,6 +750,8 @@
                     }
                 }
             }
+
+            syncFilterButtons();
         }
 
         refreshChapters = renderChapters;
@@ -758,6 +760,18 @@
             closeMonthMenu();
             closeTagMenu();
         };
+
+        function syncFilterButtons() {
+            if (volumeBtn) {
+                volumeBtn.classList.toggle("is-active", volumeFilter !== "");
+            }
+            if (monthBtn) {
+                monthBtn.classList.toggle("is-active", monthFilter !== "");
+            }
+            if (tagBtn) {
+                tagBtn.classList.toggle("is-active", tagFilter !== "");
+            }
+        }
 
         function syncButtons() {
             if (reverseBtn) {
