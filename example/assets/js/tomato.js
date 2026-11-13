@@ -715,6 +715,58 @@
 
     window.addEventListener("resize", clampBookSubtitle);
 
+    // ── 复制当前文章链接 ──
+    var copyBtn = document.getElementById("tm-copy-link");
+    if (copyBtn) {
+        var copyLabel = copyBtn.textContent;
+        var copyTimer = null;
+
+        var showCopyResult = function (text, ok) {
+            copyBtn.textContent = text;
+            copyBtn.classList.toggle("is-copied", ok);
+            if (copyTimer) {
+                window.clearTimeout(copyTimer);
+            }
+            copyTimer = window.setTimeout(function () {
+                copyBtn.textContent = copyLabel;
+                copyBtn.classList.remove("is-copied");
+            }, 1600);
+        };
+
+        var fallbackCopy = function (url) {
+            var area = document.createElement("textarea");
+            area.value = url;
+            area.setAttribute("readonly", "");
+            area.style.position = "fixed";
+            area.style.top = "-9999px";
+            document.body.appendChild(area);
+            area.select();
+
+            var ok = false;
+            try {
+                ok = document.execCommand("copy");
+            } catch (e) {
+                ok = false;
+            }
+            document.body.removeChild(area);
+            showCopyResult(ok ? "已复制" : "复制失败", ok);
+        };
+
+        copyBtn.addEventListener("click", function () {
+            var url = window.location.href;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(function () {
+                    showCopyResult("已复制", true);
+                }).catch(function () {
+                    fallbackCopy(url);
+                });
+                return;
+            }
+
+            fallbackCopy(url);
+        });
+    }
+
     // ── 友链 LOGO 路径解析（与封面图一致：绝对 URL 原样使用，相对路径拼 path_prefix） ──
     document.querySelectorAll("img[data-logo]").forEach(function (img) {
         var raw = (img.getAttribute("data-logo") || "").trim();
