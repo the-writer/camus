@@ -29,7 +29,7 @@ empty_path(pdf_dir(),   safe_check=true)   // ./dist/pdf
 
 ## 6.2 输出文件布局
 
-以示例站点（启用 sitemap 与 PDF）为例：
+以示例站点（启用 sitemap / RSS 与 PDF）为例：
 
 ```text
 dist/
@@ -41,7 +41,8 @@ dist/
 │   ├── friends.html
 │   ├── search.html                 # 主题提供 search.html 时（tomato / pixel）
 │   ├── 9f3a7c1e.bin                # 搜索索引（文件名取 CAMUS_SEARCH_INDEX_NAME，XOR + gzip）
-│   ├── sitemap.xml                 # sitemap=true
+│   ├── sitemap.xml                 # build.sitemap=true
+│   ├── feed.xml                    # build.rss=true
 │   └── <assets 内容提升到根>        # css/ js/ fonts/ robots.txt favicon.ico ...
 └── pdf/                            # pdf.engine 非空且不为 disable 时
     ├── index.md                    # 合并后的 Markdown
@@ -59,7 +60,8 @@ dist/
 | `stats.html` | 始终（除非 dryrun） | `writer.cpp:408` |
 | `friends.html` | 始终（除非 dryrun） | `writer.cpp:461` |
 | `search.html` / `CAMUS_SEARCH_INDEX_NAME`（`9f3a7c1e.bin`） | 主题存在 `search.html`（tomato / pixel）且非 dryrun | `writer.cpp` `emit_search()` |
-| `sitemap.xml` | `sitemap: true` | `writer.cpp:555` |
+| `sitemap.xml` | `build.sitemap: true` | `writer.cpp` `emit_sitemap()` |
+| `feed.xml` | `build.rss: true` | `writer.cpp` `emit_feed()` |
 | 静态资源 | 数据目录 `assets/` 或本地 `./assets` 非空 | `writer.cpp` `emit_assets()` |
 | `index.md` / `index.pdf` / `index.html`（均位于 `dist/pdf`） | `pdf.engine` 非空、不为 `disable` 且引擎可用 | `writer.cpp` `emit_pdf()` |
 | `dist/pdf/assets.css` | 站点输出中存在 `css/style.css` | `writer.cpp` `copy_pdf_asset_style()` |
@@ -108,9 +110,9 @@ dist/
 
 `tomato` 主题的友链列表在每项左侧展示 `image_url` LOGO（56×56 圆形、无边框，绝对 URL 原样使用，相对路径去除 `assets/` 前缀后拼接 `path_prefix`，加载失败时移除图片），移除了行间分割线；无 `image_url` 或加载失败时保留 56×56 占位区域，文字始终左对齐。LOGO 与友链标题均可点击跳转，友链链接、LOGO、侧栏章节与底部导航等可交互元素统一使用手型光标。
 
-## 6.7 `sitemap.xml`
+## 6.7 `sitemap.xml` 与 `feed.xml`
 
-`emit_sitemap()`（`writer.cpp:553`）在 `sitemap` 为 true 时生成：
+`emit_sitemap()` 在 `build.sitemap` 为 true 时生成：
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -124,6 +126,22 @@ dist/
 - 使用 `link_url`：启用 `short-path` 时 `<loc>` 为短链地址。
 - 包含 `open` 与 `hidden_in_toc` 的文章，不包含 `hidden`。
 - 输出为 `dest_dir/sitemap.xml`。
+
+`emit_feed()` 在 `build.rss` 为 true 时生成 `dest_dir/feed.xml`（RSS 2.0）：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+  <title>{site.title}</title><link>{full_prefix}/</link><description>{site.description}</description>
+  <lastBuildDate>{最新文章时间，RFC 822}</lastBuildDate>
+  <item><title>{文章标题}</title><link>{full_prefix}{link_url}</link>
+    <guid isPermaLink="true">{full_prefix}{link_url}</guid><pubDate>{write_time，RFC 822}</pubDate></item>
+</channel></rss>
+```
+
+- 包含 `open` 与 `hidden_in_toc` 的文章，不包含 `hidden`；按 `write_time` 降序（相同时间按标题升序）。
+- 标题、链接与站点描述做 XML 转义；空站点标题回退 `Camus`，空 `public_url` 时频道链接为 `/`。
+- 所有内置主题在 `<head>` 中通过 `{% if build.rss %}` 输出自动发现标签：`<link rel="alternate" type="application/rss+xml" title="{site.title}" href="{path_prefix}/feed.xml">`。
 
 ## 6.8 静态资源
 
@@ -164,7 +182,7 @@ flowchart TD
 | `emit_toc` | 提前返回（不生成目录页） |
 | `emit_assets` | 提前返回 |
 | `emit_pdf` | 提前返回 |
-| 文章/统计/友链/sitemap | 正常计算并调用 `add_write`，但不落盘 |
+| 文章/统计/友链/sitemap/feed | 正常计算并调用 `add_write`，但不落盘 |
 
 因此 dryrun 可用于验证配置与渲染流程而不改变磁盘。
 

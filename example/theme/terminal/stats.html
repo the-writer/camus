@@ -172,6 +172,7 @@
         }
     </style>
     <link rel="stylesheet" href="{{ with_prefix("/css/style.css") }}">
+    {% if build.rss %}<link rel="alternate" type="application/rss+xml" title="{{ site.title }}" href="{{ with_prefix("/feed.xml") }}"/>{% endif %}
 </head>
 <body data-camus-theme="{{ render.theme_name }}">
     <div class="terminal">

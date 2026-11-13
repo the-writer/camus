@@ -126,11 +126,11 @@ flowchart TD
 
 `short-path: auto` 的生成规则（`writer.cpp:211-214`）：对节点相对路径做 FNV-1a 64 位 hash，再取 `hash % (UINT16_MAX * 2)`（即 `% 131070`），格式化为小写十六进制。短链固定输出到 `/s/<short_path>.html`。
 
-`filename_case: uuid` 时，`display_name` 直接生成 UUID v4（与文件名无关），因此普通输出路径也是 `/s/...` 之外的 UUID 文件名；`short-path` 仍可另行启用。
+`build.filename_case: uuid` 时，`display_name` 直接生成 UUID v4（与文件名无关），因此普通输出路径也是 `/s/...` 之外的 UUID 文件名；`short-path` 仍可另行启用。
 
 ## 4.6 可见性语义（以代码为准）
 
-| 值 | 渲染 | 进入目录树/TOC | 进入 sitemap | 说明 |
+| 值 | 渲染 | 进入目录树/TOC | 进入 sitemap / feed | 说明 |
 |---|---|---|---|---|
 | `open`（默认） | 是 | 是 | 是 | 正常文章 |
 | `hidden` | 否 | 否 | 否 | 解析时立即返回，`display_name` 为空，收尾时因 `invalid()` 被移除 |

@@ -1331,6 +1331,75 @@ namespace camus
 		);
 	}
 
+	void writer::emit_feed()
+	{
+		if (!conf_.camus().output.rss) {
+			return;
+		}
+
+		struct feed_item {
+			time_t write_time = 0;
+			std::string title;
+			std::string link;
+		};
+
+		std::vector<feed_item> articles;
+		catalog::traverse_catalog_tree(catalog_, [&](const catalog::catalog_node &node, int) {
+			if (node.is_directory() || node.property.visibility == catalog::hidden) {
+				return;
+			}
+
+			articles.push_back(
+				feed_item{
+					.write_time = node.property.write_time,
+					.title = node.property.display_name,
+					.link = std::format("{}{}", conf_.camus().public_url.full_prefix(), node.link_url().string()),
+				}
+			);
+		});
+
+		std::ranges::sort(articles, [](const feed_item &a, const feed_item &b) {
+			if (a.write_time != b.write_time) {
+				return a.write_time > b.write_time;
+			}
+
+			return a.title < b.title;
+		});
+
+		std::vector<std::string> items;
+		items.reserve(articles.size());
+		for (const auto &article : articles) {
+			items.push_back(std::format(
+				R"(<item><title>{}</title><link>{}</link><guid isPermaLink="true">{}</guid><pubDate>{}</pubDate></item>)",
+				html_escape(article.title),
+				html_escape(article.link),
+				html_escape(article.link),
+				functions::format_time_t(article.write_time, "%a, %d %b %Y %H:%M:%S %z")
+			));
+		}
+
+		const std::string site_title =
+			conf_.camus().site.title.empty() ? "Camus" : conf_.camus().site.title;
+		const std::string home_link =
+			conf_.camus().public_url.full_prefix().empty() ? "/" : conf_.camus().public_url.full_prefix() + "/";
+		const time_t build_time = std::time(nullptr);
+		const time_t latest_time = articles.empty() ? build_time : articles.front().write_time;
+
+		logging::debug(std::format("make feed url={}/feed.xml", conf_.camus().public_url.full_prefix()));
+
+		add_write(
+			conf_.camus().dest_dir() / "feed.xml",
+			std::format(
+				R"(<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>{}</title><link>{}</link><description>{}</description><lastBuildDate>{}</lastBuildDate>{}</channel></rss>)",
+				html_escape(site_title),
+				html_escape(home_link),
+				html_escape(conf_.camus().site.description),
+				functions::format_time_t(latest_time, "%a, %d %b %Y %H:%M:%S %z"),
+				strings::string_join(items, "\n\t")
+			)
+		);
+	}
+
 	void writer::emit_assets()
 	{
 		if (cmd_.dryrun) {
@@ -2457,6 +2526,7 @@ namespace camus
 		emit_friends();
 		emit_search();
 		emit_sitemap();
+		emit_feed();
 		emit_assets();
 
 		const size_t html_files = pending_writes_.size();

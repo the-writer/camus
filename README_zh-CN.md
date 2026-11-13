@@ -84,9 +84,6 @@ mkdir my-site && cd my-site
 ### `camus.yaml`
 
 ```yaml
-sitemap: true              # 生成 sitemap.xml
-filename_case: keep        # keep | uuid
-
 # 站点对外访问地址，会自动拆解为 protocol/domain_name/path_prefix：
 # https://the-writer.github.io/camus/ -> https:// + the-writer.github.io + /camus
 public_url: https://the-writer.github.io/camus/
@@ -117,6 +114,9 @@ friends:
 
 # 目录搬运规则（build.transfer），并定义文本替换（build.env）
 build:
+  sitemap: true            # 生成 sitemap.xml
+  filename_case: keep      # keep | uuid
+  rss: true                # 生成 feed.xml
   transfer:
     - path: /introduction
       transfers:

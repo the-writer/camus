@@ -81,6 +81,7 @@ namespace camus
 		void emit_search();
 		void emit_toc();
 		void emit_sitemap();
+		void emit_feed();
 		void emit_assets();
 		void prepare_remote_cover();
 		void emit_pdf();

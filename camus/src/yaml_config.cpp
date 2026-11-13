@@ -460,6 +460,10 @@ namespace camus::config
 			PROJECT_VERSION,
 			compiler_name
 		);
+		public_config_["build"]["sitemap"] = camus_.output.sitemap;
+		public_config_["build"]["filename_case"] = camus_.output.filename_case;
+		public_config_["build"]["rss"] = camus_.output.rss;
+		public_config_["build"]["feed_url"] = filesystem::clean_path("/feed.xml", camus_.public_url.path_prefix);
 	}
 
 	yaml_config::yaml_config(const std::string &filename) : camus_({}), filename_(filename)
@@ -733,15 +737,8 @@ namespace camus::config
 				continue;
 			}
 
-			if (key == "sitemap") {
-				if (it.second.IsScalar()) {
-					camus_.output.sitemap = it.second.as<bool>();
-				}
-				continue;
-			}
-
-			if (key == "filename_case") {
-				camus_.output.filename_case = get_string(it.second);
+			if (key == "sitemap" || key == "filename_case") {
+				logging::warn("config key '{}' has moved to 'build.{}'", key, key);
 				continue;
 			}
 
@@ -769,14 +766,6 @@ namespace camus::config
 
 		// 所有标量配置项都可由 CAMUS_<PATH> 环境变量覆盖（优先于 camus.yaml）。
 		// 数组 / 列表字段不参与注入。
-		if (const auto value = env_override("sitemap"); value.has_value()) {
-			camus_.output.sitemap = parse_bool_override(*value).value_or(camus_.output.sitemap);
-		}
-
-		if (const auto value = env_override("filename_case"); value.has_value()) {
-			camus_.output.filename_case = strings::trim_space(*value);
-		}
-
 		if (const auto value = env_override("auto_check_update"); value.has_value()) {
 			if (const auto mode = parse_update_mode(*value); mode.has_value()) {
 				camus_.auto_check_update = *mode;
@@ -988,13 +977,37 @@ namespace camus::config
 		if (const YAML::Node build = root["build"]; build) {
 			if (build.IsSequence()) {
 				transfer_data = build;
-			} else if (build.IsMap() && build["transfer"]) {
-				transfer_data = build["transfer"];
+			} else if (build.IsMap()) {
+				if (const YAML::Node sitemap = build["sitemap"]; sitemap && sitemap.IsScalar()) {
+					camus_.output.sitemap = sitemap.as<bool>();
+				}
+				if (const YAML::Node filename_case = build["filename_case"]; filename_case && filename_case.IsScalar()) {
+					camus_.output.filename_case = filename_case.as<std::string>();
+				}
+				if (const YAML::Node rss = build["rss"]; rss && rss.IsScalar()) {
+					camus_.output.rss = rss.as<bool>();
+				}
+				if (build["transfer"]) {
+					transfer_data = build["transfer"];
+				}
 			}
 		}
 		if (!transfer_data && root["transfer"]) {
 			transfer_data = root["transfer"];
 		}
+
+		if (const auto value = env_override("build.sitemap"); value.has_value()) {
+			camus_.output.sitemap = parse_bool_override(*value).value_or(camus_.output.sitemap);
+		}
+
+		if (const auto value = env_override("build.filename_case"); value.has_value()) {
+			camus_.output.filename_case = strings::trim_space(*value);
+		}
+
+		if (const auto value = env_override("build.rss"); value.has_value()) {
+			camus_.output.rss = parse_bool_override(*value).value_or(camus_.output.rss);
+		}
+
 
 		if (transfer_data) {
 			if (!transfer_data.IsSequence()) {
@@ -1109,6 +1122,7 @@ namespace camus::config
 		}
 		camus_json["sitemap"] = camus_.output.sitemap;
 		camus_json["filename_case"] = camus_.output.filename_case;
+		camus_json["rss"] = camus_.output.rss;
 		camus_json["auto_check_update"] = camus_.auto_check_update;
 		camus_json["public_url"] = camus_.public_url.url;
 		camus_json["protocol"] = camus_.public_url.protocol;

@@ -20,7 +20,7 @@
 
 ## 3.2 解析总则
 
-- 根节点必须是映射，顶层直接包含 `sitemap`、`filename_case`、`auto_check_update`、`public_url`、`theme`、`pdf`、`html`、`friends` 等配置项，否则 `error::panic("config file parse failed")`（退出 127）。不再接受 `render` 嵌套段；出现时打印 WARN 并忽略其内容。
+- 根节点必须是映射，顶层包含 `auto_check_update`、`public_url`、`theme`、`pdf`、`html`、`friends` 等配置项；输出与搬运相关的 `sitemap` / `filename_case` / `rss` / `transfer` / `env` 位于 `build` 段。否则 `error::panic("config file parse failed")`（退出 127）。不再接受 `render` 嵌套段或顶层 `sitemap` / `filename_case`；出现时打印 WARN 并忽略其内容。
 - `SUMMARY.md` 在目录扫描时跳过，不进入文章树。
 - 字符串值会做 `trim_space`；`SUMMARY.md` 中 `title`/`subtitle`/`description` 的换行符替换为 `<br />`；`cover` / `logo` 只做 `trim_space`，保留原始路径。
 - 源目录、资源目录与输出目录不再可配置：
@@ -29,14 +29,12 @@
   - HTML 输出固定为 `./dist/html`，PDF 输出固定为 `./dist/pdf`。
 - `html_engine` 固定为 `default`，`markdown_engine` 固定为 `cmark-gfm`，均不从配置读取。
 - 路径在解析后转为绝对路径供内部使用；模板 JSON 中保留解析后的值（见 §3.7）。
-- **环境变量注入**：所有标量配置项都可用环境变量覆盖，变量名为 `CAMUS_` + 配置路径（大写、层级与非法字符转为 `_`），例如 `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`、`pdf.engine` → `CAMUS_PDF_ENGINE`、`pdf.sort` → `CAMUS_PDF_SORT`、`html.copy_pdf` → `CAMUS_HTML_COPY_PDF`、`html.download_cover` → `CAMUS_HTML_DOWNLOAD_COVER`、`theme` → `CAMUS_THEME`。环境变量优先于 `camus.yaml` 中的值；即使配置文件中没有该键，也可注入已知标量项（`sitemap`、`filename_case`、`auto_check_update`、`public_url`、`theme`、`pdf.engine`、`pdf.page.size`、`pdf.page.margin`、`pdf.page.font_size`、`pdf.sort`、`html.copy_pdf`、`html.download_cover`）。为兼容旧配置，仍接受 `CAMUS_PDF_ENGINE`（对应旧 `pdf_engine`，与 `pdf.engine` 同名）与 `CAMUS_PDF_OPTIONS_PAGE_SIZE` / `CAMUS_PDF_OPTIONS_PAGE_MARGIN`（旧 `pdf_options.page.*`），新键优先。数组 / 列表字段（`html.build`、`pdf.build`、`friends`、`build` / `transfer` 及其元素字段）**不支持**注入。`-W` 监听模式仍会清空 `public_url`。
+- **环境变量注入**：所有标量配置项都可用环境变量覆盖，变量名为 `CAMUS_` + 配置路径（大写、层级与非法字符转为 `_`），例如 `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`、`pdf.engine` → `CAMUS_PDF_ENGINE`、`pdf.sort` → `CAMUS_PDF_SORT`、`html.copy_pdf` → `CAMUS_HTML_COPY_PDF`、`html.download_cover` → `CAMUS_HTML_DOWNLOAD_COVER`、`theme` → `CAMUS_THEME`、`build.sitemap` → `CAMUS_BUILD_SITEMAP`、`build.filename_case` → `CAMUS_BUILD_FILENAME_CASE`、`build.rss` → `CAMUS_BUILD_RSS`。环境变量优先于 `camus.yaml` 中的值；即使配置文件中没有该键，也可注入已知标量项（`build.sitemap`、`build.filename_case`、`build.rss`、`auto_check_update`、`public_url`、`theme`、`pdf.engine`、`pdf.page.size`、`pdf.page.margin`、`pdf.page.font_size`、`pdf.sort`、`html.copy_pdf`、`html.download_cover`）。为兼容旧配置，仍接受 `CAMUS_PDF_ENGINE`（对应旧 `pdf_engine`，与 `pdf.engine` 同名）与 `CAMUS_PDF_OPTIONS_PAGE_SIZE` / `CAMUS_PDF_OPTIONS_PAGE_MARGIN`（旧 `pdf_options.page.*`），新键优先。数组 / 列表字段（`html.build`、`pdf.build`、`friends`、`build.transfer` / `transfer` 及其元素字段）**不支持**注入。`-W` 监听模式仍会清空 `public_url`。
 
 ## 3.3 顶层配置字段
 
 | 字段 | 类型 | 默认/必填 | 说明 | 代码位置 |
 |---|---|---|---|---|
-| `sitemap` | bool | 默认 `true` | 是否输出 `sitemap.xml` | `yaml_config.cpp` |
-| `filename_case` | 字符串 | 默认 `keep` | `uuid` 时文章 `display_name` 生成 UUID 并输出到 `/s/<uuid>.html` 风格短链 | `yaml_config.cpp` |
 | `auto_check_update` | 字符串 | 默认 `auto` | 构建启动时的更新策略：`auto` 下载并安装最新 release、`check-only` 仅检测并输出链接、`disable` 跳过；动作在后台线程（`std::thread`）中异步执行，不阻塞构建，退出时 join 并在未完成时打印等待提示；兼容旧布尔值 `true`/`false`（等价 `auto`/`disable`），非法值打印 WARN 并保持默认；`--dryrun` 下跳过；`-W` 多次重建只执行一次 | `yaml_config.cpp`、`writer.cpp`、`update.cpp` |
 | `public_url` | 字符串 | 可选 | 站点对外访问地址，自动拆解为下方三项；可由 `CAMUS_PUBLIC_URL` 注入（优先级高于配置文件）；`-W` 监听模式下忽略（按空处理） | `yaml_config.cpp` `parse_public_url()` |
 | `protocol` | 字符串（只读派生） | 默认 `https://` | `public_url` 的协议部分，含 `://` | 同上 |
@@ -154,7 +152,7 @@ subtitle: Optional summary
 2. Mozart!
 ```
 
-### 3.5.2 `build` 段（`transfer` / `env`）
+### 3.5.2 `build` 段（`sitemap` / `filename_case` / `rss` / `transfer` / `env`）
 
 `camus.yaml` 顶层 `build` 为映射，包含 `transfer`（搬运规则序列）与 `env`（文本替换键值对）：
 
@@ -168,6 +166,14 @@ build:
   env:
     site_name: Camus
 ```
+
+`build` 段中的输出开关：
+
+| 字段 | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| `build.sitemap` | bool | `true` | 是否输出 `sitemap.xml` |
+| `build.filename_case` | 字符串 | `keep` | `uuid` 时文章 `display_name` 生成 UUID 并输出到 `/s/<uuid>.html` 风格短链 |
+| `build.rss` | bool | `true` | 是否输出 `feed.xml`（RSS 2.0）；所有主题在 `<head>` 中通过 `build.rss` 条件输出自动发现 `<link rel="alternate" type="application/rss+xml" href="{path_prefix}/feed.xml">` |
 
 兼容旧格式：顶层 `build` 直接为序列，或顶层键 `transfer`；优先级为 `build.transfer` > 顶层 `build` 序列 > 顶层 `transfer`。
 
@@ -229,11 +235,12 @@ build:
 
 | 顶层键 | 结构 | 说明 |
 |---|---|---|
-| `camus` | 对象 | 兼容保留的聚合对象：`source_dir`、`assets_dir`、`site`、`sitemap`、`filename_case`、`auto_check_update`、`public_url`、`protocol`、`domain_name`、`path_prefix`、`render`、`pdf`、`friends`；`render.options` 为选项展示串 |
+| `camus` | 对象 | 兼容保留的聚合对象：`source_dir`、`assets_dir`、`site`、`sitemap`、`filename_case`、`rss`、`auto_check_update`、`public_url`、`protocol`、`domain_name`、`path_prefix`、`render`、`pdf`、`friends`；`render.options` 为选项展示串 |
 | `source_dir` | 字符串 | 解析后的源目录绝对路径（`src`→`posts` 探测） |
 | `assets_dir` | 字符串 | 解析后的资源目录绝对路径 |
-| `sitemap` | bool | 是否输出 `sitemap.xml` |
-| `filename_case` | 字符串 | 输出文件名策略（`keep` / `uuid`） |
+| `sitemap` | bool | 是否输出 `sitemap.xml`（顶层兼容别名，同步 `build.sitemap`） |
+| `filename_case` | 字符串 | 输出文件名策略（`keep` / `uuid`；顶层兼容别名） |
+| `build.sitemap` / `build.filename_case` / `build.rss` | bool / 字符串 / bool | 输出开关与文件名策略；`build.feed_url` 为 `feed.xml` 的带前缀路径 |
 | `public_url` | 字符串 | 归一化后的站点对外地址 |
 | `protocol` | 字符串 | `public_url` 的协议部分（`https://`） |
 | `domain_name` | 字符串 | `public_url` 的域名部分 |

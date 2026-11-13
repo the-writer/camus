@@ -25,6 +25,7 @@
             }
         })();
     </script>
+    {% if build.rss %}<link rel="alternate" type="application/rss+xml" title="{{ site.title }}" href="{{ with_prefix("/feed.xml") }}"/>{% endif %}
 </head>
 <body class="tomato" data-camus-theme="{{ render.theme_name }}">
 

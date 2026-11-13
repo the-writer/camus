@@ -157,9 +157,10 @@ namespace camus::config
 	struct output_conf {
 		bool sitemap = true;
 		std::string filename_case = "keep";
+		bool rss = true;
 		std::filesystem::path dest_dir = "dist/html";
 
-		NLOHMANN_DEFINE_TYPE_INTRUSIVE(output_conf, sitemap, filename_case, dest_dir);
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(output_conf, sitemap, filename_case, rss, dest_dir);
 	};
 
 	struct public_url_conf {

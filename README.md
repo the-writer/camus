@@ -84,9 +84,6 @@ A site uses one main config file plus optional per-directory metadata:
 ### `camus.yaml`
 
 ```yaml
-sitemap: true              # generate sitemap.xml
-filename_case: keep        # keep | uuid
-
 # Public URL of the site. It is split into protocol/domain_name/path_prefix:
 # https://the-writer.github.io/camus/ -> https:// + the-writer.github.io + /camus
 public_url: https://the-writer.github.io/camus/
@@ -117,6 +114,9 @@ friends:
 
 # Move directory contents to another output path, and define text replacements
 build:
+  sitemap: true            # generate sitemap.xml
+  filename_case: keep      # keep | uuid
+  rss: true                # generate feed.xml
   transfer:
     - path: /introduction
       transfers:
