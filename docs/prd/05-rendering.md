@@ -52,7 +52,7 @@ window.CAMUS_TOMATO = {
 - `font.family` / `font.size` 为正文默认字体与字号：`font.size` 会限制在 14–40px，且已有 `localStorage` 字号记录优先；`font.family` 写入 CSS 变量 `--tm-font-family`。
 - 仅当 `window.CAMUS_THEME === "tomato"` 时 `tomato.js` 才应用这些开关；tomato 模板将 `onload.js` 放在 `tomato.js` 之前加载。
 
-`pixel` 主题在 `assets/css/pixel-inja.css` 中设置 `html { font-size: 85%; }`，字体与基于 rem 的元素尺寸整体约缩小 15%。`pixel` 主题的页脚链接（`build.powered_by`）在「Friends」右侧额外提供「Search」入口，其余主题不显示搜索入口。
+`pixel` 主题在 `assets/css/pixel-inja.css` 中设置 `html { font-size: 85%; }`，字体与基于 rem 的元素尺寸整体约缩小 15%。`pixel` 主题的页脚链接（`build.powered_by`）在「Friends」右侧额外提供「Search」入口，其余主题不显示搜索入口；首页/目录页的 `▶ INDEX ◀` 标题行最右侧另有一个仅作展示的假搜索框（`.toc-search`，`SEARCH...` 占位，用 `<a>` 实现、不可输入），点击直接跳转 `search.html`。
 
 `document` / `pixel` / `terminal` / `tomato` 的正文样式区分行内代码与围栏代码块：`pre` 内的 `code` 不再套用行内代码的边框、底色与内边距，代码块边框只由 `pre` 提供。四个主题均从 CDN 加载 highlight.js 进行语法高亮（`tomato` 同时覆盖首页正文），并在 `assets/js/highlight-init.js` 中把 `language-shell` 统一映射为 bash 语法后调用 `highlightAll()`，因此 `shell` / `ini` 等围栏代码会正常着色。
 

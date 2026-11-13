@@ -57,12 +57,42 @@
         }
 
         .toc-header {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
             font-size: 1.19rem;
             color: var(--accent);
             text-align: center;
             margin: 2.5rem 0 1.5rem;
             letter-spacing: 0.3em;
             text-shadow: 2px 2px 0 var(--bg);
+        }
+
+        .toc-header-title {
+            grid-column: 2;
+        }
+
+        .toc-search {
+            grid-column: 3;
+            justify-self: end;
+            display: inline-flex;
+            align-items: center;
+            min-width: 9rem;
+            padding: 0.35rem 0.55rem;
+            border: 2px solid var(--border);
+            background: var(--code-bg);
+            color: var(--text-secondary);
+            font-size: 0.6rem;
+            letter-spacing: 0.06em;
+            text-decoration: none;
+            cursor: pointer;
+            box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.2), inset 2px 2px 0 rgba(255, 255, 255, 0.05);
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .toc-search:hover {
+            color: var(--accent);
+            border-color: var(--accent);
         }
 
         .toc-list { list-style: none; padding: 0; }
@@ -181,6 +211,7 @@
             }
             .cover-description::before { font-size: 0.36rem; top: -0.4rem; }
             .toc-header { font-size: 0.79rem; letter-spacing: 0.12em; margin: 1.5rem 0 0.8rem; }
+            .toc-search { min-width: 7rem; padding: 0.3rem 0.45rem; font-size: 0.48rem; }
             .toc-item { padding: 0.6rem 0.5rem; flex-wrap: wrap; }
             .toc-item::before { width: 6px; height: 6px; margin-right: 0.6rem; }
             .toc-dir::before { width: 8px !important; height: 8px !important; }
@@ -204,6 +235,7 @@
             }
             .cover-description::before { font-size: 0.3rem; top: -0.35rem; left: 0.4rem; }
             .toc-header { font-size: 0.59rem; letter-spacing: 0.08em; margin: 1.2rem 0 0.6rem; }
+            .toc-search { min-width: 5.5rem; padding: 0.28rem 0.4rem; font-size: 0.4rem; letter-spacing: 0.02em; }
             @keyframes tocFadeIn {
                 from { opacity: 0; transform: translateY(6px); }
                 50% { opacity: 0.5; }
@@ -247,7 +279,10 @@
         {% endif %}
     </p>
 
-    <div class="toc-header">&#9654; INDEX &#9664;</div>
+    <div class="toc-header">
+        <span class="toc-header-title">&#9654; INDEX &#9664;</span>
+        <a class="toc-search" href="{{ path_prefix }}/search.html" aria-label="搜索" title="搜索">SEARCH...</a>
+    </div>
 
     <ul class="toc-list">
         {% if current.path != "/" %}
