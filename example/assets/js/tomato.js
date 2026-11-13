@@ -252,16 +252,19 @@
             }
         });
 
-        var months = [];
+        var monthCounts = {};
         items.forEach(function (item) {
             if (item.writeTime > 0) {
                 item.month = monthKey(item.writeTime);
-                if (months.indexOf(item.month) === -1) {
-                    months.push(item.month);
-                }
+                monthCounts[item.month] = (monthCounts[item.month] || 0) + 1;
             }
         });
-        months.sort().reverse();
+        var months = Object.keys(monthCounts).sort().reverse().map(function (month) {
+            return { key: month, count: monthCounts[month] };
+        });
+        var totalMonthItems = items.filter(function (item) {
+            return !!item.month;
+        }).length;
 
         if (volumeBtn) {
             volumeBtn.hidden = !volumeEnabled || (volumes.length === 0 && !hasNoVolume);
@@ -350,29 +353,35 @@
             chaptersNav.scrollTop = 0;
         }
 
+        function appendMonthItem(menu, label, value, count) {
+            var item = document.createElement("a");
+            item.className = "tm-volume-item tm-volume-item-split" + (monthFilter === value ? " is-active" : "");
+
+            var text = document.createElement("span");
+            text.className = "tm-volume-label";
+            text.textContent = label;
+            item.appendChild(text);
+
+            var number = document.createElement("span");
+            number.className = "tm-volume-count";
+            number.textContent = String(count);
+            item.appendChild(number);
+
+            item.addEventListener("click", function () {
+                selectMonth(value);
+            });
+            menu.appendChild(item);
+        }
+
         function buildMonthMenu() {
             if (!monthMenu) {
                 return;
             }
 
             monthMenu.innerHTML = "";
-
-            var all = document.createElement("a");
-            all.className = "tm-volume-item" + (monthFilter === "" ? " is-active" : "");
-            all.textContent = "全部时间";
-            all.addEventListener("click", function () {
-                selectMonth("");
-            });
-            monthMenu.appendChild(all);
-
+            appendMonthItem(monthMenu, "全部时间", "", totalMonthItems);
             months.forEach(function (month) {
-                var item = document.createElement("a");
-                item.className = "tm-volume-item" + (monthFilter === month ? " is-active" : "");
-                item.textContent = month;
-                item.addEventListener("click", function () {
-                    selectMonth(month);
-                });
-                monthMenu.appendChild(item);
+                appendMonthItem(monthMenu, month.key, month.key, month.count);
             });
         }
 
