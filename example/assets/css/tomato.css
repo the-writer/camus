@@ -484,7 +484,7 @@ body.tomato {
     border-bottom-color: var(--tm-accent);
 }
 
-.tm-content code:not(.hljs) {
+.tm-content :not(pre) > code:not(.hljs) {
     padding: 0.12em 0.4em;
     font-size: 0.92em;
     border-radius: 5px;
@@ -504,6 +504,9 @@ body.tomato {
 .tm-content pre code {
     font-size: 0.85em;
     line-height: 1.7;
+    border: 0;
+    padding: 0;
+    background: transparent;
 }
 
 .tm-content table {
