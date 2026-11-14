@@ -874,6 +874,44 @@ body.tomato {
     border-color: var(--tm-accent);
 }
 
+.tm-menu-btn[hidden] {
+    display: none;
+}
+
+/* 非持久模式：目录抽屉右上角的关闭按钮 */
+.tm-drawer-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--tm-border);
+    border-radius: 8px;
+    background: var(--tm-panel);
+    color: var(--tm-text-secondary);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tm-drawer-close:hover {
+    color: var(--tm-accent);
+    border-color: var(--tm-accent);
+}
+
+.tm-drawer-close[hidden] {
+    display: none;
+}
+
+body.tm-drawer-mode .tm-book {
+    padding-right: 48px;
+}
+
 /* ── 阅读设置工具栏 ─────────────────────────────────────── */
 
 .tm-tools {
@@ -914,9 +952,26 @@ body.tomato {
     border-color: var(--tm-accent);
 }
 
+.tm-tool[hidden] {
+    display: none;
+}
+
 .tm-tool .tm-tool-label {
     font-size: 0.62rem;
     letter-spacing: 0.05em;
+}
+
+.tm-tool-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background: currentColor;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
 }
 
 .tm-font {
@@ -1275,11 +1330,47 @@ body.tomato {
 
     body.tm-collapsed .tm-main {
         margin-left: 0;
+        height: 100vh;
+    }
+
+    body.tm-collapsed .tm-reader {
+        background: var(--tm-panel);
     }
 
     body.tm-collapsed .tm-menu-btn {
         left: 18px;
     }
+
+    /* 非持久显示：目录以抽屉方式覆盖，正文不再让出侧栏宽度 */
+    body.tm-drawer-mode .tm-sidebar {
+        width: 500px;
+        transform: translateX(-100%);
+        box-shadow: var(--tm-shadow);
+    }
+
+    body.tm-drawer-mode .tm-main {
+        margin-left: 0;
+        height: 100vh;
+    }
+
+    body.tm-drawer-mode .tm-reader {
+        background: var(--tm-panel);
+    }
+
+    body.tm-drawer-mode.tm-open .tm-sidebar {
+        transform: translateX(0);
+    }
+}
+
+body.tm-drawer-mode.tm-open .tm-overlay {
+    opacity: 1;
+    visibility: visible;
+}
+
+body.tm-drawer-mode .tm-overlay {
+    background: rgba(0, 0, 0, 0.18);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
 }
 
 @media (max-width: 900px) {

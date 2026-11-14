@@ -16,6 +16,9 @@
             "page.friends": "Friends",
             "page.search": "Search",
             "menu.toggle": "Toggle chapter list",
+            "toc.toggle": "Toggle contents",
+            "toc.button": "TOC",
+            "toc.close": "Close contents",
             "home.back": "Back to home",
             "toc.title": "Contents",
             "filter.volume": "Volumes",
@@ -38,6 +41,7 @@
             "theme.dark": "Dark",
             "lang.title": "Switch language",
             "lang.label": "EN",
+            "lang.auto": "Auto",
             "font.increase": "Increase font size",
             "font.decrease": "Decrease font size",
             "font.size": "Font size",
@@ -93,6 +97,9 @@
             "page.friends": "友链",
             "page.search": "搜索",
             "menu.toggle": "切换章节目录",
+            "toc.toggle": "切换目录",
+            "toc.button": "目录",
+            "toc.close": "关闭目录",
             "home.back": "返回首页",
             "toc.title": "目录",
             "filter.volume": "分卷",
@@ -115,6 +122,7 @@
             "theme.dark": "夜间",
             "lang.title": "切换语言",
             "lang.label": "中",
+            "lang.auto": "自动",
             "font.increase": "增大字号",
             "font.decrease": "减小字号",
             "font.size": "字号",
@@ -213,9 +221,26 @@
 
     var languageOptions = tomatoOptions && tomatoOptions.language ? tomatoOptions.language : {};
     var languageEnabled = languageOptions.enabled !== false;
-    var defaultLanguage = languageOptions.default === "zh" ? "zh" : "en";
+    var defaultLanguageMode =
+        languageOptions.default === "zh" || languageOptions.default === "en" || languageOptions.default === "auto"
+            ? languageOptions.default
+            : "auto";
+
+    function detectBrowserLanguage() {
+        var nav = window.navigator || {};
+        var langs = Array.isArray(nav.languages) && nav.languages.length ? nav.languages : [nav.language || nav.userLanguage || "en"];
+        var primary = String(langs[0] || "en").toLowerCase();
+        return primary.indexOf("zh") === 0 ? "zh" : "en";
+    }
+
+    function resolveLanguage(mode) {
+        return mode === "auto" ? detectBrowserLanguage() : mode;
+    }
+
     var storedLanguage = read(LANG_KEY);
-    var currentLanguage = storedLanguage === "zh" || storedLanguage === "en" ? storedLanguage : defaultLanguage;
+    var currentLanguageMode =
+        storedLanguage === "zh" || storedLanguage === "en" || storedLanguage === "auto" ? storedLanguage : defaultLanguageMode;
+    var currentLanguage = resolveLanguage(currentLanguageMode);
 
     // ── 夜间模式 ──
     var themeBtn = document.getElementById("tm-theme");
@@ -323,37 +348,62 @@
 
     // ── 侧边栏显示 / 隐藏 ──
     var menuBtn = document.getElementById("tm-menu");
+    var tocBtn = document.getElementById("tm-toc");
+    var drawerCloseBtn = document.getElementById("tm-drawer-close");
     var overlay = document.getElementById("tm-overlay");
     var media = window.matchMedia("(max-width: 900px)");
     var SIDEBAR_KEY = "tomato-sidebar-collapsed";
-
-    // 恢复上次的目录折叠状态（仅桌面端生效，移动端仍默认隐藏）
-    body.classList.toggle("tm-collapsed", read(SIDEBAR_KEY) === "1");
+    var sidebarOptions = tomatoOptions && tomatoOptions.sidebar ? tomatoOptions.sidebar : {};
+    var sidebarPersistent = sidebarOptions.persistent !== false;
+    var sidebarDefaultVisible = sidebarOptions.defaultVisible !== false;
 
     function isMobile() {
         return media.matches;
     }
 
-    function toggleSidebar() {
-        if (isMobile()) {
-            body.classList.toggle("tm-open");
-            return;
-        }
-        var collapsed = body.classList.toggle("tm-collapsed");
-        write(SIDEBAR_KEY, collapsed ? "1" : "0");
+    function toggleDrawer() {
+        body.classList.toggle("tm-open");
     }
 
-    function closeMobileSidebar() {
-        if (isMobile()) {
-            body.classList.remove("tm-open");
+    if (sidebarPersistent) {
+        // 持久显示：桌面端常驻目录，恢复上次折叠状态（无记录时用 defaultVisible）；
+        // 移动端仍默认隐藏，通过折叠按钮以抽屉展开。
+        var storedSidebar = read(SIDEBAR_KEY);
+        var collapsed = storedSidebar === "1" || (storedSidebar !== "0" && !sidebarDefaultVisible);
+        body.classList.toggle("tm-collapsed", collapsed);
+
+        if (menuBtn) {
+            menuBtn.addEventListener("click", function () {
+                if (isMobile()) {
+                    toggleDrawer();
+                    return;
+                }
+                var next = body.classList.toggle("tm-collapsed");
+                write(SIDEBAR_KEY, next ? "1" : "0");
+            });
+        }
+    } else {
+        // 非持久显示：隐藏折叠按钮，改由右侧目录按钮以模糊遮罩抽屉展开。
+        body.classList.add("tm-drawer-mode");
+        if (menuBtn) {
+            menuBtn.hidden = true;
+        }
+        if (tocBtn) {
+            tocBtn.hidden = false;
+            tocBtn.addEventListener("click", toggleDrawer);
+        }
+        if (drawerCloseBtn) {
+            drawerCloseBtn.hidden = false;
+            drawerCloseBtn.addEventListener("click", function () {
+                body.classList.remove("tm-open");
+            });
         }
     }
 
-    if (menuBtn) {
-        menuBtn.addEventListener("click", toggleSidebar);
-    }
     if (overlay) {
-        overlay.addEventListener("click", closeMobileSidebar);
+        overlay.addEventListener("click", function () {
+            body.classList.remove("tm-open");
+        });
     }
 
     if (media.addEventListener) {
@@ -1545,14 +1595,16 @@
         document.dispatchEvent(new CustomEvent("tomato-lang-change", { detail: { lang: currentLanguage } }));
     }
 
-    function applyLanguage(lang, persist) {
-        currentLanguage = lang === "zh" ? "zh" : "en";
+    function applyLanguage(mode, persist) {
+        currentLanguageMode = mode === "zh" || mode === "en" ? mode : "auto";
+        currentLanguage = resolveLanguage(currentLanguageMode);
         if (persist) {
-            write(LANG_KEY, currentLanguage);
+            write(LANG_KEY, currentLanguageMode);
         }
         root.setAttribute("lang", currentLanguage === "zh" ? "zh-CN" : "en");
         if (langLabel) {
-            langLabel.textContent = translate("lang.label");
+            langLabel.textContent =
+                currentLanguageMode === "auto" ? translate("lang.auto") : translate("lang.label");
         }
         if (langBtn) {
             langBtn.setAttribute("title", translate("lang.title"));
@@ -1565,15 +1617,19 @@
         current: function () {
             return currentLanguage;
         },
+        mode: function () {
+            return currentLanguageMode;
+        },
         t: translate
     };
 
     if (langBtn) {
         langBtn.hidden = !languageEnabled;
         langBtn.addEventListener("click", function () {
-            applyLanguage(currentLanguage === "zh" ? "en" : "zh", true);
+            var next = currentLanguageMode === "auto" ? "en" : currentLanguageMode === "en" ? "zh" : "auto";
+            applyLanguage(next, true);
         });
     }
 
-    applyLanguage(currentLanguage, false);
+    applyLanguage(currentLanguageMode, false);
 })();
