@@ -24,4 +24,21 @@
             size: 15
         }
     };
+
+    // 除 default 外的主题在启用 html.pwa（模板输出 manifest）时注册 PWA Service Worker；
+    // 从当前脚本路径推导站点根或 path_prefix。
+    var pwaManifest = document.querySelector ? document.querySelector('link[rel="manifest"]') : null;
+    if (pwaManifest && window.CAMUS_THEME && window.CAMUS_THEME !== "default" &&
+        "serviceWorker" in navigator) {
+        var script = document.currentScript;
+        var scriptUrl = script && script.src ? script.src : "";
+        var marker = "/js/camus.js";
+        var markerIndex = scriptUrl.indexOf(marker);
+        var root = markerIndex >= 0 ? scriptUrl.slice(0, markerIndex) : "";
+
+        window.addEventListener("load", function () {
+            navigator.serviceWorker.register(root + "/sw.js").catch(function () {
+            });
+        });
+    }
 })();

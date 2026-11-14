@@ -97,6 +97,8 @@ namespace camus
 		void emit_sitemap();
 		void emit_feed();
 		void emit_assets();
+		// html.pwa=true 时生成各主题的 PWA manifest（name/icon 取自站点配置）。
+		void emit_pwa();
 		void prepare_remote_cover();
 		void emit_pdf();
 

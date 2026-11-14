@@ -1753,12 +1753,32 @@ namespace camus
 			index += '\n';
 		});
 
-		if (const std::string compressed = gzip_compress(index); compressed.empty()) {
+		const std::string compressed = gzip_compress(index);
+		if (compressed.empty()) {
 			logging::warn("search index compression failed");
 			return;
-		} else {
-			add_write(conf_.camus().dest_dir() / CAMUS_SEARCH_INDEX_NAME, compressed);
 		}
+
+		// 把压缩后的索引拆成约 32KB 的分片，并写一个 manifest 记录分片顺序。
+		// manifest 复用 CAMUS_SEARCH_INDEX_NAME；分片使用较长的随机名，避免规律过于明显，
+		// 客户端按 manifest 中的顺序加载。
+		nlohmann::json manifest{
+			{"version", 1},
+			{"encoding", "gzip+xor"},
+			{"part_size", CAMUS_SEARCH_PART_SIZE},
+			{"parts", nlohmann::json::array()},
+		};
+
+		const size_t part_size = CAMUS_SEARCH_PART_SIZE;
+		for (size_t offset = 0, index_part = 1; offset < compressed.size(); offset += part_size, ++index_part) {
+			const size_t length = std::min(part_size, compressed.size() - offset);
+			const std::string name =
+				strings::sha1_hex(strings::uuid_v4() + std::to_string(index_part)) + ".bin";
+			add_write(conf_.camus().dest_dir() / name, compressed.substr(offset, length));
+			manifest["parts"].push_back(name);
+		}
+
+		add_write(conf_.camus().dest_dir() / CAMUS_SEARCH_INDEX_NAME, manifest.dump());
 
 		nlohmann::json j = conf_.json();
 		j["chapters"] = build_chapter_items();
@@ -2046,6 +2066,36 @@ namespace camus
 			);
 		}
 
+		// manifest 由 emit_pwa() 统一生成；清理旧版静态 manifest 与按主题的图标。
+		std::error_code ec;
+		for (const char *name : {
+				 "manifest-tomato.webmanifest",
+				 "manifest-pixel.webmanifest",
+				 "manifest-document.webmanifest",
+				 "manifest-terminal.webmanifest",
+			 }) {
+			std::filesystem::remove(dest_dir / name, ec);
+		}
+		for (const char *name : {
+				 "icon-tomato-192.png",
+				 "icon-tomato-512.png",
+				 "icon-pixel-192.png",
+				 "icon-pixel-512.png",
+				 "icon-document-192.png",
+				 "icon-document-512.png",
+				 "icon-terminal-192.png",
+				 "icon-terminal-512.png",
+			 }) {
+			std::filesystem::remove(dest_dir / "imgs" / name, ec);
+		}
+
+		// html.pwa=false：不生成 Service Worker 与 PWA 图标。
+		if (!conf_.camus().html.pwa) {
+			std::filesystem::remove(dest_dir / "sw.js", ec);
+			std::filesystem::remove(dest_dir / "imgs" / "pwa-icon.png", ec);
+		}
+		std::filesystem::remove(dest_dir / "imgs", ec); // 为空时才会删除
+
 		// 替换资源文件中的模板
 		size_t count = 0;
 		const nlohmann::json json = conf_.json();
@@ -2092,11 +2142,11 @@ namespace camus
 
 		const std::string cover = strings::trim_space(conf_.camus().site.cover);
 		const std::string logo = strings::trim_space(conf_.camus().site.html_image());
-		const bool download_html = conf_.camus().html.download_cover;
+		const bool download_html = conf_.camus().html.download_logo;
 		const std::string engine = strings::to_lower(strings::trim_space(conf_.camus().pdf.engine));
 		const bool pdf_enabled = !engine.empty() && engine != "disable";
 
-		// PDF 封面：启用 PDF 时始终下载远程 cover（不受 html.download_cover 影响）。
+		// PDF 封面：启用 PDF 时始终下载远程 cover（不受 html.download_logo 影响）。
 		if (pdf_enabled && is_remote_url(cover)) {
 			const std::string extension = remote_image_extension(cover);
 			const std::filesystem::path temp =
@@ -2111,7 +2161,7 @@ namespace camus
 			remote_cover_path_ = temp;
 		}
 
-		// HTML 用图：download_cover 开启时下载远程 logo（未设置 logo 时回退 cover），
+		// HTML 用图：download_logo 开启时下载远程 logo（未设置 logo 时回退 cover），
 		// 并让模板改用本地文件，避免产物依赖远程地址。
 		if (download_html && is_remote_url(logo)) {
 			const std::string extension = remote_image_extension(logo);
@@ -2132,6 +2182,111 @@ namespace camus
 			}
 
 			conf_.set_logo_display_path("logo" + extension);
+		}
+	}
+
+	void writer::emit_pwa()
+	{
+		if (!conf_.camus().html.pwa) {
+			return;
+		}
+
+		const auto camus = conf_.camus();
+		const std::string title = camus.site.title.empty() ? "Camus" : camus.site.title;
+
+		// 图标优先使用站点 logo（未设置时回退 cover），未配置时所有主题共用同一个图片。
+		std::string logo;
+		if (const auto json = conf_.json(); json.contains("site") && json["site"].is_object()) {
+			logo = strings::trim_space(json["site"].value("logo", ""));
+			if (logo.empty()) {
+				logo = strings::trim_space(json["site"].value("cover_image", ""));
+			}
+		}
+		if (logo.empty()) {
+			logo = strings::trim_space(camus.site.html_image());
+		}
+
+		std::string icon_src = "imgs/pwa-icon.png";
+		std::string icon_sizes = "512x512";
+		std::string icon_purpose = "any maskable";
+		std::string icon_type = "image/png";
+
+		if (!logo.empty()) {
+			const bool absolute = logo.rfind("//", 0) == 0 || logo.find("://") != std::string::npos ||
+								  logo.rfind("data:", 0) == 0;
+			if (!absolute) {
+				if (logo.rfind("./", 0) == 0) {
+					logo = logo.substr(2);
+				}
+				if (logo.rfind("assets/", 0) == 0) {
+					logo = logo.substr(7);
+				}
+				if (!logo.empty() && logo.front() == '/') {
+					logo = logo.substr(1);
+				}
+			}
+
+			icon_src = logo;
+			icon_sizes = "any";
+			icon_purpose = "any";
+
+			const std::string ext =
+				strings::to_lower(std::filesystem::path(logo).extension().string());
+			if (ext == ".png") {
+				icon_type = "image/png";
+			} else if (ext == ".jpg" || ext == ".jpeg") {
+				icon_type = "image/jpeg";
+			} else if (ext == ".webp") {
+				icon_type = "image/webp";
+			} else if (ext == ".svg") {
+				icon_type = "image/svg+xml";
+			} else if (ext == ".ico") {
+				icon_type = "image/x-icon";
+			} else {
+				icon_type.clear();
+			}
+		}
+
+		struct pwa_theme {
+			const char *name;
+			const char *theme_color;
+			const char *background_color;
+		};
+
+		static constexpr pwa_theme themes[] = {
+			{"tomato", "#e4573d", "#f4f4f5"},
+			{"pixel", "#ff6b35", "#1a1a2e"},
+			{"document", "#0f62fe", "#ffffff"},
+			{"terminal", "#33ff33", "#0a0a08"},
+		};
+
+		for (const auto &theme : themes) {
+			nlohmann::json manifest{
+				{"name", title},
+				{"short_name", title},
+				{"start_url", "."},
+				{"scope", "."},
+				{"display", "standalone"},
+				{"orientation", "portrait-primary"},
+				{"background_color", theme.background_color},
+				{"theme_color", theme.theme_color},
+				{"icons", nlohmann::json::array()},
+			};
+
+			nlohmann::json icon{
+				{"src", icon_src},
+				{"sizes", icon_sizes},
+				{"purpose", icon_purpose},
+			};
+			if (!icon_type.empty()) {
+				icon["type"] = icon_type;
+			}
+			manifest["icons"].push_back(std::move(icon));
+
+			add_write(
+				conf_.camus().dest_dir() / std::format("manifest-{}.webmanifest", theme.name),
+				manifest.dump()
+			);
 		}
 	}
 
@@ -3481,6 +3636,7 @@ namespace camus
 		emit_sitemap();
 		emit_feed();
 		emit_assets();
+		emit_pwa();
 
 		const size_t html_files = pending_writes_.size();
 		size_t html_bytes = 0;
@@ -3490,8 +3646,8 @@ namespace camus
 
 		flush_writes();
 
-		// html.download_cover：把下载后的 HTML 图片（logo）写入 HTML 输出根目录，供模板本地引用。
-		if (conf_.camus().html.download_cover && !remote_logo_path_.empty()) {
+		// html.download_logo：把下载后的 HTML 图片（logo）写入 HTML 输出根目录，供模板本地引用。
+		if (conf_.camus().html.download_logo && !remote_logo_path_.empty()) {
 			const std::filesystem::path target =
 				conf_.camus().dest_dir() / ("logo" + remote_logo_path_.extension().string());
 			std::error_code ec;

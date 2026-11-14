@@ -144,12 +144,14 @@ namespace camus::config
 		// 为 true 时把生成的 PDF 复制到 HTML 输出根目录
 		bool copy_pdf = false;
 		// 为 true 时在构建前下载 URL 封面到本地，并让 HTML/PDF 使用本地副本
-		bool download_cover = false;
+		bool download_logo = false;
+		// 为 true 时输出 PWA 资源（manifest / service worker / 图标）
+		bool pwa = true;
 		// HTML 同层排序键数组：组顺序（file_first / dir_first / mixed）+ 可选的二次时间排序
 		// （time_asc / time_desc）。默认目录优先、时间倒序。
 		std::vector<std::string> sort = {"dir_first", "time_desc"};
 
-		NLOHMANN_DEFINE_TYPE_INTRUSIVE(html_conf, build, copy_pdf, download_cover, sort);
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(html_conf, build, copy_pdf, download_logo, pwa, sort);
 	};
 
 	struct render_conf {

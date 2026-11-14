@@ -9,6 +9,14 @@
     <meta name="build-type" content="{{ build.build_type }}">
     <title>Friends — {{ site.title }}</title>
     <link rel="icon" href="{{ with_prefix("/favicon.ico") }}">
+    {% if camus.html.pwa %}
+    <link rel="manifest" href="{{ with_prefix("/manifest-document.webmanifest") }}">
+    <meta name="theme-color" content="#0f62fe">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="{{ site.title }}">
+    <link rel="apple-touch-icon" href="{{ with_prefix("/imgs/icon-document-192.png") }}">
+    {% endif %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">

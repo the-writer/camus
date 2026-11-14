@@ -29,7 +29,7 @@
   - HTML 输出固定为 `./dist/html`，PDF 输出固定为 `./dist/pdf`。
 - `html_engine` 固定为 `default`，`markdown_engine` 固定为 `cmark-gfm`，均不从配置读取。
 - 路径在解析后转为绝对路径供内部使用；模板 JSON 中保留解析后的值（见 §3.7）。
-- **环境变量注入**：所有标量配置项都可用环境变量覆盖，变量名为 `CAMUS_` + 配置路径（大写、层级与非法字符转为 `_`），例如 `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`、`pdf.engine` → `CAMUS_PDF_ENGINE`、`pdf.sort` → `CAMUS_PDF_SORT`、`pdf.auto_volume` → `CAMUS_PDF_AUTO_VOLUME`、`html.copy_pdf` → `CAMUS_HTML_COPY_PDF`、`html.download_cover` → `CAMUS_HTML_DOWNLOAD_COVER`、`html.sort` → `CAMUS_HTML_SORT`、`theme` → `CAMUS_THEME`、`build.sitemap` → `CAMUS_BUILD_SITEMAP`、`build.filename_case` → `CAMUS_BUILD_FILENAME_CASE`、`build.rss` → `CAMUS_BUILD_RSS`、`build.safe_clean_limit` → `CAMUS_BUILD_SAFE_CLEAN_LIMIT`。环境变量优先于 `camus.yaml` 中的值；即使配置文件中没有该键，也可注入已知标量项（`build.sitemap`、`build.filename_case`、`build.rss`、`build.safe_clean_limit`、`auto_check_update`、`public_url`、`theme`、`pdf.engine`、`pdf.page.size`、`pdf.page.margin`、`pdf.page.font_size`、`pdf.sort`、`pdf.auto_volume`、`html.copy_pdf`、`html.download_cover`、`html.sort`）。为兼容旧配置，仍接受 `CAMUS_PDF_ENGINE`（对应旧 `pdf_engine`，与 `pdf.engine` 同名）与 `CAMUS_PDF_OPTIONS_PAGE_SIZE` / `CAMUS_PDF_OPTIONS_PAGE_MARGIN`（旧 `pdf_options.page.*`），新键优先。数组 / 列表字段（`html.build`、`pdf.build`、`friends`、`build.transfer` / `transfer` 及其元素字段）**不支持**注入；例外是 `pdf.sort` / `html.sort`，`CAMUS_PDF_SORT` / `CAMUS_HTML_SORT` 用逗号分隔多个键（如 `mixed,time_desc`）。`-W` 监听模式仍会清空 `public_url`。
+- **环境变量注入**：所有标量配置项都可用环境变量覆盖，变量名为 `CAMUS_` + 配置路径（大写、层级与非法字符转为 `_`），例如 `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`、`pdf.engine` → `CAMUS_PDF_ENGINE`、`pdf.sort` → `CAMUS_PDF_SORT`、`pdf.auto_volume` → `CAMUS_PDF_AUTO_VOLUME`、`html.copy_pdf` → `CAMUS_HTML_COPY_PDF`、`html.download_logo` → `CAMUS_HTML_DOWNLOAD_LOGO`、`html.sort` → `CAMUS_HTML_SORT`、`html.pwa` → `CAMUS_HTML_PWA`、`theme` → `CAMUS_THEME`、`build.sitemap` → `CAMUS_BUILD_SITEMAP`、`build.filename_case` → `CAMUS_BUILD_FILENAME_CASE`、`build.rss` → `CAMUS_BUILD_RSS`、`build.safe_clean_limit` → `CAMUS_BUILD_SAFE_CLEAN_LIMIT`。环境变量优先于 `camus.yaml` 中的值；即使配置文件中没有该键，也可注入已知标量项（`build.sitemap`、`build.filename_case`、`build.rss`、`build.safe_clean_limit`、`auto_check_update`、`public_url`、`theme`、`pdf.engine`、`pdf.page.size`、`pdf.page.margin`、`pdf.page.font_size`、`pdf.sort`、`pdf.auto_volume`、`html.copy_pdf`、`html.download_logo`、`html.sort`、`html.pwa`）。为兼容旧配置，仍接受 `CAMUS_PDF_ENGINE`（对应旧 `pdf_engine`，与 `pdf.engine` 同名）与 `CAMUS_PDF_OPTIONS_PAGE_SIZE` / `CAMUS_PDF_OPTIONS_PAGE_MARGIN`（旧 `pdf_options.page.*`），新键优先。数组 / 列表字段（`html.build`、`pdf.build`、`friends`、`build.transfer` / `transfer` 及其元素字段）**不支持**注入；例外是 `pdf.sort` / `html.sort`，`CAMUS_PDF_SORT` / `CAMUS_HTML_SORT` 用逗号分隔多个键（如 `mixed,time_desc`）。`-W` 监听模式仍会清空 `public_url`。
 
 ## 3.3 顶层配置字段
 
@@ -41,11 +41,13 @@
 | `domain_name` | 字符串（只读派生） | 空 | `public_url` 的域名部分（含端口，去除空格） | 同上 |
 | `path_prefix` | 字符串（只读派生） | 空 | `public_url` 的路径部分，以 `/` 开头且不带尾斜杠 | 同上 |
 | `theme` | 字符串 | 默认 `default` | 主题目录名 | `yaml_config.cpp` |
-| `html` | 对象 | 可选 | HTML 输出配置：`build`（cmark-gfm 选项名数组，见 §3.4）、`copy_pdf`（bool，默认 `false`，为 `true` 时把最终 PDF 复制到 HTML 输出根目录）、`download_cover`（bool，默认 `false`，仅控制 HTML：为 `true` 时 HTML 图片（`logo`，未设置时回退 `cover`）使用下载到本地的文件；PDF 不受该项影响，始终在构建前强制下载远程 `cover`，下载失败中止构建）、`sort`（排序键数组，默认 `[dir_first, time_desc]`，见 §3.3.2） | `yaml_config.cpp`、`writer.cpp` |
+| `html` | 对象 | 可选 | HTML 输出配置：`build`（cmark-gfm 选项名数组，见 §3.4）、`copy_pdf`（bool，默认 `false`，为 `true` 时把最终 PDF 复制到 HTML 输出根目录）、`download_logo`（bool，默认 `false`，仅控制 HTML：为 `true` 时 HTML 图片（`logo`，未设置时回退 `cover`）使用下载到本地的文件；PDF 不受该项影响，始终在构建前强制下载远程 `cover`，下载失败中止构建）、`pwa`（bool，默认 `true`，为 `false` 时不输出 PWA 资源与页面 PWA 标签）、`sort`（排序键数组，默认 `[dir_first, time_desc]`，见 §3.3.2） | `yaml_config.cpp`、`writer.cpp` |
 | `markdown` | 字符串数组 | 可选（已弃用） | 兼容旧配置：等价于 `html.build`；存在 `html.build` 时被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
 | `markdown_options` | 旧键 | 可选（已弃用） | 兼容旧配置：等价于 `html.build`；存在 `html` 或顶层 `markdown` 时被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
 | `pdf` | 对象 | 可选 | PDF 配置：`engine`（字符串）、`build`（字符串数组）、`page`（`size` / `margin` / `font_size` / `meta`）、`toc.index`（默认 `false`）、`auto_volume`（`by_year` / `disable`，默认 `by_year`）、`sort`（字符串数组，元素为 `file_first` / `dir_first` / `mixed` 与 `time_asc` / `time_desc`，默认 `[file_first, time_asc]`），见 §3.3.1 | `yaml_config.cpp` |
 | `pdf_engine` / `pdf_options` | 旧键 | 可选（已弃用） | 兼容旧配置：分别等价于 `pdf.engine` 与 `pdf.build` / `pdf.page`；存在顶层 `pdf` 时旧键被忽略。加载时输出 WARN 提示迁移 | `yaml_config.cpp` |
+
+> 破坏性变更：`html.download_cover` 已重命名为 `html.download_logo`（环境变量 `CAMUS_HTML_DOWNLOAD_LOGO`）。旧键不再生效，需手动迁移。
 
 `public_url` 拆解规则（`parse_public_url()`）：
 
@@ -147,7 +149,7 @@ Markdown 引擎固定为 `cmark-gfm`，解析器始终启用 `table` / `striketh
 | `TABLE_PREFER_STYLE_ATTRIBUTES` | `CMARK_OPT_TABLE_PREFER_STYLE_ATTRIBUTES` |
 | `FULL_INFO_STRING` | `CMARK_OPT_FULL_INFO_STRING` |
 
-顶层配置 `html.build` 在模板 JSON 的 `camus.render.options` 会显示为 `"{数值}({名称1,名称2,...})"`（`yaml_config.cpp`），同时以 `camus.html.build` / `camus.html.copy_pdf` / `camus.html.download_cover` 暴露。
+顶层配置 `html.build` 在模板 JSON 的 `camus.render.options` 会显示为 `"{数值}({名称1,名称2,...})"`（`yaml_config.cpp`），同时以 `camus.html.build` / `camus.html.copy_pdf` / `camus.html.download_logo` 暴露。
 
 ## 3.5 `build`（目录搬运 / 文本替换）与 `SUMMARY.md`（目录元信息）
 
@@ -269,7 +271,7 @@ build:
 
 | 顶层键 | 结构 | 说明 |
 |---|---|---|
-| `camus` | 对象 | 兼容保留的聚合对象：`source_dir`、`assets_dir`、`site`、`sitemap`、`filename_case`、`rss`、`safe_clean_limit`、`auto_check_update`、`public_url`、`protocol`、`domain_name`、`path_prefix`、`render`、`html`（`build` / `copy_pdf` / `download_cover` / `sort`）、`pdf`、`friends`；`render.options` 为选项展示串 |
+| `camus` | 对象 | 兼容保留的聚合对象：`source_dir`、`assets_dir`、`site`、`sitemap`、`filename_case`、`rss`、`safe_clean_limit`、`auto_check_update`、`public_url`、`protocol`、`domain_name`、`path_prefix`、`render`、`html`（`build` / `copy_pdf` / `download_logo` / `pwa` / `sort`）、`pdf`、`friends`；`render.options` 为选项展示串 |
 | `source_dir` | 字符串 | 解析后的源目录绝对路径（`src`→`posts` 探测） |
 | `assets_dir` | 字符串 | 解析后的资源目录绝对路径 |
 | `sitemap` | bool | 是否输出 `sitemap.xml`（顶层兼容别名，同步 `build.sitemap`） |

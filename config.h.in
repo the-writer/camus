@@ -21,6 +21,8 @@
 #define CAMUS_CONF_NAME "camus.yaml"
 #define CAMUS_SUMMARY_NAME "SUMMARY.md"
 #define CAMUS_SEARCH_INDEX_NAME "9f3a7c1e.bin"
+// 搜索索引分片大小：压缩后每片约 32KB。
+#define CAMUS_SEARCH_PART_SIZE (32 * 1024)
 #define CAMUS_OPEN_TARGET_PROJECT "project"
 #define CAMUS_OPEN_TARGET_RUNTIME "runtime"
 #define CAMUS_PRIVATE_DIR "private"

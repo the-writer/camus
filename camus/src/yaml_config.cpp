@@ -574,9 +574,13 @@ namespace camus::config
 				camus_.html.copy_pdf = copy_pdf.as<bool>();
 			}
 
-			if (const YAML::Node download_cover = node["download_cover"];
-				download_cover && download_cover.IsScalar()) {
-				camus_.html.download_cover = download_cover.as<bool>();
+			if (const YAML::Node download_logo = node["download_logo"];
+				download_logo && download_logo.IsScalar()) {
+				camus_.html.download_logo = download_logo.as<bool>();
+			}
+
+			if (const YAML::Node pwa = node["pwa"]; pwa && pwa.IsScalar()) {
+				camus_.html.pwa = pwa.as<bool>();
 			}
 
 			if (const YAML::Node sort = node["sort"]; sort) {
@@ -888,8 +892,12 @@ namespace camus::config
 			camus_.html.copy_pdf = parse_bool_override(*value).value_or(camus_.html.copy_pdf);
 		}
 
-		if (const auto value = env_override("html.download_cover"); value.has_value()) {
-			camus_.html.download_cover = parse_bool_override(*value).value_or(camus_.html.download_cover);
+		if (const auto value = env_override("html.download_logo"); value.has_value()) {
+			camus_.html.download_logo = parse_bool_override(*value).value_or(camus_.html.download_logo);
+		}
+
+		if (const auto value = env_override("html.pwa"); value.has_value()) {
+			camus_.html.pwa = parse_bool_override(*value).value_or(camus_.html.pwa);
 		}
 
 		if (const auto value = env_override("html.sort"); value.has_value()) {

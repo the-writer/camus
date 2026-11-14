@@ -104,7 +104,7 @@ html:
     - SMART
     - FOOTNOTES
   copy_pdf: false          # 为 true 时把生成的 PDF 复制到 HTML 输出根目录
-  download_cover: false    # 为 true 时 HTML 使用下载到本地的 URL logo（未设置时回退 cover；PDF 始终下载 cover）
+  download_logo: false    # 为 true 时 HTML 使用下载到本地的 URL logo（未设置时回退 cover；PDF 始终下载 cover）
 
 friends:
   - title: Alex
@@ -126,7 +126,7 @@ build:
     assets_cdn: ''         # ${env.ASSETS_CDN}，默认空
 ```
 
-所有标量配置项都可用 `CAMUS_<PATH>` 环境变量覆盖（如 `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`、`html.copy_pdf` → `CAMUS_HTML_COPY_PDF`、`html.download_cover` → `CAMUS_HTML_DOWNLOAD_COVER`、`theme` → `CAMUS_THEME`）；数组/列表（`html.build`、`pdf.build`、`friends`、`build`）不支持注入。
+所有标量配置项都可用 `CAMUS_<PATH>` 环境变量覆盖（如 `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`、`html.copy_pdf` → `CAMUS_HTML_COPY_PDF`、`html.download_logo` → `CAMUS_HTML_DOWNLOAD_LOGO`、`theme` → `CAMUS_THEME`）；数组/列表（`html.build`、`pdf.build`、`friends`、`build`）不支持注入。
 
 `public_url` 可带协议也可省略：省略时默认 `https://`，末尾多余的 `/` 会被归一化。它用于绝对链接、sitemap 与 PDF 封面信息。
 

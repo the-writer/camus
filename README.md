@@ -104,7 +104,7 @@ html:
     - SMART
     - FOOTNOTES
   copy_pdf: false          # copy the generated PDF into the HTML output root
-  download_cover: false    # make HTML use a downloaded local copy of a URL logo (falls back to cover; PDF always downloads cover)
+  download_logo: false    # make HTML use a downloaded local copy of a URL logo (falls back to cover; PDF always downloads cover)
 
 friends:
   - title: Alex
@@ -126,7 +126,7 @@ build:
     assets_cdn: ''         # ${env.ASSETS_CDN}; empty by default
 ```
 
-All scalar config values can be overridden by a `CAMUS_<PATH>` environment variable (e.g. `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`, `html.copy_pdf` → `CAMUS_HTML_COPY_PDF`, `html.download_cover` → `CAMUS_HTML_DOWNLOAD_COVER`, `theme` → `CAMUS_THEME`). Arrays/lists such as `html.build`, `pdf.build`, `friends` and `build` cannot be injected.
+All scalar config values can be overridden by a `CAMUS_<PATH>` environment variable (e.g. `pdf.page.size` → `CAMUS_PDF_PAGE_SIZE`, `html.copy_pdf` → `CAMUS_HTML_COPY_PDF`, `html.download_logo` → `CAMUS_HTML_DOWNLOAD_LOGO`, `theme` → `CAMUS_THEME`). Arrays/lists such as `html.build`, `pdf.build`, `friends` and `build` cannot be injected.
 
 `public_url` accepts with or without a protocol. Missing protocols default to `https://`; a trailing slash is normalized away. It drives absolute links, the sitemap, and PDF cover data.
 

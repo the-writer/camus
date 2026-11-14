@@ -3,6 +3,8 @@
 
     var XOR_KEY = 0x5a;
     var MAX_RESULTS = 100;
+    // 分片并发下载数，避免网络较差时一次发起过多请求。
+    var PART_CONCURRENCY = 6;
 
     var input = document.getElementById("search-input");
     var form = document.getElementById("search-form");
@@ -109,6 +111,65 @@
         list.appendChild(empty);
     }
 
+    function fetchBuffer(url) {
+        return fetch(url, { cache: "no-cache" }).then(function (response) {
+            if (!response.ok) {
+                throw new Error("status=" + response.status);
+            }
+            return response.arrayBuffer();
+        });
+    }
+
+    function fetchParts(urls) {
+        var buffers = new Array(urls.length);
+        var next = 0;
+
+        function worker() {
+            if (next >= urls.length) {
+                return Promise.resolve();
+            }
+            var index = next++;
+            return fetchBuffer(urls[index]).then(function (buffer) {
+                buffers[index] = buffer;
+                return worker();
+            });
+        }
+
+        var workers = [];
+        var count = Math.min(PART_CONCURRENCY, urls.length);
+        for (var i = 0; i < count; i++) {
+            workers.push(worker());
+        }
+        return Promise.all(workers).then(function () {
+            return buffers;
+        });
+    }
+
+    function decodeIndex(buffers) {
+        var total = 0;
+        for (var i = 0; i < buffers.length; i++) {
+            total += buffers[i].byteLength;
+        }
+
+        var bytes = new Uint8Array(total);
+        var offset = 0;
+        for (var j = 0; j < buffers.length; j++) {
+            bytes.set(new Uint8Array(buffers[j]), offset);
+            offset += buffers[j].byteLength;
+        }
+
+        for (var k = 0; k < bytes.length; k++) {
+            bytes[k] ^= XOR_KEY;
+        }
+
+        if (!window.DecompressionStream) {
+            throw new Error("DecompressionStream not supported");
+        }
+
+        var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+        return new Response(stream).text();
+    }
+
     function loadIndex() {
         var url = window.CAMUS_SEARCH_URL;
         if (!url) {
@@ -117,26 +178,28 @@
         }
         setStatus(tt("search.loading"));
 
-        fetch(url, { cache: "no-cache" })
-            .then(function (response) {
-                if (!response.ok) {
-                    throw new Error("status=" + response.status);
-                }
-                return response.arrayBuffer();
-            })
+        fetchBuffer(url)
             .then(function (buffer) {
-                var bytes = new Uint8Array(buffer);
-                for (var i = 0; i < bytes.length; i++) {
-                    bytes[i] ^= XOR_KEY;
+                var manifest = null;
+                try {
+                    manifest = JSON.parse(new TextDecoder("utf-8").decode(new Uint8Array(buffer)));
+                } catch (error) {
+                    manifest = null;
                 }
 
-                if (!window.DecompressionStream) {
-                    throw new Error("DecompressionStream not supported");
+                if (manifest && Array.isArray(manifest.parts) && manifest.parts.length) {
+                    var slash = url.lastIndexOf("/");
+                    var dir = slash >= 0 ? url.slice(0, slash + 1) : "";
+                    var urls = manifest.parts.map(function (part) {
+                        return dir + part;
+                    });
+                    return fetchParts(urls);
                 }
 
-                var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
-                return new Response(stream).text();
+                // 兼容旧的单文件索引（非 JSON manifest）。
+                return [buffer];
             })
+            .then(decodeIndex)
             .then(function (text) {
                 records = [];
                 text.split("\n").forEach(function (line) {

@@ -40,7 +40,11 @@ dist/
 │   ├── stats.html
 │   ├── friends.html
 │   ├── search.html                 # 主题提供 search.html 时（tomato / pixel）
-│   ├── 9f3a7c1e.bin                # 搜索索引（文件名取 CAMUS_SEARCH_INDEX_NAME，XOR + gzip）
+│   ├── 9f3a7c1e.bin                # 搜索索引 manifest（JSON，记录分片顺序）
+│   ├── <随机名>.bin                # 搜索索引分片（XOR + gzip 后按 32KB 切分，顺序由 manifest 记录）
+│   ├── manifest-<theme>.webmanifest # PWA manifest（构建生成；name=site.title，icon=logo）
+│   ├── sw.js                       # Service Worker（非 default 主题注册）
+│   ├── imgs/pwa-icon.png            # 未配置 logo 时所有主题共用的 PWA 图标
 │   ├── sitemap.xml                 # build.sitemap=true
 │   ├── feed.xml                    # build.rss=true
 │   └── <assets 内容提升到根>        # css/ js/ fonts/ robots.txt favicon.ico ...
@@ -63,7 +67,7 @@ dist/
 | 目录索引页 | 每个非空目录节点（含根；空目录在收尾阶段被移除） | `writer.cpp` `emit_toc()` |
 | `stats.html` | 始终（除非 dryrun） | `writer.cpp:408` |
 | `friends.html` | 始终（除非 dryrun） | `writer.cpp:461` |
-| `search.html` / `CAMUS_SEARCH_INDEX_NAME`（`9f3a7c1e.bin`） | 主题存在 `search.html`（tomato / pixel）且非 dryrun | `writer.cpp` `emit_search()` |
+| `search.html` / `CAMUS_SEARCH_INDEX_NAME`（`9f3a7c1e.bin` manifest）/ 随机名 `*.bin`（分片，顺序由 manifest 记录） | 主题存在 `search.html`（tomato / pixel）且非 dryrun | `writer.cpp` `emit_search()` |
 | `sitemap.xml` | `build.sitemap: true` | `writer.cpp` `emit_sitemap()` |
 | `feed.xml` | `build.rss: true` | `writer.cpp` `emit_feed()` |
 | 静态资源 | 数据目录 `assets/` 或本地 `./assets` 非空 | `writer.cpp` `emit_assets()` |
@@ -230,7 +234,7 @@ flowchart TD
 
   | 页面 | 模板数据 | 说明 |
   |---|---|---|
-  | 封面页 | `pdf.cover` | 使用根目录 `SUMMARY.md` Front Matter 的 `cover`（旧键 `cover_image` 作为别名）：`http(s)://` URL 在构建开始前强制下载到本地临时文件（不受 `html.download_cover` 影响；下载失败 `error::panic` 中止构建，退出 127）；绝对路径直接使用；相对路径先按 `camus.yaml` 所在目录解析，找不到时依次回退到源目录与站点 `assets` 目录（解析顺序见 `resolve_cover_image()`）。有效时复制为 `dist/pdf/cover.<ext>` 并设置 `has_image=true`，整页铺满（`@page cover` 四边 0 边距、尺寸跟随 `pdf.page.size`、`object-fit: cover`）；未配置或文件不存在时 `has_image=false`，回退文字封面：站点标题（为空时 `Camus`）与 `site.subtitle`（空串在 inja 中为真值，模板用 `has_image` 判断而不是 `image`） |
+  | 封面页 | `pdf.cover` | 使用根目录 `SUMMARY.md` Front Matter 的 `cover`（旧键 `cover_image` 作为别名）：`http(s)://` URL 在构建开始前强制下载到本地临时文件（不受 `html.download_logo` 影响；下载失败 `error::panic` 中止构建，退出 127）；绝对路径直接使用；相对路径先按 `camus.yaml` 所在目录解析，找不到时依次回退到源目录与站点 `assets` 目录（解析顺序见 `resolve_cover_image()`）。有效时复制为 `dist/pdf/cover.<ext>` 并设置 `has_image=true`，整页铺满（`@page cover` 四边 0 边距、尺寸跟随 `pdf.page.size`、`object-fit: cover`）；未配置或文件不存在时 `has_image=false`，回退文字封面：站点标题（为空时 `Camus`）与 `site.subtitle`（空串在 inja 中为真值，模板用 `has_image` 判断而不是 `image`） |
   | 扉页 | `pdf.title_page`、`pdf.meta` | 站点标题、副标题、站点描述（`site.description`）与元信息，元信息按站点（`public_url.domain_name`）→ 生成时间 → 编译器（`Camus v{version}`，链接到 GitHub release）顺序输出；标签文案取自 `pdf.labels`（按中文占比自动选择中英文）；站点为空（`has_domain=false`）时省略该行；不输出文章数；内容区占满可用宽度并靠上排布，标题等字号已缩小以避免与封面重复 |
   | 目录页 | `pdf.toc` | 标题 `Contents` + 按真实目录树多级缩进的分组标题（目录名）与文章显示名；不显示序号与标签，条目不画虚线下划线；文章条目显示正文起始页码（与页脚一致）并链接到 `#pdf-article-{n}` |
 
@@ -243,7 +247,7 @@ flowchart TD
 - 文章正文使用 Front Matter 解析后的内容；`hidden` 文章不参与，`hidden_in_toc` 参与。
 - **PDF 浏览器 profile 复用**：示例 `camus.yaml` 在 `pdf.build` 中显式声明 `--user-data-dir={{dist_dir}}/cache/{{engine}}_userdata`（`{engine}` 由 `pdf.engine` 配置值规范为小写文件名，如 `chrome` / `edge`；自定义可执行路径取其文件名），跨构建保留浏览器 profile（HTTP / 代码 / GPU 缓存），构建前不清空、构建结束不删除。`pdf.build` 的每个参数都支持 `{{dist_dir}}` / `{{dest_dir}}` / `{{cache_dir}}` / `{{engine}}` 占位符，用户改写该项即直接生效；若配置未提供任何 `--user-data-dir`，程序兜底追加同一路径。用户在配置中显式提供 `--user-data-dir` 时以用户为准。
 - **PDF 正文远程图片缓存**：`emit_pdf()` 渲染每篇文章 HTML 后，由 `localize_pdf_images()` 匹配 `src="http(s)://..."`，按 `dist/cache/images/<host>/<URL 路径>`（去除查询串与锚点，逐段百分号解码后作文件名）下载并缓存；已存在且非空的缓存文件直接复用、不重复下载。命中缓存的 `src` 改写为相对 `dist/pdf` 的本地路径（如 `../cache/images/host/a/b.png`，逐段 URL 编码）。按文章收集去重后并发下载（默认最多 6 个线程，可用 `CAMUS_PDF_IMAGE_DOWNLOAD_CONCURRENCY` 覆盖、上限 64；不足时按实际图片数启动；同一缓存文件的多条 URL 只下载一次）；下载失败仅告警并保留原始远程 URL，不中断构建。CI 环境（`CI` / `GITHUB_ACTIONS` / `GITLAB_CI` 为真值）下**跳过该缓存**，保留远程 URL 交由浏览器并发加载，避免冷缓存下的串行下载反而更慢。该缓存与浏览器 profile 均位于 `dist/cache`，不随构建清理（`prepare_output_dir` 只清 `dist/html` 与 `dist/pdf`），`-W` 监听时也排除该目录。
-- 远程图片（URL）在构建开始前（`prepare_remote_cover()`）下载到系统临时目录，构建结束删除临时文件；下载会自动跟随 301 / 302 跳转（含跨域、跨协议，受 cpp-httplib 默认重定向上限约束）；请求伪装为桌面 Chrome（UA、`Accept`、`Accept-Language`、`Referer`、`Sec-Fetch-*` 等），降低被 CDN / 防盗链拦截的概率。PDF 封面取自 `cover`，复制为 `dist/pdf/cover.<ext>`，始终强制下载远程 `cover`（不受 `html.download_cover` 影响），下载失败直接中止构建（退出 127）。HTML 使用 `logo`（未设置时回退 `cover`）；`html.download_cover: true` 时下载远程 HTML 图片并生成 `dist/html/logo.<ext>`（模板 `site.logo` 与兼容字段 `site.cover_image` 改写为本地文件名），默认 `false` 时 HTML 直接引用 URL。`--dryrun` 与 PDF 禁用且 `html.download_cover=false` 时不下载。
+- 远程图片（URL）在构建开始前（`prepare_remote_cover()`）下载到系统临时目录，构建结束删除临时文件；下载会自动跟随 301 / 302 跳转（含跨域、跨协议，受 cpp-httplib 默认重定向上限约束）；请求伪装为桌面 Chrome（UA、`Accept`、`Accept-Language`、`Referer`、`Sec-Fetch-*` 等），降低被 CDN / 防盗链拦截的概率。PDF 封面取自 `cover`，复制为 `dist/pdf/cover.<ext>`，始终强制下载远程 `cover`（不受 `html.download_logo` 影响），下载失败直接中止构建（退出 127）。HTML 使用 `logo`（未设置时回退 `cover`）；`html.download_logo: true` 时下载远程 HTML 图片并生成 `dist/html/logo.<ext>`（模板 `site.logo` 与兼容字段 `site.cover_image` 改写为本地文件名），默认 `false` 时 HTML 直接引用 URL。`--dryrun` 与 PDF 禁用且 `html.download_logo=false` 时不下载。
 - PDF 输出路径默认 `dist/pdf/index.pdf`；`--print-to-pdf` 中可用 `{{dist_dir}}`（`dist` 根）或 `{{dest_dir}}`（`dist/pdf`，历史命名）占位符自定义，如 `--print-to-pdf={{dist_dir}}/pdf/docs/book.pdf`（相对路径按 `dist/pdf` 解析）。
 - PDF 中间产物 `index.md`、`index.html` 与最终 `index.pdf` 均位于 `dist/pdf`，与 HTML 站点目录分离；站点字体 `assets/fonts/` 会复制为 `dist/pdf/fonts/`。
 - 浏览器的 stderr（含 macOS `CVDisplayLinkCreateWithCGDisplay failed` 等噪声日志）不直接输出到终端，而是重定向到临时日志 `camus-pdf-<pid>.log`（位于系统临时目录）；构建成功且两遍打印均正常时删除该文件，命令失败或未产出 PDF 时保留，并在告警中给出 `log=<绝对路径>` 便于排查。

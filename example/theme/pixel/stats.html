@@ -7,6 +7,14 @@
     <meta name="description" content="{{ site.subtitle }}">
     <title>Stats - {{ site.title }}</title>
     <link rel="icon" href="{{ with_prefix("/favicon.ico") }}">
+    {% if camus.html.pwa %}
+    <link rel="manifest" href="{{ with_prefix("/manifest-pixel.webmanifest") }}">
+    <meta name="theme-color" content="#ff6b35">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ site.title }}">
+    <link rel="apple-touch-icon" href="{{ with_prefix("/imgs/icon-pixel-192.png") }}">
+    {% endif %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ with_prefix("/css/pixel-inja.css") }}">
