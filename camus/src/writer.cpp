@@ -325,6 +325,31 @@ namespace
 		return true;
 	}
 
+	// --fix 生成标题时去掉文件名中的数字前缀（如 `01-` / `01 -`）并去除两端空格。
+	std::string title_from_stem(const std::string &stem)
+	{
+		std::string value = strings::trim_space(stem);
+		size_t index = 0;
+		while (index < value.size() && std::isdigit(static_cast<unsigned char>(value[index])) != 0) {
+			++index;
+		}
+
+		if (index == 0) {
+			return value;
+		}
+
+		size_t cursor = index;
+		while (cursor < value.size() && std::isspace(static_cast<unsigned char>(value[cursor])) != 0) {
+			++cursor;
+		}
+
+		if (cursor < value.size() && value[cursor] == '-') {
+			return strings::trim_space(value.substr(cursor + 1));
+		}
+
+		return value;
+	}
+
 	// 文件创建时间：macOS 使用 birth time，其它平台回退到修改时间。
 	time_t file_creation_time(const std::filesystem::path &path)
 	{
@@ -3472,7 +3497,7 @@ namespace camus
 				std::vector<std::string> inserted;
 				for (const auto &field : missing_fields) {
 					if (field == "title") {
-						inserted.emplace_back("title: " + node.path.stem().string());
+						inserted.emplace_back("title: " + title_from_stem(node.path.stem().string()));
 					} else {
 						time_t created = file_creation_time(file_path);
 						if (created <= 0) {

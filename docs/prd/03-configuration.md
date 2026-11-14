@@ -340,7 +340,7 @@ PDF 模板在上述配置 JSON 之外额外接收 `pdf` 对象（封面、目录
 
 `--check --fix` 额外行为：
 
-- 文章缺少 `title` / `create-time` 时自动补到 Front Matter 顶部（无 Front Matter 则新建块）；`title` 取文件名词干，`create-time` 取文件创建时间（macOS `st_birthtimespec`，其它平台回退修改时间）。
+- 文章缺少 `title` / `create-time` 时自动补到 Front Matter 顶部（无 Front Matter 则新建块）；`title` 取文件名词干（去除两端空格及数字前缀，如 `01-` / `01 -`），`create-time` 取文件创建时间（macOS `st_birthtimespec`，其它平台回退修改时间）。
 - 目录缺少 `SUMMARY.md` 时自动创建，`title` 取目录名（根目录取站点标题）。
 - 存在格式错误（`(invalid)`）的文件**不修改**，仍列在 `Front Matter:` 中。
 - 已修复项不再出现在 `Front Matter:`，改为在 `Fixes:` 区块按「文件 -> 操作」输出。
