@@ -202,6 +202,9 @@
 <div class="tm-overlay" id="tm-overlay"></div>
 
 <aside class="tm-tools" aria-label="Reading settings" data-i18n-aria-label="tools.aria">
+    <a id="tm-home" class="tm-tool" href="{{ path_prefix }}/" aria-label="Back to home" title="Back to home" data-i18n-aria-label="home.back" data-i18n-title="home.back">
+        <span class="tm-tool-icon" aria-hidden="true" style="-webkit-mask-image: url('{{ with_prefix("/icons/home.svg") }}'); mask-image: url('{{ with_prefix("/icons/home.svg") }}');"></span>
+    </a>
     <button id="tm-theme" class="tm-tool" type="button" aria-pressed="false" title="Switch theme (auto / light / dark)" data-i18n-title="theme.title">
         <span id="tm-theme-icon" aria-hidden="true">◐</span>
         <span id="tm-theme-label" class="tm-tool-label">Auto</span>
@@ -211,8 +214,15 @@
         <span class="tm-tool-label" data-i18n="toc.button">TOC</span>
     </button>
     <button id="tm-lang" class="tm-tool" type="button" aria-label="Switch language" title="Switch language">
-        <span id="tm-lang-icon" class="tm-tool-icon" aria-hidden="true" style="-webkit-mask-image: url('{{ with_prefix("/icons/language.svg") }}'); mask-image: url('{{ with_prefix("/icons/language.svg") }}');"></span>
+        <span id="tm-lang-icon" class="tm-tool-icon" aria-hidden="true"
+              data-icon-auto="{{ with_prefix("/icons/language.svg") }}"
+              data-icon-en="{{ with_prefix("/icons/language-en.svg") }}"
+              data-icon-zh="{{ with_prefix("/icons/language-zh.svg") }}"
+              style="-webkit-mask-image: url('{{ with_prefix("/icons/language.svg") }}'); mask-image: url('{{ with_prefix("/icons/language.svg") }}');"></span>
         <span id="tm-lang-label" class="tm-tool-label">EN</span>
+    </button>
+    <button id="tm-font-toggle" class="tm-tool tm-font-toggle" type="button" aria-expanded="false" aria-label="Font size" title="Font size" data-i18n-aria-label="font.size" data-i18n-title="font.size">
+        <span aria-hidden="true">Aa</span>
     </button>
     <div class="tm-font">
         <button id="tm-font-plus" class="tm-font-btn" type="button" aria-label="Increase font size" data-i18n-aria-label="font.increase">A+</button>

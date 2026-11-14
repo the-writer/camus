@@ -21,7 +21,7 @@
         sidebar: { persistent: false, defaultVisible: true },
         font: {
             family: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, Georgia, "Times New Roman", serif',
-            size: 14
+            size: 15
         }
     };
 })();

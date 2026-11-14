@@ -947,12 +947,21 @@ body.tm-drawer-mode .tm-book {
     transition: color 0.15s ease, border-color 0.15s ease;
 }
 
+a.tm-tool {
+    text-decoration: none;
+}
+
 .tm-tool:hover {
     color: var(--tm-accent);
     border-color: var(--tm-accent);
 }
 
 .tm-tool[hidden] {
+    display: none;
+}
+
+/* 移动端用图标代替字号面板，点击后在图标上方显示纵向拖动条 */
+.tm-tool.tm-font-toggle {
     display: none;
 }
 
@@ -1426,35 +1435,47 @@ body.tm-drawer-mode .tm-overlay {
     }
 
     .tm-tool {
-        width: auto;
+        width: 40px;
         height: 40px;
         flex-direction: row;
-        gap: 6px;
-        padding: 0 14px;
+        gap: 0;
+        padding: 0;
+        justify-content: center;
         border-radius: 20px;
+    }
+
+    .tm-tool.tm-font-toggle {
+        display: flex;
     }
 
     .tm-tool .tm-tool-label {
-        font-size: 0.72rem;
+        display: none;
     }
 
     .tm-font {
-        flex-direction: row;
-        gap: 2px;
-        padding: 4px 8px;
-        border-radius: 20px;
+        display: none;
     }
 
-    .tm-font-btn {
-        width: 30px;
-        height: 30px;
+    body.tm-font-open .tm-font {
+        display: flex;
+        position: absolute;
+        right: 0;
+        bottom: calc(100% + 10px);
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 6px;
+        border-radius: 12px;
     }
 
-    .tm-font-range {
-        width: 84px;
-        height: 24px;
-        writing-mode: horizontal-tb;
-        direction: ltr;
+    body.tm-font-open .tm-font-btn {
+        display: none;
+    }
+
+    body.tm-font-open .tm-font-range {
+        width: 24px;
+        height: 96px;
+        writing-mode: vertical-lr;
+        direction: rtl;
     }
 }
 

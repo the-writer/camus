@@ -346,6 +346,37 @@
         });
     }
 
+    // 移动端字号图标：点击展开 / 收起上方的纵向拖动条，点击其它区域关闭。
+    var fontToggle = document.getElementById("tm-font-toggle");
+    function closeFontPanel() {
+        if (!body.classList.contains("tm-font-open")) {
+            return;
+        }
+        body.classList.remove("tm-font-open");
+        if (fontToggle) {
+            fontToggle.setAttribute("aria-expanded", "false");
+        }
+    }
+
+    if (fontToggle) {
+        fontToggle.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var open = body.classList.toggle("tm-font-open");
+            fontToggle.setAttribute("aria-expanded", open ? "true" : "false");
+        });
+    }
+
+    document.addEventListener("click", function (e) {
+        if (!body.classList.contains("tm-font-open")) {
+            return;
+        }
+        var fontPanel = document.querySelector(".tm-font");
+        if (fontPanel && fontPanel.contains(e.target)) {
+            return;
+        }
+        closeFontPanel();
+    });
+
     // ── 侧边栏显示 / 隐藏 ──
     var menuBtn = document.getElementById("tm-menu");
     var tocBtn = document.getElementById("tm-toc");
@@ -409,6 +440,7 @@
     if (media.addEventListener) {
         media.addEventListener("change", function () {
             body.classList.remove("tm-open");
+            closeFontPanel();
         });
     }
 
@@ -1546,6 +1578,7 @@
     // ── 语言切换 ──
     var langBtn = document.getElementById("tm-lang");
     var langLabel = document.getElementById("tm-lang-label");
+    var langIcon = document.getElementById("tm-lang-icon");
 
     function applyI18n() {
         document.querySelectorAll("[data-i18n]").forEach(function (el) {
@@ -1605,6 +1638,13 @@
         if (langLabel) {
             langLabel.textContent =
                 currentLanguageMode === "auto" ? translate("lang.auto") : translate("lang.label");
+        }
+        if (langIcon) {
+            var iconUrl = langIcon.getAttribute("data-icon-" + currentLanguageMode) || langIcon.getAttribute("data-icon-auto");
+            if (iconUrl) {
+                langIcon.style.webkitMaskImage = "url('" + iconUrl + "')";
+                langIcon.style.maskImage = "url('" + iconUrl + "')";
+            }
         }
         if (langBtn) {
             langBtn.setAttribute("title", translate("lang.title"));
