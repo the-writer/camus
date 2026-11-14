@@ -15,6 +15,8 @@ namespace strings
 	std::string rand_string(const uint16_t len = 4);
 	// 生成UUID
 	std::string uuid_v4();
+	// 计算字符串的 SHA1（小写十六进制）
+	std::string sha1_hex(const std::string &data);
 	// 清除两侧空格
 	std::string trim_space(const std::string &str);
 	// 从字符串中移除连续子串

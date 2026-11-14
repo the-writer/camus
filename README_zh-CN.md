@@ -115,7 +115,7 @@ friends:
 # 目录搬运规则（build.transfer），并定义文本替换（build.env）
 build:
   sitemap: true            # 生成 sitemap.xml
-  filename_case: keep      # keep | uuid
+  filename_case: keep      # keep | uuid | sha1 | seq (non-keep flattens output)
   rss: true                # 生成 feed.xml
   transfer:
     - path: /introduction

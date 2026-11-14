@@ -8,6 +8,7 @@
 |---|---|
 | `std::string rand_string(uint16_t len = 4)` | 返回 `len` 个随机数字字符（函数名为历史遗留） |
 | `std::string uuid_v4()` | 生成标准 36 字符 UUID v4 |
+| `std::string sha1_hex(const std::string&)` | 计算 SHA1 并返回小写十六进制字符串 |
 | `std::string trim_space(const std::string&)` | 去除两端空白 `" \n\r\t\f\v"` |
 | `std::string trim_left/trim_right/trim(s, remove)` | 循环移除两端出现的指定子串 |
 | `std::vector<std::string> split(string_view s, char delim)` | 按字符拆分（`getline` 语义） |

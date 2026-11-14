@@ -205,7 +205,7 @@ build:
 | 字段 | 类型 | 默认 | 说明 |
 |---|---|---|---|
 | `build.sitemap` | bool | `true` | 是否输出 `sitemap.xml` |
-| `build.filename_case` | 字符串 | `keep` | `uuid` 时文章 `display_name` 生成 UUID 并输出到 `/s/<uuid>.html` 风格短链 |
+| `build.filename_case` | 字符串 | `keep` | 只影响输出路径，标题 / 目录显示名 / TOC / 导航 / PDF 标题始终保留原标题。`keep` 保持原目录结构与文件名；其余模式**全部扁平化到输出根目录**（不再包含原始目录名）：`uuid` 用相对源路径派生（SHA1）的确定性 UUID；`sha1` 用相对源路径的 SHA1 前 12 位十六进制；`seq` 用按 `html.sort` 排好后的序号（文章从 `1000` 起 `1000..`，目录页 `d1000..`，目录按排序后的深度优先顺序编号）。UUID/SHA1 由路径确定性生成，路径不变则输出名与链接不变；文件名长度分别固定为 36 / 12 字符以避免路径过长 |
 | `build.rss` | bool | `true` | 是否输出 `feed.xml`（RSS 2.0）；所有主题在 `<head>` 中通过 `build.rss` 条件输出自动发现 `<link rel="alternate" type="application/rss+xml" href="{path_prefix}/feed.xml">` |
 | `build.safe_clean_limit` | 整数 | `300` | 构建前安全清理阈值：`dist/html`、`dist/pdf` 递归条目数超过该值则拒绝自动删除并退出 127（详见 §6.1）；非法值输出 WARN 并保留默认 |
 

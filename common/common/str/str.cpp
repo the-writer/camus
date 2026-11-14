@@ -7,6 +7,8 @@
 #include <regex>
 #include <sstream>
 
+#include <openssl/evp.h>
+
 namespace strings
 {
 	static std::random_device rand_dev;
@@ -89,6 +91,35 @@ namespace strings
 		}
 
 		return uuid;
+	}
+
+	std::string sha1_hex(const std::string &data)
+	{
+		unsigned char digest[EVP_MAX_MD_SIZE];
+		unsigned int digest_length = 0;
+
+		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+		if (ctx == nullptr) {
+			error::panic("failed to create sha1 context");
+		}
+
+		if (EVP_DigestInit_ex(ctx, EVP_sha1(), nullptr) != 1 ||
+			EVP_DigestUpdate(ctx, data.data(), data.size()) != 1 ||
+			EVP_DigestFinal_ex(ctx, digest, &digest_length) != 1) {
+			EVP_MD_CTX_free(ctx);
+			error::panic("failed to compute sha1");
+		}
+
+		EVP_MD_CTX_free(ctx);
+
+		static constexpr char hex[] = "0123456789abcdef";
+		std::string result;
+		result.reserve(digest_length * 2);
+		for (unsigned int i = 0; i < digest_length; ++i) {
+			result += hex[digest[i] >> 4];
+			result += hex[digest[i] & 0x0F];
+		}
+		return result;
 	}
 
 	std::string trim_space(const std::string &str)

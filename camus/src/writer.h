@@ -70,6 +70,8 @@ namespace camus
 		void parse_article_frontmatter();
 		void prepare_output_dir() const;
 		std::vector<catalog::catalog_node *> collect_articles();
+		// filename_case 为 uuid / sha1 / seq 时，为文章与目录页分配扁平化输出路径。
+		void assign_output_names(const std::vector<catalog::catalog_node *> &articles);
 		void fill_article_nav(std::vector<catalog::catalog_node *> &articles) const;
 		std::vector<nlohmann::json> build_toc_items() const;
 		// 扁平章节列表（按源路径升序，含分卷信息），current 统一为 false。

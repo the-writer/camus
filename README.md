@@ -115,7 +115,7 @@ friends:
 # Move directory contents to another output path, and define text replacements
 build:
   sitemap: true            # generate sitemap.xml
-  filename_case: keep      # keep | uuid
+  filename_case: keep      # keep | uuid | sha1 | seq (non-keep flattens output)
   rss: true                # generate feed.xml
   transfer:
     - path: /introduction

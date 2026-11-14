@@ -277,6 +277,21 @@ namespace
 		return a->path.string() < b->path.string();
 	}
 
+	// 由相对路径派生的确定性 UUID（RFC 4122 v5 形式，基于 SHA1），
+	// 保证路径不变时输出名稳定。
+	std::string deterministic_uuid(const std::string &seed)
+	{
+		std::string hex = strings::sha1_hex(seed);
+		hex.resize(32);
+		hex[12] = '5';
+		static constexpr char variant[] = "89ab";
+		const char c = hex[16];
+		const int value = c >= 'a' ? c - 'a' + 10 : c - '0';
+		hex[16] = variant[value & 0x3];
+		return hex.substr(0, 8) + "-" + hex.substr(8, 4) + "-" + hex.substr(12, 4) + "-" +
+			   hex.substr(16, 4) + "-" + hex.substr(20, 12);
+	}
+
 	std::string path_to_file_url(const std::filesystem::path &path)
 	{
 		std::string url = "file://";
@@ -1096,6 +1111,7 @@ namespace camus
 		finalize_directory_properties();
 
 		auto articles = collect_articles();
+		assign_output_names(articles);
 		fill_article_nav(articles);
 
 		const std::filesystem::path out_dir = std::filesystem::relative(conf_.camus().dest_dir(), cmd_.workdir);
@@ -1243,11 +1259,7 @@ namespace camus
 
 			node.property.visibility = params["visibility"] == "hidden_in_toc" ? catalog::hidden_in_toc : catalog::open;
 
-			if (conf_.camus().output.filename_case == "uuid") {
-				node.property.display_name = strings::uuid_v4();
-			} else {
-				node.property.display_name = params["title"];
-			}
+			node.property.display_name = params["title"];
 
 			if (node.property.display_name.empty()) {
 				node.property.display_name = node.path.stem();
@@ -1298,6 +1310,61 @@ namespace camus
 		});
 
 		return articles;
+	}
+
+	void writer::assign_output_names(const std::vector<catalog::catalog_node *> &articles)
+	{
+		const std::string &mode = conf_.camus().output.filename_case;
+		if (mode != "uuid" && mode != "sha1" && mode != "seq") {
+			return;
+		}
+
+		// uuid / sha1 由相对路径确定性生成；seq 使用排序序号。
+		const auto encode = [&mode](const std::string &relative_path) -> std::string {
+			if (mode == "uuid") {
+				return deterministic_uuid(relative_path);
+			}
+			return strings::sha1_hex(relative_path).substr(0, 12);
+		};
+
+		// 文章：全部扁平化到根目录。
+		constexpr size_t seq_start = 1000;
+		for (size_t i = 0; i < articles.size(); ++i) {
+			const std::string name = mode == "seq" ? std::to_string(seq_start + i)
+												   : encode(articles[i]->path.generic_string());
+			articles[i]->property.output_path = std::filesystem::path("/" + name + ".html");
+		}
+
+		// 目录页：同样扁平化到根目录；seq 使用 d+序号（按 html.sort 的目录先序）。
+		size_t directory_seq = seq_start - 1;
+		std::function<void(catalog::catalog_node &)> walk = [&](catalog::catalog_node &node) {
+			std::vector<catalog::catalog_node *> children;
+			children.reserve(node.children.size());
+			for (auto &child : node.children) {
+				children.push_back(&child);
+			}
+
+			std::ranges::sort(
+				children,
+				[this](const catalog::catalog_node *a, const catalog::catalog_node *b) {
+					return sort_spec_less(a, b, html_sort_spec_);
+				}
+			);
+
+			for (auto *child : children) {
+				if (!child->is_directory()) {
+					continue;
+				}
+
+				++directory_seq;
+				const std::string name =
+					mode == "seq" ? "d" + std::to_string(directory_seq)
+								  : encode(child->path.generic_string());
+				child->property.output_path = std::filesystem::path("/" + name + ".html");
+				walk(*child);
+			}
+		};
+		walk(catalog_);
 	}
 
 	void writer::fill_article_nav(std::vector<catalog::catalog_node *> &articles) const
@@ -1778,11 +1845,12 @@ namespace camus
 
 			toc_item.update(conf_.json());
 
+			const std::string dir_page = dir_node->property.output_path.empty()
+											 ? std::format("{}/index.html", dir_node->real_url().string())
+											 : dir_node->property.output_path.string();
+
 			add_write(
-				filesystem::clean_path(
-					std::format("{}/index.html", dir_node->real_url().string()),
-					conf_.camus().dest_dir()
-				),
+				filesystem::clean_path(dir_page, conf_.camus().dest_dir()),
 				render::inja_render(inja_, conf_.camus().get_theme(config::CAMUS_THEME_TYPE_HOME), toc_item)
 			);
 		}

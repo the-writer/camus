@@ -22,6 +22,9 @@ namespace camus::catalog
 		std::filesystem::path external_path;
 		// 文件的显示名称
 		std::string display_name;
+		// 输出路径覆盖（含文件名，不含 public_url 前缀）；非空时直接作为 HTML 输出路径。
+		// filename_case 为 uuid / sha1 / seq 时写入扁平化路径（全部位于根目录）。
+		std::filesystem::path output_path;
 		// 短路径
 		std::string short_path;
 		// 副标题
@@ -147,6 +150,10 @@ namespace camus::catalog
 
 		[[nodiscard]] std::filesystem::path real_url() const
 		{
+			if (!property.output_path.empty()) {
+				return filesystem::clean_path(property.output_path);
+			}
+
 			if (is_directory()) {
 				return filesystem::clean_path(property.external_path);
 			}
