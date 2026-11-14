@@ -330,7 +330,8 @@ PDF 模板在上述配置 JSON 之外额外接收 `pdf` 对象（封面、目录
 1. 将 `cmd_.dryrun` 置为 true，切到 `--workdir` 并 `reload()` 配置。
 2. 在日志抑制为 ERROR 的情况下执行一次干跑构建，验证完整渲染流水线且不写文件。
 3. 统计目录/文章/隐藏文章/字数，并校验资源目录、output/pdf 目录文件数保护、PDF 引擎、PDF 模板/样式/字体与 `cover`。
-4. 打印精炼报告：`workdir`、`config`、`source`、`theme`、`site`、`public`、`output`、`assets`、`pdf`、`catalog`、`build` 以及按树形展示的 `Catalog`。
-5. 汇总 `Issues`（error/warn），最后输出 `Result: OK` 或 `Result: FAILED`，并返回 0/1。
+4. 逐篇检查 Front Matter：在独立的 `Front Matter:` 区块按「完整相对路径（相对 workdir，如 `posts/xxx.md`） -> 缺失字段」列出缺少整块或缺少必填项的文件（当前必填项 `title`、`create-time`）；不计入 `Issues`，不影响 `Result` 与正常构建。
+5. 打印精炼报告：`workdir`、`config`、`source`、`theme`、`site`、`public`、`output`、`assets`、`pdf`、`catalog`、`build` 以及按树形展示的 `Catalog`。
+6. 汇总 `Issues`（error/warn），最后输出 `Result: OK` 或 `Result: FAILED`，并返回 0/1。
 
 `--check` 与 `-D` 组合不会额外写文件。

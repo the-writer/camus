@@ -126,6 +126,8 @@ flowchart TD
 
 `short-path: auto` 的生成规则（`writer.cpp:211-214`）：对节点相对路径做 FNV-1a 64 位 hash，再取 `hash % (UINT16_MAX * 2)`（即 `% 131070`），格式化为小写十六进制。短链固定输出到 `/s/<short_path>.html`。
 
+`--check` 会在 `Front Matter:` 区块中按「完整相对路径（相对 workdir） -> 缺失字段」列出缺少整块或缺少 `title` / `create-time` 的文章（不计入 `Issues`，不影响 `Result` 与正常构建）。
+
 `build.filename_case` 只改输出路径（文章与目录页），`display_name`（标题、目录显示名、TOC / 导航 / PDF 标题）始终保持原标题，`short-path` 仍可另行启用。非 `keep` 时全部扁平化到输出根目录，不保留原始目录名：`uuid` 为相对源路径派生的确定性 UUID，`sha1` 为相对源路径 SHA1 的前 12 位，`seq` 为按 `html.sort` 排好后的序号（文章从 `1000` 起，目录页 `d1000..`）。UUID/SHA1 在路径不变时输出名稳定；固定长度用于避免路径过长。
 
 ## 4.6 可见性语义（以代码为准）

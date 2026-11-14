@@ -3147,6 +3147,56 @@ namespace camus
 			}
 		}
 
+		// 逐篇检查 Front Matter：缺少整块或缺少 title / create-time 时，记录到独立列表。
+		std::vector<std::pair<std::string, std::string>> frontmatter_issues;
+		catalog::traverse_catalog_tree(catalog_, [&](const catalog::catalog_node &node, int) {
+			if (node.is_directory() || node.path.extension() != ".md") {
+				return;
+			}
+
+			const std::filesystem::path file_path = camus.source_dir / node.path;
+			const std::string raw = filesystem::read_file(file_path.string());
+			auto lines = strings::split(raw, '\n');
+
+			std::set<std::string> keys;
+			if (!lines.empty() &&
+				strings::trim_space(strings::trim_right(lines.front(), "\r")) == "---") {
+				for (size_t i = 1; i < lines.size(); ++i) {
+					const std::string line =
+						strings::trim_space(strings::trim_right(lines[i], "\r"));
+					if (line == "---") {
+						break;
+					}
+
+					const auto [left, right] = strings::split_pair(line, ":", true);
+					if (!left.empty() && !right.empty()) {
+						keys.insert(strings::to_lower(left));
+					}
+				}
+			}
+
+			std::vector<std::string> missing;
+			if (!keys.contains("title")) {
+				missing.emplace_back("title");
+			}
+			if (!keys.contains("create-time")) {
+				missing.emplace_back("create-time");
+			}
+
+			if (!missing.empty()) {
+				std::error_code rel_ec;
+				std::string display_path =
+					std::filesystem::relative(file_path, cmd_.workdir, rel_ec).generic_string();
+				if (rel_ec) {
+					display_path = file_path.generic_string();
+				}
+				frontmatter_issues.emplace_back(
+					std::move(display_path),
+					strings::string_join(missing, ",")
+				);
+			}
+		});
+
 		const auto count_text = [](const int value) {
 			return value < 0 ? std::string("-") : std::to_string(value);
 		};
@@ -3209,6 +3259,18 @@ namespace camus
 			);
 			std::cout << "  " << tag << " " << indent << path << " -> " << node.link_url().string() << '\n';
 		});
+
+		if (!frontmatter_issues.empty()) {
+			size_t frontmatter_width = 0;
+			for (const auto &[file, _] : frontmatter_issues) {
+				frontmatter_width = std::max(frontmatter_width, strings::get_display_width(file));
+			}
+
+			std::cout << '\n' << strings::coloring_bright_yellow("Front Matter:") << '\n';
+			for (const auto &[file, missing] : frontmatter_issues) {
+				std::cout << "  " << strings::padding_left(file, frontmatter_width) << " -> " << missing << '\n';
+			}
+		}
 
 		if (!issues.empty()) {
 			std::cout << '\n' << strings::coloring_bright_yellow("Issues:") << '\n';
