@@ -2189,7 +2189,7 @@ namespace camus
 			"pdf",
 			camus::sort_spec{config::PDF_SORT_FILE_FIRST, true, false}
 		);
-		const bool group_by_year = sort_spec.has_time;
+		const bool group_by_year = sort_spec.has_time && conf_.camus().pdf.auto_volume != "disable";
 		int index = 0;
 
 		const auto push_directory = [&](const catalog::catalog_node &node, const int depth) {

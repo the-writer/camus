@@ -608,6 +608,18 @@ namespace camus::config
 				camus_.pdf.engine = get_string(engine);
 			}
 
+			if (const YAML::Node auto_volume = node["auto_volume"]; auto_volume && auto_volume.IsScalar()) {
+				const std::string value = strings::to_lower(strings::trim_space(get_string(auto_volume)));
+				if (value == "by_year" || value == "disable") {
+					camus_.pdf.auto_volume = value;
+				} else {
+					logging::warn(
+						"invalid pdf.auto_volume value={} (expected by_year/disable), using by_year", value
+					);
+					camus_.pdf.auto_volume = "by_year";
+				}
+			}
+
 			if (const YAML::Node build = node["build"]; build && build.IsSequence()) {
 				for (const auto &opt : build) {
 					camus_.pdf.build.push_back(opt.as<std::string>());
@@ -838,6 +850,18 @@ namespace camus::config
 		// pdf.engine 与旧键 pdf_engine 生成同一个环境变量 CAMUS_PDF_ENGINE。
 		if (const auto value = env_override("pdf.engine"); value.has_value()) {
 			camus_.pdf.engine = strings::trim_space(*value);
+		}
+
+		if (const auto value = env_override("pdf.auto_volume"); value.has_value()) {
+			const std::string mode = strings::to_lower(strings::trim_space(*value));
+			if (mode == "by_year" || mode == "disable") {
+				camus_.pdf.auto_volume = mode;
+			} else {
+				logging::warn(
+					"invalid CAMUS_PDF_AUTO_VOLUME value={} (expected by_year/disable), using by_year", mode
+				);
+				camus_.pdf.auto_volume = "by_year";
+			}
 		}
 
 		if (const auto value = env_override("pdf.page.size"); value.has_value()) {

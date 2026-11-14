@@ -120,11 +120,14 @@ namespace camus::config
 		std::vector<std::string> build;
 		pdf_page_conf page;
 		pdf_toc_conf toc;
+		// 自动分卷：by_year（默认，含时间键时按 UTC 年份自动分卷）/ disable（不自动分卷，
+		// 仅沿用已有的目录结构）。见 §3.3.1。
+		std::string auto_volume = "by_year";
 		// 排序键数组：组顺序（file_first / dir_first / mixed）+ 可选的二次时间排序
 		// （time_asc / time_desc）。默认文件优先、时间正序。
 		std::vector<std::string> sort = {"file_first", "time_asc"};
 
-		NLOHMANN_DEFINE_TYPE_INTRUSIVE(pdf_conf, engine, build, page, toc, sort);
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(pdf_conf, engine, build, page, toc, auto_volume, sort);
 	};
 
 	enum camus_theme_type : uint8_t {
