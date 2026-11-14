@@ -59,7 +59,7 @@ window.CAMUS_TOMATO = {
 - `font.family` / `font.size` 为正文默认字体与字号：`font.size` 会限制在 14–40px，且已有 `localStorage` 字号记录优先；`font.family` 写入 CSS 变量 `--tm-font-family`。
 - 仅当 `window.CAMUS_THEME === "tomato"` 时 `tomato.js` 才应用这些开关；tomato 模板将 `camus.js` 放在 `tomato.js` 之前加载。
 
-除 `default` 外的内置主题（`tomato` / `pixel` / `document` / `terminal`）支持 PWA（`html.pwa` 默认 `true`，为 `false` 时不生成）：模板 `<head>` 引入主题对应的 `manifest-<theme>.webmanifest`（构建时由 `emit_pwa()` 生成）；`name` 取 `site.title`，图标优先取站点 `logo`（未设置回退 `cover`），未配置时所有主题共用 `imgs/pwa-icon.png`。`camus.js` 在存在 manifest 且主题非 `default` 时注册 `sw.js`（从自身脚本路径推导站点根与 `path_prefix`）。Service Worker 对页面导航采用网络优先、缓存回退，对同源静态资源采用 stale-while-revalidate。
+除 `default` 外的内置主题（`tomato` / `pixel` / `document` / `terminal`）支持 PWA（`html.pwa` 默认 `true`，为 `false` 时不生成）：模板 `<head>` 引入主题对应的 `manifest-<theme>.webmanifest`（构建时由 `emit_pwa()` **仅按当前主题**生成；`default` 或未知主题不生成）；`name` 为 `site.title - site.subtitle`（无副标题时仅标题，副标题中的 `<br />` 转为空格），`short_name` 取 `site.title`；图标优先取站点 `logo`（未设置回退 `cover`），未配置时所有主题共用 `imgs/pwa-icon.png`。`camus.js` 在存在 manifest 且主题非 `default` 时注册 `sw.js`（从自身脚本路径推导站点根与 `path_prefix`）。Service Worker 对页面导航采用网络优先、缓存回退，对同源静态资源采用 stale-while-revalidate。
 
 `pixel` 主题在 `assets/css/pixel-inja.css` 中设置 `html { font-size: 85%; }`，字体与基于 rem 的元素尺寸整体约缩小 15%。`pixel` 主题的页脚链接（`build.powered_by`）在「Friends」右侧额外提供「Search」入口，其余主题不显示搜索入口；首页/目录页的 `▶ INDEX ◀` 标题行最右侧另有一个仅作展示的假搜索框（`.toc-search`，`SEARCH...` 占位，用 `<a>` 实现、不可输入），点击直接跳转 `search.html`。
 

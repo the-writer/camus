@@ -42,7 +42,7 @@ dist/
 │   ├── search.html                 # 主题提供 search.html 时（tomato / pixel）
 │   ├── 9f3a7c1e.bin                # 搜索索引 manifest（JSON，记录分片顺序）
 │   ├── <随机名>.bin                # 搜索索引分片（XOR + gzip 后按 32KB 切分，顺序由 manifest 记录）
-│   ├── manifest-<theme>.webmanifest # PWA manifest（构建生成；name=site.title，icon=logo）
+│   ├── manifest-<theme>.webmanifest # PWA manifest（仅当前主题；name=标题 - 副标题，icon=logo）
 │   ├── sw.js                       # Service Worker（非 default 主题注册）
 │   ├── imgs/pwa-icon.png            # 未配置 logo 时所有主题共用的 PWA 图标
 │   ├── sitemap.xml                 # build.sitemap=true

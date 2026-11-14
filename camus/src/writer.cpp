@@ -2194,6 +2194,14 @@ namespace camus
 		const auto camus = conf_.camus();
 		const std::string title = camus.site.title.empty() ? "Camus" : camus.site.title;
 
+		// name 为「标题 - 副标题」，short_name 只用标题；副标题中的换行标记转成空格。
+		std::string subtitle = strings::trim_space(camus.site.subtitle);
+		for (const char *br : {"<br />", "<br/>", "<br>"}) {
+			subtitle = strings::replace(subtitle, br, " ");
+		}
+		subtitle = strings::trim_space(subtitle);
+		const std::string name = subtitle.empty() ? title : title + " - " + subtitle;
+
 		// 图标优先使用站点 logo（未设置时回退 cover），未配置时所有主题共用同一个图片。
 		std::string logo;
 		if (const auto json = conf_.json(); json.contains("site") && json["site"].is_object()) {
@@ -2260,34 +2268,45 @@ namespace camus
 			{"terminal", "#33ff33", "#0a0a08"},
 		};
 
+		const pwa_theme *current = nullptr;
 		for (const auto &theme : themes) {
-			nlohmann::json manifest{
-				{"name", title},
-				{"short_name", title},
-				{"start_url", "."},
-				{"scope", "."},
-				{"display", "standalone"},
-				{"orientation", "portrait-primary"},
-				{"background_color", theme.background_color},
-				{"theme_color", theme.theme_color},
-				{"icons", nlohmann::json::array()},
-			};
-
-			nlohmann::json icon{
-				{"src", icon_src},
-				{"sizes", icon_sizes},
-				{"purpose", icon_purpose},
-			};
-			if (!icon_type.empty()) {
-				icon["type"] = icon_type;
+			if (camus.render.theme_name == theme.name) {
+				current = &theme;
+				break;
 			}
-			manifest["icons"].push_back(std::move(icon));
-
-			add_write(
-				conf_.camus().dest_dir() / std::format("manifest-{}.webmanifest", theme.name),
-				manifest.dump()
-			);
 		}
+
+		// 只为当前主题生成 manifest；default 或未知主题不输出。
+		if (current == nullptr) {
+			return;
+		}
+
+		nlohmann::json manifest{
+			{"name", name},
+			{"short_name", title},
+			{"start_url", "."},
+			{"scope", "."},
+			{"display", "standalone"},
+			{"orientation", "portrait-primary"},
+			{"background_color", current->background_color},
+			{"theme_color", current->theme_color},
+			{"icons", nlohmann::json::array()},
+		};
+
+		nlohmann::json icon{
+			{"src", icon_src},
+			{"sizes", icon_sizes},
+			{"purpose", icon_purpose},
+		};
+		if (!icon_type.empty()) {
+			icon["type"] = icon_type;
+		}
+		manifest["icons"].push_back(std::move(icon));
+
+		add_write(
+			conf_.camus().dest_dir() / std::format("manifest-{}.webmanifest", current->name),
+			manifest.dump()
+		);
 	}
 
 	void writer::emit_pdf()
