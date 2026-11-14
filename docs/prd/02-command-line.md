@@ -28,6 +28,7 @@ camus [选项] [--workdir <目录>]
 | `-W` | `--watch` | 无 | 监听文件变化并自动重建，同时启动本地服务（隐含 `--build`） | `main.cpp:11` |
 | `-D` | `--dryrun` | 无 | 干跑：不写任何输出文件 | `main.cpp:12` |
 | `-C` | `--check` | 无 | 校验配置、资源与 PDF 设置，并执行一次干跑构建后输出检查报告；不写文件 | `main.cpp` |
+|  | `--fix` | 无 | 仅配合 `--check`：自动补全文章缺失的 `title` / `create-time`（时间取文件创建时间，macOS 为 birth time，其它平台回退修改时间），并创建缺失的 `SUMMARY.md`；不改动格式错误（`(invalid)`）的文件；在 `Fixes:` 区块打印修复记录。`--fix` 未搭配 `--check` 时报错返回 1 | `main.cpp`、`writer.cpp` |
 |  | `--new` | 目录字符串 | 创建目录（相对 `--workdir` 或绝对路径），自动执行 `--install`，并继续执行 `--repo`；不触发构建，除非同时指定 `--build` | `main.cpp` |
 | `--create` | 路径字符串 | 在源目录（`src/` 优先，其次 `posts/`）下创建文章：最后一级视为文件名（自动补 `.md`），缺失目录递归创建，并写入模板（`title`（文件名含 `-` 且出现过数字时取最后一个 `-` 之后的片段，否则用文件名）、当前 UTC 时间的 `create-time`，不再自动写入正文标题）；每个新建目录同时生成 `SUMMARY.md`（Front Matter 仅 `title: <目录名>`，目录名同样去除 `01-` 之类的排序前缀，已存在则不覆盖）；文件已存在时不覆盖。不触发构建 | `main.cpp` |
 |  | `--repo` | 可选值：远程地址 | 在 `--workdir` 执行 `git init`；提供值时设置 `origin`（已存在则更新），不提供时只 init | `main.cpp` |

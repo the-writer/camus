@@ -330,8 +330,17 @@ PDF 模板在上述配置 JSON 之外额外接收 `pdf` 对象（封面、目录
 1. 将 `cmd_.dryrun` 置为 true，切到 `--workdir` 并 `reload()` 配置。
 2. 在日志抑制为 ERROR 的情况下执行一次干跑构建，验证完整渲染流水线且不写文件。
 3. 统计目录/文章/隐藏文章/字数，并校验资源目录、output/pdf 目录文件数保护、PDF 引擎、PDF 模板/样式/字体与 `cover`。
-4. 逐篇检查 Front Matter：在独立的 `Front Matter:` 区块按「完整相对路径（相对 workdir，如 `posts/xxx.md`） -> 缺失字段」列出缺少整块或缺少必填项的文件（当前必填项 `title`、`create-time`）；不计入 `Issues`，不影响 `Result` 与正常构建。
+4. 检查 Front Matter 与目录元信息：在独立的 `Front Matter:` 区块按「完整相对路径（相对 workdir，如 `posts/xxx.md`） -> 缺失项」列出问题，不计入 `Issues`，不影响 `Result` 与正常构建。
+   - 文章：缺少整块或缺少 `title` / `create-time`；值存在但格式非法时同样列出并标注 `(invalid)`：`create-time` 仅接受 `YYYY-MM-DD` 或 `YYYY-MM-DD HH:MM:SS`（允许行尾 `#` 注释），`visibility` 仅接受 `open` / `hidden` / `hidden_in_toc`。
+   - 目录：缺少 `SUMMARY.md` 时右侧为 `missing`；存在但缺少 `title` 时右侧为 `title`。
 5. 打印精炼报告：`workdir`、`config`、`source`、`theme`、`site`、`public`、`output`、`assets`、`pdf`、`catalog`、`build` 以及按树形展示的 `Catalog`。
 6. 汇总 `Issues`（error/warn），最后输出 `Result: OK` 或 `Result: FAILED`，并返回 0/1。
+
+`--check --fix` 额外行为：
+
+- 文章缺少 `title` / `create-time` 时自动补到 Front Matter 顶部（无 Front Matter 则新建块）；`title` 取文件名词干，`create-time` 取文件创建时间（macOS `st_birthtimespec`，其它平台回退修改时间）。
+- 目录缺少 `SUMMARY.md` 时自动创建，`title` 取目录名（根目录取站点标题）。
+- 存在格式错误（`(invalid)`）的文件**不修改**，仍列在 `Front Matter:` 中。
+- 已修复项不再出现在 `Front Matter:`，改为在 `Fixes:` 区块按「文件 -> 操作」输出。
 
 `--check` 与 `-D` 组合不会额外写文件。

@@ -292,6 +292,54 @@ namespace
 			   hex.substr(16, 4) + "-" + hex.substr(20, 12);
 	}
 
+	// 校验 create-time：支持 YYYY-MM-DD 与 YYYY-MM-DD HH:MM:SS 两种格式。
+	bool is_valid_datetime(const std::string &value)
+	{
+		std::string text = value;
+		if (const auto comment = text.find('#'); comment != std::string::npos) {
+			text = text.substr(0, comment);
+		}
+		text = strings::trim_space(text);
+		if (text.empty()) {
+			return false;
+		}
+
+		const bool with_time = text.find(' ') != std::string::npos;
+		std::tm tm{};
+		std::istringstream ss(text);
+		ss >> std::get_time(&tm, with_time ? "%Y-%m-%d %H:%M:%S" : "%Y-%m-%d");
+		if (ss.fail() || !ss.eof()) {
+			return false;
+		}
+
+		if (tm.tm_mon < 0 || tm.tm_mon > 11 || tm.tm_mday < 1 || tm.tm_mday > 31) {
+			return false;
+		}
+
+		if (with_time &&
+			(tm.tm_hour < 0 || tm.tm_hour > 23 || tm.tm_min < 0 || tm.tm_min > 59 ||
+			 tm.tm_sec < 0 || tm.tm_sec > 60)) {
+			return false;
+		}
+
+		return true;
+	}
+
+	// 文件创建时间：macOS 使用 birth time，其它平台回退到修改时间。
+	time_t file_creation_time(const std::filesystem::path &path)
+	{
+		struct stat st{};
+		if (::stat(path.c_str(), &st) != 0) {
+			return 0;
+		}
+
+#if defined(__APPLE__)
+		return st.st_birthtimespec.tv_sec;
+#else
+		return st.st_mtim.tv_sec;
+#endif
+	}
+
 	std::string path_to_file_url(const std::filesystem::path &path)
 	{
 		std::string url = "file://";
@@ -3147,52 +3195,139 @@ namespace camus
 			}
 		}
 
-		// 逐篇检查 Front Matter：缺少整块或缺少 title / create-time 时，记录到独立列表。
+		// 检查 Front Matter：文章缺少整块 / title / create-time，以及目录缺少 SUMMARY.md
+		// 或 SUMMARY.md 缺少 title，都记录到独立列表；--fix 时自动补全可修复项。
 		std::vector<std::pair<std::string, std::string>> frontmatter_issues;
+		std::vector<std::pair<std::string, std::string>> fixes;
+
+		const auto display_path = [this](const std::filesystem::path &path) {
+			std::error_code rel_ec;
+			std::string result = std::filesystem::relative(path, cmd_.workdir, rel_ec).generic_string();
+			return rel_ec ? path.generic_string() : result;
+		};
+
+		struct frontmatter_info {
+			std::string raw;
+			bool has_block = false;
+			std::map<std::string, std::string> fields;
+		};
+
+		const auto read_frontmatter = [](const std::filesystem::path &path) {
+			frontmatter_info info;
+			info.raw = filesystem::read_file(path.string());
+			auto lines = strings::split(info.raw, '\n');
+			if (lines.empty() ||
+				strings::trim_space(strings::trim_right(lines.front(), "\r")) != "---") {
+				return info;
+			}
+
+			info.has_block = true;
+			for (size_t i = 1; i < lines.size(); ++i) {
+				const std::string line = strings::trim_space(strings::trim_right(lines[i], "\r"));
+				if (line == "---") {
+					break;
+				}
+
+				const auto [left, right] = strings::split_pair(line, ":", true);
+				if (!left.empty() && !right.empty()) {
+					info.fields.emplace(strings::to_lower(left), right);
+				}
+			}
+
+			return info;
+		};
+
 		catalog::traverse_catalog_tree(catalog_, [&](const catalog::catalog_node &node, int) {
-			if (node.is_directory() || node.path.extension() != ".md") {
+			if (node.is_directory()) {
+				const std::filesystem::path dir_path =
+					node.path == "/" ? camus.source_dir : camus.source_dir / node.path;
+				const std::filesystem::path summary_path = dir_path / CAMUS_SUMMARY_NAME;
+				std::error_code ec;
+				if (!std::filesystem::is_regular_file(summary_path, ec) || ec) {
+					if (cmd_.fix) {
+						const std::string title =
+							node.path == "/"
+								? (camus.site.title.empty() ? std::string("Home") : camus.site.title)
+								: node.path.filename().string();
+						filesystem::write_file(
+							summary_path.string(),
+							std::format("---\ntitle: {}\n---\n", title)
+						);
+						fixes.emplace_back(display_path(summary_path), "created");
+					} else {
+						frontmatter_issues.emplace_back(display_path(summary_path), "missing");
+					}
+				} else if (!read_frontmatter(summary_path).fields.contains("title")) {
+					frontmatter_issues.emplace_back(display_path(summary_path), "title");
+				}
+				return;
+			}
+
+			if (node.path.extension() != ".md") {
 				return;
 			}
 
 			const std::filesystem::path file_path = camus.source_dir / node.path;
-			const std::string raw = filesystem::read_file(file_path.string());
-			auto lines = strings::split(raw, '\n');
+			const frontmatter_info info = read_frontmatter(file_path);
 
-			std::set<std::string> keys;
-			if (!lines.empty() &&
-				strings::trim_space(strings::trim_right(lines.front(), "\r")) == "---") {
-				for (size_t i = 1; i < lines.size(); ++i) {
-					const std::string line =
-						strings::trim_space(strings::trim_right(lines[i], "\r"));
-					if (line == "---") {
-						break;
-					}
+			std::vector<std::string> problems;
+			std::vector<std::string> missing_fields;
+			bool has_invalid = false;
 
-					const auto [left, right] = strings::split_pair(line, ":", true);
-					if (!left.empty() && !right.empty()) {
-						keys.insert(strings::to_lower(left));
-					}
+			if (!info.fields.contains("title")) {
+				problems.emplace_back("title");
+				missing_fields.emplace_back("title");
+			}
+			if (!info.fields.contains("create-time")) {
+				problems.emplace_back("create-time");
+				missing_fields.emplace_back("create-time");
+			} else if (!is_valid_datetime(info.fields.at("create-time"))) {
+				problems.emplace_back("create-time(invalid)");
+				has_invalid = true;
+			}
+
+			if (const auto visibility = info.fields.find("visibility"); visibility != info.fields.end()) {
+				const std::string value = strings::to_lower(strings::trim_space(visibility->second));
+				if (value != "open" && value != "hidden" && value != "hidden_in_toc") {
+					problems.emplace_back("visibility(invalid)");
+					has_invalid = true;
 				}
 			}
 
-			std::vector<std::string> missing;
-			if (!keys.contains("title")) {
-				missing.emplace_back("title");
-			}
-			if (!keys.contains("create-time")) {
-				missing.emplace_back("create-time");
-			}
-
-			if (!missing.empty()) {
-				std::error_code rel_ec;
-				std::string display_path =
-					std::filesystem::relative(file_path, cmd_.workdir, rel_ec).generic_string();
-				if (rel_ec) {
-					display_path = file_path.generic_string();
+			if (cmd_.fix && !has_invalid && !missing_fields.empty()) {
+				std::vector<std::string> inserted;
+				for (const auto &field : missing_fields) {
+					if (field == "title") {
+						inserted.emplace_back("title: " + node.path.stem().string());
+					} else {
+						time_t created = file_creation_time(file_path);
+						if (created <= 0) {
+							created = std::time(nullptr);
+						}
+						inserted.emplace_back(
+							"create-time: " + functions::format_time_t(created, "%Y-%m-%d %H:%M:%S")
+						);
+					}
 				}
+
+				const std::string lines = strings::string_join(inserted, "\n");
+				std::string content = info.raw;
+				if (info.has_block) {
+					const auto newline = content.find('\n');
+					content.insert(newline == std::string::npos ? content.size() : newline + 1, lines + "\n");
+				} else {
+					content = "---\n" + lines + "\n---\n\n" + content;
+				}
+
+				filesystem::write_file(file_path.string(), content);
+				fixes.emplace_back(
+					display_path(file_path),
+					"added " + strings::string_join(missing_fields, ",")
+				);
+			} else if (!problems.empty()) {
 				frontmatter_issues.emplace_back(
-					std::move(display_path),
-					strings::string_join(missing, ",")
+					display_path(file_path),
+					strings::string_join(problems, ",")
 				);
 			}
 		});
@@ -3269,6 +3404,18 @@ namespace camus
 			std::cout << '\n' << strings::coloring_bright_yellow("Front Matter:") << '\n';
 			for (const auto &[file, missing] : frontmatter_issues) {
 				std::cout << "  " << strings::padding_left(file, frontmatter_width) << " -> " << missing << '\n';
+			}
+		}
+
+		if (!fixes.empty()) {
+			size_t fix_width = 0;
+			for (const auto &[file, _] : fixes) {
+				fix_width = std::max(fix_width, strings::get_display_width(file));
+			}
+
+			std::cout << '\n' << strings::coloring_bright_yellow("Fixes:") << '\n';
+			for (const auto &[file, action] : fixes) {
+				std::cout << "  " << strings::padding_left(file, fix_width) << " -> " << action << '\n';
 			}
 		}
 

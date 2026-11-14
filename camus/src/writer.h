@@ -14,6 +14,8 @@ namespace camus
 		bool dryrun;
 		// 监听模式：忽略 public_url，避免生成外网绝对地址
 		bool watch;
+		// 配合 --check：自动补全缺失的 Front Matter 字段与 SUMMARY.md
+		bool fix = false;
 	};
 
 	struct article_stats {

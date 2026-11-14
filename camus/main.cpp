@@ -82,6 +82,7 @@ int main(const int argc, char **argv)
 	arg.add("watch", 'W', "automate building when changes occur");
 	arg.add("dryrun", 'D', "dry run");
 	arg.add("check", 'C', "validate configuration and run a dry build");
+	arg.add("fix", 0, "with --check: add missing title/create-time and SUMMARY.md");
 	arg.add<std::string>(
 		"repo",
 		0,
@@ -111,6 +112,11 @@ int main(const int argc, char **argv)
 
 	if (arg.exist("create") && arg.get<std::string>("create").empty()) {
 		std::cout << "option needs value: --create" << std::endl << std::endl << arg.usage();
+		return 1;
+	}
+
+	if (arg.exist("fix") && !arg.exist("check")) {
+		std::cout << "option --fix requires --check" << std::endl << std::endl << arg.usage();
 		return 1;
 	}
 
@@ -148,6 +154,7 @@ int main(const int argc, char **argv)
 			.workdir = workdir,
 			.dryrun = arg.exist("dryrun"),
 			.watch = arg.exist("watch"),
+			.fix = arg.exist("fix"),
 		};
 
 		if (arg.exist("install") || arg.exist("new")) {
