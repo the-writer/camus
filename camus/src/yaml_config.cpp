@@ -578,6 +578,25 @@ namespace camus::config
 				download_cover && download_cover.IsScalar()) {
 				camus_.html.download_cover = download_cover.as<bool>();
 			}
+
+			if (const YAML::Node sort = node["sort"]; sort) {
+				camus_.html.sort.clear();
+				if (sort.IsSequence()) {
+					for (const auto &item : sort) {
+						if (!item.IsScalar()) {
+							continue;
+						}
+
+						const std::string value =
+							strings::to_lower(strings::trim_space(item.as<std::string>()));
+						if (!value.empty()) {
+							camus_.html.sort.push_back(value);
+						}
+					}
+				} else if (sort.IsScalar()) {
+					parse_sort_values(sort.as<std::string>(), camus_.html.sort);
+				}
+			}
 		};
 
 		const auto parse_pdf_node = [&](const YAML::Node &node) {
@@ -847,6 +866,10 @@ namespace camus::config
 
 		if (const auto value = env_override("html.download_cover"); value.has_value()) {
 			camus_.html.download_cover = parse_bool_override(*value).value_or(camus_.html.download_cover);
+		}
+
+		if (const auto value = env_override("html.sort"); value.has_value()) {
+			parse_sort_values(*value, camus_.html.sort);
 		}
 
 		// 监听模式由本地服务访问，公网地址无意义，按未配置处理

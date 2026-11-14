@@ -201,16 +201,13 @@ namespace
 		return "";
 	}
 
-	// PDF 排序配置：组顺序（文件/目录优先级）与可选的二次时间排序。
-	struct pdf_sort_spec {
-		camus::config::pdf_sort_mode group = camus::config::PDF_SORT_FILE_FIRST;
-		bool has_time = false;
-		bool time_desc = false;
-	};
-
-	pdf_sort_spec parse_pdf_sort_spec(const std::vector<std::string> &values)
+	// 排序配置：组顺序（文件/目录优先级）与可选的二次时间排序。
+	// html.sort 与 pdf.sort 共用该解析器与比较逻辑，保证两者设置相同时排序一致。
+	camus::sort_spec parse_sort_spec(
+		const std::vector<std::string> &values, const std::string_view label, const camus::sort_spec &fallback
+	)
 	{
-		pdf_sort_spec spec;
+		camus::sort_spec spec;
 		bool group_set = false;
 		bool time_set = false;
 		bool any_valid = false;
@@ -226,7 +223,7 @@ namespace
 												   : value == "mixed" ? camus::config::PDF_SORT_MIXED
 																	  : camus::config::PDF_SORT_FILE_FIRST;
 				if (group_set && spec.group != mode) {
-					logging::warn("multiple pdf.sort group values, using last value={}", value);
+					logging::warn("multiple {}.sort group values, using last value={}", label, value);
 				}
 				spec.group = mode;
 				group_set = true;
@@ -234,24 +231,50 @@ namespace
 			} else if (value == "time_asc" || value == "time_desc") {
 				const bool desc = value == "time_desc";
 				if (time_set && spec.time_desc != desc) {
-					logging::warn("multiple pdf.sort time values, using last value={}", value);
+					logging::warn("multiple {}.sort time values, using last value={}", label, value);
 				}
 				spec.has_time = true;
 				spec.time_desc = desc;
 				time_set = true;
 				any_valid = true;
 			} else {
-				logging::warn("invalid pdf.sort value, ignored value={}", raw);
+				logging::warn("invalid {}.sort value, ignored value={}", label, raw);
 			}
 		}
 
-		// 空 / 全部非法时使用默认：文件优先 + 时间正序。
+		// 空 / 全部非法时回退到各自默认值（html: 目录优先+时间倒序，pdf: 文件优先+时间正序）。
 		if (!any_valid) {
-			spec = {};
-			spec.has_time = true;
+			return fallback;
+		}
+
+		// 未显式给出组顺序键时按 mixed 处理：不区分文件/目录，
+		// 因此只设置 time_* 即为纯时间排序；只设置组键时不做时间二次排序。
+		if (!group_set) {
+			spec.group = camus::config::PDF_SORT_MIXED;
+		}
+		if (!time_set) {
+			spec.has_time = false;
+			spec.time_desc = false;
 		}
 
 		return spec;
+	}
+
+	// 同层节点比较：组顺序 → 时间方向 → 相对路径字典序兜底。
+	bool sort_spec_less(
+		const camus::catalog::catalog_node *a, const camus::catalog::catalog_node *b, const camus::sort_spec &spec
+	)
+	{
+		if (spec.group != camus::config::PDF_SORT_MIXED && a->is_directory() != b->is_directory()) {
+			return spec.group == camus::config::PDF_SORT_DIR_FIRST ? a->is_directory() : !a->is_directory();
+		}
+
+		if (spec.has_time && a->property.write_time != b->property.write_time) {
+			return spec.time_desc ? a->property.write_time > b->property.write_time
+								  : a->property.write_time < b->property.write_time;
+		}
+
+		return a->path.string() < b->path.string();
 	}
 
 	std::string path_to_file_url(const std::filesystem::path &path)
@@ -1270,12 +1293,8 @@ namespace camus
 			}
 		});
 
-		std::ranges::sort(articles, [](const catalog::catalog_node *a, const catalog::catalog_node *b) -> bool {
-			if (a->property.write_time != b->property.write_time) {
-				return a->property.write_time > b->property.write_time;
-			}
-
-			return a->path.string() < b->path.string();
+		std::ranges::sort(articles, [this](const catalog::catalog_node *a, const catalog::catalog_node *b) -> bool {
+			return sort_spec_less(a, b, html_sort_spec_);
 		});
 
 		return articles;
@@ -1308,24 +1327,22 @@ namespace camus
 
 	std::vector<nlohmann::json> writer::build_toc_items() const
 	{
-		std::vector<nlohmann::json> items;
+		std::vector<const catalog::catalog_node *> children;
 		for (const auto &child : catalog_.children) {
 			if (visible_in_toc(child)) {
-				items.push_back(nlohmann::json(child));
+				children.push_back(&child);
 			}
 		}
 
-		std::ranges::sort(items, [](const nlohmann::json &a, const nlohmann::json &b) -> bool {
-			if (const bool a_dir = a.value("is_dir", false); a_dir != b.value("is_dir", false)) {
-				return a_dir;
-			}
-
-			if (const auto at = a.value("write_time", 0); at != b.value("write_time", 0)) {
-				return at > b.value("write_time", 0);
-			}
-
-			return a.value("path", "") < b.value("path", "");
+		std::ranges::sort(children, [this](const catalog::catalog_node *a, const catalog::catalog_node *b) -> bool {
+			return sort_spec_less(a, b, html_sort_spec_);
 		});
+
+		std::vector<nlohmann::json> items;
+		items.reserve(children.size());
+		for (const auto *child : children) {
+			items.push_back(nlohmann::json(*child));
+		}
 
 		return items;
 	}
@@ -1346,13 +1363,9 @@ namespace camus
 			}
 		});
 
-		// 目录默认按更新时间降序（最新在前），时间相同按源路径升序保证确定性。
-		std::ranges::sort(articles, [](const catalog::catalog_node *a, const catalog::catalog_node *b) {
-			if (a->property.write_time != b->property.write_time) {
-				return a->property.write_time > b->property.write_time;
-			}
-
-			return a->path.string() < b->path.string();
+		// 与 html.sort 保持一致（默认时间倒序、同时间按源路径升序）。
+		std::ranges::sort(articles, [this](const catalog::catalog_node *a, const catalog::catalog_node *b) {
+			return sort_spec_less(a, b, html_sort_spec_);
 		});
 
 		std::vector<nlohmann::json> items;
@@ -1555,25 +1568,22 @@ namespace camus
 
 	void writer::emit_friends()
 	{
-		std::vector<nlohmann::json> toc_items;
+		std::vector<const catalog::catalog_node *> toc_children;
 		for (const auto &child : catalog_.children) {
-			if (!visible_in_toc(child)) {
-				continue;
+			if (visible_in_toc(child)) {
+				toc_children.push_back(&child);
 			}
-			toc_items.push_back(nlohmann::json(child));
 		}
 
-		std::ranges::sort(toc_items, [](const nlohmann::json &a, const nlohmann::json &b) -> bool {
-			if (const bool a_dir = a.value("is_dir", false); a_dir != b.value("is_dir", false)) {
-				return a_dir;
-			}
-
-			if (const auto at = a.value("write_time", 0); at != b.value("write_time", 0)) {
-				return at > b.value("write_time", 0);
-			}
-
-			return a.value("path", "") < b.value("path", "");
+		std::ranges::sort(toc_children, [this](const catalog::catalog_node *a, const catalog::catalog_node *b) {
+			return sort_spec_less(a, b, html_sort_spec_);
 		});
+
+		std::vector<nlohmann::json> toc_items;
+		toc_items.reserve(toc_children.size());
+		for (const auto *child : toc_children) {
+			toc_items.push_back(nlohmann::json(*child));
+		}
 
 		nlohmann::json json = conf_.json();
 		json["toc"] = toc_items;
@@ -1678,14 +1688,9 @@ namespace camus
 			}
 		});
 
-		// 按章节列表顺序（更新时间降序，时间相同路径升序）查找子树中的第一篇文章，
-		// 使首页展示的正文与侧栏编号的第 1 篇保持一致。
-		const auto lead_before = [](const catalog::catalog_node *a, const catalog::catalog_node *b) {
-			if (a->property.write_time != b->property.write_time) {
-				return a->property.write_time > b->property.write_time;
-			}
-
-			return a->path.string() < b->path.string();
+		// 按 html.sort 的顺序查找子树中的第一篇文章，使首页展示的正文与侧栏第 1 篇保持一致。
+		const auto lead_before = [this](const catalog::catalog_node *a, const catalog::catalog_node *b) {
+			return sort_spec_less(a, b, html_sort_spec_);
 		};
 
 		std::function<const catalog::catalog_node *(const catalog::catalog_node *)> find_lead =
@@ -1729,22 +1734,16 @@ namespace camus
 				toc_item["parent"]["label"] = "";
 			}
 
+			auto children = ctx.children;
+			std::ranges::sort(children, [this](const catalog::catalog_node *a, const catalog::catalog_node *b) {
+				return sort_spec_less(a, b, html_sort_spec_);
+			});
+
 			std::vector<nlohmann::json> items;
-			for (const auto *child : ctx.children) {
+			items.reserve(children.size());
+			for (const auto *child : children) {
 				items.push_back(nlohmann::json(*child));
 			}
-
-			std::ranges::sort(items, [](const nlohmann::json &a, const nlohmann::json &b) -> bool {
-				if (const bool a_dir = a.value("is_dir", false); a_dir != b.value("is_dir", false)) {
-					return a_dir;
-				}
-
-				if (const auto at = a.value("write_time", 0); at != b.value("write_time", 0)) {
-					return at > b.value("write_time", 0);
-				}
-
-				return a.value("path", "") < b.value("path", "");
-			});
 
 			toc_item["items"] = items;
 			toc_item["chapters"] = chapter_items;
@@ -1827,44 +1826,34 @@ namespace camus
 			return;
 		}
 
-		struct feed_item {
-			time_t write_time = 0;
-			std::string title;
-			std::string link;
-		};
-
-		std::vector<feed_item> articles;
+		std::vector<const catalog::catalog_node *> articles;
 		catalog::traverse_catalog_tree(catalog_, [&](const catalog::catalog_node &node, int) {
 			if (node.is_directory() || node.property.visibility == catalog::hidden) {
 				return;
 			}
 
-			articles.push_back(
-				feed_item{
-					.write_time = node.property.write_time,
-					.title = node.property.display_name,
-					.link = std::format("{}{}", conf_.camus().public_url.full_prefix(), node.link_url().string()),
-				}
-			);
+			articles.push_back(&node);
 		});
 
-		std::ranges::sort(articles, [](const feed_item &a, const feed_item &b) {
-			if (a.write_time != b.write_time) {
-				return a.write_time > b.write_time;
-			}
-
-			return a.title < b.title;
+		// 与 html.sort 一致：时间方向随配置变化，时间相同按相对路径升序。
+		std::ranges::sort(articles, [this](const catalog::catalog_node *a, const catalog::catalog_node *b) {
+			return sort_spec_less(a, b, html_sort_spec_);
 		});
 
 		std::vector<std::string> items;
 		items.reserve(articles.size());
-		for (const auto &article : articles) {
+		time_t latest_write_time = 0;
+		for (const auto *article : articles) {
+			latest_write_time = std::max(latest_write_time, article->property.write_time);
+			const std::string link = std::format(
+				"{}{}", conf_.camus().public_url.full_prefix(), article->link_url().string()
+			);
 			items.push_back(std::format(
 				R"(<item><title>{}</title><link>{}</link><guid isPermaLink="true">{}</guid><pubDate>{}</pubDate></item>)",
-				html_escape(article.title),
-				html_escape(article.link),
-				html_escape(article.link),
-				functions::format_time_t(article.write_time, "%a, %d %b %Y %H:%M:%S %z")
+				html_escape(article->property.display_name),
+				html_escape(link),
+				html_escape(link),
+				functions::format_time_t(article->property.write_time, "%a, %d %b %Y %H:%M:%S %z")
 			));
 		}
 
@@ -1873,7 +1862,7 @@ namespace camus
 		const std::string home_link =
 			conf_.camus().public_url.full_prefix().empty() ? "/" : conf_.camus().public_url.full_prefix() + "/";
 		const time_t build_time = std::time(nullptr);
-		const time_t latest_time = articles.empty() ? build_time : articles.front().write_time;
+		const time_t latest_time = articles.empty() ? build_time : latest_write_time;
 
 		logging::debug(std::format("make feed url={}/feed.xml", conf_.camus().public_url.full_prefix()));
 
@@ -2195,7 +2184,11 @@ namespace camus
 
 		// 目录按真实目录树多级输出：目录节点作为分组标题，文章节点作为可跳转条目。
 		// 启用时间排序（time_asc / time_desc）时额外按年分卷，年份作为一级分组。
-		const pdf_sort_spec sort_spec = parse_pdf_sort_spec(conf_.camus().pdf.sort);
+		const sort_spec sort_spec = parse_sort_spec(
+			conf_.camus().pdf.sort,
+			"pdf",
+			camus::sort_spec{config::PDF_SORT_FILE_FIRST, true, false}
+		);
 		const bool group_by_year = sort_spec.has_time;
 		int index = 0;
 
@@ -2298,17 +2291,8 @@ namespace camus
 				ordered.push_back(&child);
 			}
 
-			std::ranges::sort(ordered, [sort_spec](const catalog::catalog_node *a, const catalog::catalog_node *b) {
-				if (sort_spec.group != config::PDF_SORT_MIXED && a->is_directory() != b->is_directory()) {
-					return sort_spec.group == config::PDF_SORT_DIR_FIRST ? a->is_directory() : !a->is_directory();
-				}
-
-				if (sort_spec.has_time && a->property.write_time != b->property.write_time) {
-					return sort_spec.time_desc ? a->property.write_time > b->property.write_time
-											   : a->property.write_time < b->property.write_time;
-				}
-
-				return a->path.string() < b->path.string();
+			std::ranges::sort(ordered, [&sort_spec](const catalog::catalog_node *a, const catalog::catalog_node *b) {
+				return sort_spec_less(a, b, sort_spec);
 			});
 
 			return ordered;
@@ -3186,6 +3170,13 @@ namespace camus
 		}
 
 		conf_.reload();
+
+		// HTML 同层排序（html.sort，默认目录优先 + 时间倒序），与 pdf.sort 共用同一套逻辑。
+		html_sort_spec_ = parse_sort_spec(
+			conf_.camus().html.sort,
+			"html",
+			sort_spec{config::PDF_SORT_DIR_FIRST, true, true}
+		);
 
 		// 启动时自动更新：在后台子进程中异步执行，结果不影响构建；watch 重建不重复执行。
 		// auto = 下载并安装，check-only = 仅检测并打印链接，disable = 跳过。

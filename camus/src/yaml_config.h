@@ -142,8 +142,11 @@ namespace camus::config
 		bool copy_pdf = false;
 		// 为 true 时在构建前下载 URL 封面到本地，并让 HTML/PDF 使用本地副本
 		bool download_cover = false;
+		// HTML 同层排序键数组：组顺序（file_first / dir_first / mixed）+ 可选的二次时间排序
+		// （time_asc / time_desc）。默认目录优先、时间倒序。
+		std::vector<std::string> sort = {"dir_first", "time_desc"};
 
-		NLOHMANN_DEFINE_TYPE_INTRUSIVE(html_conf, build, copy_pdf, download_cover);
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(html_conf, build, copy_pdf, download_cover, sort);
 	};
 
 	struct render_conf {

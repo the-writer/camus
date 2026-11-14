@@ -175,17 +175,17 @@ link_url():
 
 ## 4.9 排序、过滤与导航
 
-- `collect_articles()`：收集所有 `.md` 且 `visibility != hidden` 的节点（含 `hidden_in_toc`），按 `write_time` **降序**（新→旧），时间相同时按 `path` 升序保证稳定。
+- `collect_articles()`：收集所有 `.md` 且 `visibility != hidden` 的节点（含 `hidden_in_toc`），按 `html.sort` 排序（默认 `write_time` **降序**即新→旧，时间相同时按 `path` 升序保证稳定，见 §3.3.2）。
 - `finalize_directory_properties()` 在 TOC 与统计生成**之前**执行：
   - **后序**递归计算目录 `write_time`，取所有子节点（含深层后代）`write_time` 的最大值；
   - 目录空的 `subtitle/description/display_name` 分别回退到 `site` 的对应字段；
   - 移除 `invalid()` 的文件节点（`display_name` 为空，即隐藏文章与非 `.md` 文件）；
   - 移除因此变空的目录节点（`directory = true` 且 `children` 为空）。
-- TOC 排序：目录优先，然后按 `write_time` 降序，时间相同按 `path` 升序。
-- 以上为 HTML 站点排序；PDF 的排列规则不同，由 `pdf.sort` 控制（默认 `[file_first, time_asc]`：同层先文件后目录，组内按时间正序、时间相同按路径），见 §3.3.1 / §6.10。
+- TOC / 章节 / 导航排序统一由 `html.sort` 控制（默认 `[dir_first, time_desc]`：目录优先、`write_time` 倒序，时间相同按 `path` 升序），见 §3.3.2。
+- HTML 使用 `html.sort`（默认 `[dir_first, time_desc]`），PDF 使用 `pdf.sort`（默认 `[file_first, time_asc]`）；两者共用同一套排序逻辑，设置相同时同层顺序一致，见 §3.3.1 / §3.3.2 / §6.10。
 - 上一篇/下一篇（`fill_article_nav`）：
-  - `prev` / `next`：在按更新时间降序的文章列表中，`prev` 指向更新的一篇（索引 - 1），`next` 指向更旧的一篇（索引 + 1）。
-  - `chapter_prev` / `chapter_next`：同样按更新时间降序（最新在前，时间相同按源路径升序），与 `chapters` 章节目录顺序一致；分别指向前一章（更新）/ 后一章（更旧），供 `tomato` 等阅读主题的上/下一章按钮使用。
+  - `prev` / `next`：在按 `html.sort` 排好的文章列表中，`prev` 指向前一项、`next` 指向后一项（默认时间倒序时 `prev` 更新、`next` 更旧）。
+  - `chapter_prev` / `chapter_next`：与 `chapters` 扁平章节列表同序（由 `html.sort` 决定，默认时间倒序、时间相同按源路径升序），分别指向前一章 / 后一章，供 `tomato` 等阅读主题的上/下一章按钮使用。
   - 所有路径都会加上 `public_url.path_prefix`。
 
 ## 4.10 字数与阅读时长

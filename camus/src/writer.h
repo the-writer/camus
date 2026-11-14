@@ -28,6 +28,14 @@ namespace camus
 		NLOHMANN_DEFINE_TYPE_INTRUSIVE(article_stats, articles, words, read_mins, min_time, max_time, tags);
 	};
 
+	// 同层排序配置：组顺序（文件 / 目录优先级）与可选的二次时间排序。
+	// html.sort 与 pdf.sort 使用完全相同的比较逻辑：组顺序 → 时间方向 → 相对路径字典序兜底。
+	struct sort_spec {
+		config::pdf_sort_mode group = config::PDF_SORT_FILE_FIRST;
+		bool has_time = false;
+		bool time_desc = false;
+	};
+
 	class writer
 	{
 		// 停止服务
@@ -50,6 +58,8 @@ namespace camus
 		std::filesystem::path remote_cover_path_;
 		// 远程 HTML 图片（logo）下载到本地的临时路径（构建结束后清理）
 		std::filesystem::path remote_logo_path_;
+		// HTML 同层排序（html.sort，默认目录优先 + 时间倒序）
+		sort_spec html_sort_spec_{config::PDF_SORT_DIR_FIRST, true, true};
 
 		void add_write(const std::filesystem::path &path, std::string_view content);
 		void flush_writes();
