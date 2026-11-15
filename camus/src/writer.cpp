@@ -1522,7 +1522,17 @@ namespace camus
 			// volume_key 用于分组（目录路径），volume 为展示用标题。
 			const std::string volume_key = article->path.parent_path().string();
 			item["volume_key"] = volume_key;
-			item["volume"] = dir_titles.contains(volume_key) ? dir_titles.at(volume_key) : "";
+
+			std::vector<std::string> volume_parts;
+			for (std::string path = volume_key; !path.empty() && path != "/";
+				 path = std::filesystem::path(path).parent_path().string()) {
+				if (const auto it = dir_titles.find(path); it != dir_titles.end() && !it->second.empty()) {
+					volume_parts.push_back(it->second);
+				}
+			}
+
+			std::ranges::reverse(volume_parts);
+			item["volume"] = strings::string_join(volume_parts, "·");
 
 			items.push_back(std::move(item));
 		}

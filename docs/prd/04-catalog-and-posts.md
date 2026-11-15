@@ -184,6 +184,7 @@ link_url():
   - 移除 `invalid()` 的文件节点（`display_name` 为空，即隐藏文章与非 `.md` 文件）；
   - 移除因此变空的目录节点（`directory = true` 且 `children` 为空）。
 - TOC / 章节 / 导航排序统一由 `html.sort` 控制（默认 `[dir_first, time_desc]`：目录优先、`write_time` 倒序，时间相同按 `path` 升序），见 §3.3.2。
+- `chapters[].volume_key` 为文章所在目录路径（用于分组）；`chapters[].volume` 为该目录的**祖先链显示标题**——从一级分卷到直接父目录的 `display_name`（来自各目录 `SUMMARY.md` 的 `title`，缺省回退站点标题）以 `·` 连接，如二级分卷显示为 `分卷名·二级分卷名`，更深层级继续追加；根目录文章为空串。
 - HTML 使用 `html.sort`（默认 `[dir_first, time_desc]`），PDF 使用 `pdf.sort`（默认 `[file_first, time_asc]`）；两者共用同一套排序逻辑，设置相同时同层顺序一致，见 §3.3.1 / §3.3.2 / §6.10。
 - 上一篇/下一篇（`fill_article_nav`）：
   - `prev` / `next`：在按 `html.sort` 排好的文章列表中，`prev` 指向前一项、`next` 指向后一项（默认时间倒序时 `prev` 更新、`next` 更旧）。
