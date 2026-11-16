@@ -68,7 +68,7 @@ flowchart TD
     I --> P{pdf.engine 非空且不为 disable?}
     P -->|是| Q[emit_pdf: 合并 Markdown + 封面/扉页/目录 -> HTML -> Chrome/Edge 打印]
     P -->|否| J
-    Q --> J[INFO build complete, 返回 0]
+    Q --> J[返回 0]
 ```
 
 `emit_article` 内部又分为：路由解析 → Front Matter 解析 → 清空输出目录 → 收集文章 → 填充上一篇/下一篇 → 计算 TOC → 逐篇渲染与统计 → 统计页 → 目录属性收尾（详见 §4、§6）。

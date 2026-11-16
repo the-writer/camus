@@ -23,8 +23,9 @@ empty_path(pdf_dir(),   safe_check=true, safe_limit=build.safe_clean_limit)   //
 
 每次构建输出阶段统计日志（info 级别）：
 
-- HTML：构建开始时不输出日志；完成后输出 `html build complete files=<文件数> bytes=<总字节> elapsed=<秒>s output=<输出目录>`。
-- PDF：`pdf build started articles=<文章数> engine=<引擎>`；完成后 `pdf build complete articles=<文章数> pages=<页数> bytes=<文件字节> elapsed=<秒>s dest=<PDF 路径>`。
+- HTML：构建开始时不输出日志；完成后输出 `html build complete files=<文件数> bytes=<总字节> elapsed=<秒>s`。
+- PDF：`pdf build started articles=<文章数> engine=<引擎>`；完成后 `pdf build complete articles=<文章数> pages=<页数> bytes=<文件字节> elapsed=<秒>s`。
+- 构建结束不再额外输出 `build complete` 汇总行（HTML / PDF 各自的完成日志已含汇总信息）。
 - PDF 未启用、引擎不可用或无文章时不会输出 PDF 阶段日志；`-W` 每次重建按相同规则输出，不改变监听逻辑。
 
 ## 6.2 输出文件布局

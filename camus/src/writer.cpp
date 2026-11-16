@@ -3115,12 +3115,11 @@ namespace camus
 		std::error_code size_ec;
 		const auto pdf_bytes = std::filesystem::file_size(pdf_path, size_ec);
 		logging::info(
-			"pdf build complete articles={} pages={} bytes={} elapsed={:.2f}s dest={}",
+			"pdf build complete articles={} pages={} bytes={} elapsed={:.2f}s",
 			articles.size(),
 			total_pages,
 			size_ec ? 0 : pdf_bytes,
-			pdf_elapsed,
-			pdf_path.string()
+			pdf_elapsed
 		);
 	}
 
@@ -3724,11 +3723,10 @@ namespace camus
 		const double html_elapsed =
 			std::chrono::duration<double>(std::chrono::steady_clock::now() - html_started).count();
 		logging::info(
-			"html build complete files={} bytes={} elapsed={:.2f}s output={}",
+			"html build complete files={} bytes={} elapsed={:.2f}s",
 			html_files,
 			html_bytes,
-			html_elapsed,
-			conf_.camus().dest_dir().string()
+			html_elapsed
 		);
 
 		emit_pdf();
@@ -3745,7 +3743,6 @@ namespace camus
 			remote_cover_path_.clear();
 		}
 
-		logging::info("build complete articles={} output={}", catalog_.size(), conf_.camus().dest_dir().string());
 		return 0;
 	}
 } // namespace camus
