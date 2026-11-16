@@ -1117,61 +1117,56 @@ namespace camus::config
 			}
 		}
 
+		if (transfer_data && transfer_data.IsSequence()) {
+			for (const auto &item : transfer_data) {
+				if (!item.IsMap() || !item["path"]) {
+					logging::warn("ignore invalid transfer config reason=missing path");
+					continue;
+				}
 
-		if (transfer_data) {
-			if (!transfer_data.IsSequence()) {
-				logging::warn("ignore invalid transfer config reason=not a sequence");
-			} else {
-				for (const auto &item : transfer_data) {
-					if (!item.IsMap() || !item["path"]) {
-						logging::warn("ignore invalid transfer config reason=missing path");
+				const std::string path = filesystem::clean_path(item["path"].as<std::string>(), "/");
+				if (path_contains_private(path)) {
+					logging::warn("ignore transfer using private directory path={}", path);
+					continue;
+				}
+
+				if (path == "/") {
+					logging::warn("ignore root transfer path=/");
+					continue;
+				}
+
+				const YAML::Node transfers = item["transfers"];
+				if (!transfers || !transfers.IsSequence()) {
+					continue;
+				}
+
+				for (const auto &tr : transfers) {
+					if (!tr.IsMap() || !tr["source"] || !tr["target"]) {
+						logging::warn("ignore invalid transfer path={} reason=missing source/target", path);
 						continue;
 					}
 
-					const std::string path = filesystem::clean_path(item["path"].as<std::string>(), "/");
-					if (path_contains_private(path)) {
-						logging::warn("ignore transfer using private directory path={}", path);
+					route_transfer_conf t{
+						.source = tr["source"].as<std::string>(),
+						.target = tr["target"].as<std::string>()
+					};
+
+					if (t.target.empty()) {
+						logging::warn("ignore invalid transfer path={} reason=empty target", path);
 						continue;
 					}
 
-					if (path == "/") {
-						logging::warn("ignore root transfer path=/");
-						continue;
+					if (t.source == "." || t.source == "/") {
+						t.source = path;
+					} else {
+						// 加上文件夹前缀，使文件名完整
+						t.source = path / t.source;
 					}
 
-					const YAML::Node transfers = item["transfers"];
-					if (!transfers || !transfers.IsSequence()) {
-						continue;
-					}
+					transfers_.push_back(t);
 
-					for (const auto &tr : transfers) {
-						if (!tr.IsMap() || !tr["source"] || !tr["target"]) {
-							logging::warn("ignore invalid transfer path={} reason=missing source/target", path);
-							continue;
-						}
-
-						route_transfer_conf t{
-							.source = tr["source"].as<std::string>(),
-							.target = tr["target"].as<std::string>()
-						};
-
-						if (t.target.empty()) {
-							logging::warn("ignore invalid transfer path={} reason=empty target", path);
-							continue;
-						}
-
-						if (t.source == "." || t.source == "/") {
-							t.source = path;
-						} else {
-							// 加上文件夹前缀，使文件名完整
-							t.source = path / t.source;
-						}
-
-						transfers_.push_back(t);
-
-						if (route_conf *route = find_route(path)) {
-							route->transfers.push_back(t);
-						}
+					if (route_conf *route = find_route(path)) {
+						route->transfers.push_back(t);
 					}
 				}
 			}

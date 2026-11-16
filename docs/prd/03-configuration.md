@@ -211,7 +211,7 @@ build:
 | `build.rss` | bool | `true` | 是否输出 `feed.xml`（RSS 2.0）；所有主题在 `<head>` 中通过 `build.rss` 条件输出自动发现 `<link rel="alternate" type="application/rss+xml" href="{path_prefix}/feed.xml">` |
 | `build.safe_clean_limit` | 整数 | `300` | 构建前安全清理阈值：`dist/html`、`dist/pdf` 递归条目数超过该值则拒绝自动删除并退出 127（详见 §6.1）；非法值输出 WARN 并保留默认 |
 
-兼容旧格式：顶层 `build` 直接为序列，或顶层键 `transfer`；优先级为 `build.transfer` > 顶层 `build` 序列 > 顶层 `transfer`。
+兼容旧格式：顶层 `build` 直接为序列，或顶层键 `transfer`；优先级为 `build.transfer` > 顶层 `build` 序列 > 顶层 `transfer`。解析时仅处理序列形式：若 `transfer` / `build.transfer` 存在但不是序列（或旧格式无法解析为序列），直接忽略且不再打印 WARN。
 
 `build.transfer` 每项字段：
 
