@@ -82,8 +82,7 @@ namespace camus::config
 				if (end > 0) {
 					const std::vector<std::string> front_lines(lines.begin() + 1, lines.begin() + end);
 					try {
-						if (const YAML::Node node = YAML::Load(strings::string_join(front_lines, "\n"));
-							node.IsMap()) {
+						if (const YAML::Node node = YAML::Load(strings::string_join(front_lines, "\n")); node.IsMap()) {
 							const auto read = [&node](const char *key) -> std::string {
 								if (const YAML::Node value = node[key]; value && value.IsScalar()) {
 									return value.as<std::string>();
@@ -248,9 +247,8 @@ namespace camus::config
 				}
 			}
 
-			const bool has_assets_cdn = std::ranges::any_of(entries, [](const env_entry &entry) {
-				return entry.upper == "ASSETS_CDN";
-			});
+			const bool has_assets_cdn =
+				std::ranges::any_of(entries, [](const env_entry &entry) { return entry.upper == "ASSETS_CDN"; });
 			if (!has_assets_cdn) {
 				entries.push_back({.raw = "assets_cdn", .upper = "ASSETS_CDN", .value = ""});
 			}
@@ -431,7 +429,8 @@ namespace camus::config
 		public_config_["build"] = std::unordered_map<std::string, std::string>{
 			{"basedir", basedir},
 			{"search_index", CAMUS_SEARCH_INDEX_NAME},
-			{"search_url", filesystem::clean_path(std::string("/") + CAMUS_SEARCH_INDEX_NAME, camus_.public_url.path_prefix)},
+			{"search_url",
+			 filesystem::clean_path(std::string("/") + CAMUS_SEARCH_INDEX_NAME, camus_.public_url.path_prefix)},
 			{"timestamp", std::to_string(now * 1000)},
 			{"time", buf},
 			{"build_type", BUILD_TYPE},
@@ -444,14 +443,13 @@ namespace camus::config
 		};
 
 		nlohmann::json powered_by_data = json();
-		powered_by_data["search_link"] =
-			camus_.render.theme_name == "pixel"
-				? std::format(
-					  R"(<a class="site-stats-link" href="{}/search.html">Search</a> /)"
-					  "\n",
-					  camus_.public_url.path_prefix
-				  )
-				: "";
+		powered_by_data["search_link"] = camus_.render.theme_name == "pixel"
+											 ? std::format(
+												   R"(<a class="site-stats-link" href="{}/search.html">Search</a> /)"
+												   "\n",
+												   camus_.public_url.path_prefix
+											   )
+											 : "";
 		const std::string powered_by = R"(
 <a class="site-stats-link" href="{{ path_prefix }}/">Home</a> /
 <a class="site-stats-link" href="{{ path_prefix }}/friends.html">Friends</a> /
@@ -582,8 +580,7 @@ namespace camus::config
 				camus_.html.copy_pdf = copy_pdf.as<bool>();
 			}
 
-			if (const YAML::Node download_logo = node["download_logo"];
-				download_logo && download_logo.IsScalar()) {
+			if (const YAML::Node download_logo = node["download_logo"]; download_logo && download_logo.IsScalar()) {
 				camus_.html.download_logo = download_logo.as<bool>();
 			}
 
@@ -599,8 +596,7 @@ namespace camus::config
 							continue;
 						}
 
-						const std::string value =
-							strings::to_lower(strings::trim_space(item.as<std::string>()));
+						const std::string value = strings::to_lower(strings::trim_space(item.as<std::string>()));
 						if (!value.empty()) {
 							camus_.html.sort.push_back(value);
 						}
@@ -625,9 +621,7 @@ namespace camus::config
 				if (value == "by_year" || value == "disable") {
 					camus_.pdf.auto_volume = value;
 				} else {
-					logging::warn(
-						"invalid pdf.auto_volume value={} (expected by_year/disable), using by_year", value
-					);
+					logging::warn("invalid pdf.auto_volume value={} (expected by_year/disable), using by_year", value);
 					camus_.pdf.auto_volume = "by_year";
 				}
 			}
@@ -668,8 +662,7 @@ namespace camus::config
 							continue;
 						}
 
-						const std::string value =
-							strings::to_lower(strings::trim_space(item.as<std::string>()));
+						const std::string value = strings::to_lower(strings::trim_space(item.as<std::string>()));
 						if (!value.empty()) {
 							camus_.pdf.sort.push_back(value);
 						}
@@ -833,7 +826,6 @@ namespace camus::config
 				camus_.public_url = parse_public_url(get_string(it.second));
 				continue;
 			}
-
 		}
 
 		// 所有标量配置项都可由 CAMUS_<PATH> 环境变量覆盖（优先于 camus.yaml）。
@@ -869,9 +861,7 @@ namespace camus::config
 			if (mode == "by_year" || mode == "disable") {
 				camus_.pdf.auto_volume = mode;
 			} else {
-				logging::warn(
-					"invalid CAMUS_PDF_AUTO_VOLUME value={} (expected by_year/disable), using by_year", mode
-				);
+				logging::warn("invalid CAMUS_PDF_AUTO_VOLUME value={} (expected by_year/disable), using by_year", mode);
 				camus_.pdf.auto_volume = "by_year";
 			}
 		}
@@ -954,7 +944,8 @@ namespace camus::config
 			camus_.assets_dir.clear();
 		}
 
-		const auto read_theme = [](const std::string &name, const std::string &type, const bool required = true) -> std::string {
+		const auto read_theme = [](const std::string &name, const std::string &type, const bool required = true
+								) -> std::string {
 			// 本地 theme/ 覆盖优先，其次读取平台数据目录中的默认主题
 			std::filesystem::path home_file;
 			if (const std::string replace_theme = std::format("theme/{}/{}.html", name, type);
@@ -1035,7 +1026,8 @@ namespace camus::config
 
 		// 扫描源目录（含根目录）中的 SUMMARY.md，用于目录页元信息
 		for (auto it = std::filesystem::recursive_directory_iterator(camus_.source_dir);
-			 it != std::filesystem::recursive_directory_iterator(); ++it) {
+			 it != std::filesystem::recursive_directory_iterator();
+			 ++it) {
 			if (it->is_symlink()) {
 				continue;
 			}
@@ -1054,8 +1046,8 @@ namespace camus::config
 			const std::filesystem::path relative_dir =
 				std::filesystem::relative(it->path().parent_path(), camus_.source_dir);
 			const std::string path = relative_dir.empty() || relative_dir == "."
-										? "/"
-										: filesystem::clean_path(relative_dir.generic_string(), "/");
+										 ? "/"
+										 : filesystem::clean_path(relative_dir.generic_string(), "/");
 
 			if (path_contains_private(path)) {
 				continue;
@@ -1073,7 +1065,8 @@ namespace camus::config
 				if (const YAML::Node sitemap = build["sitemap"]; sitemap && sitemap.IsScalar()) {
 					camus_.output.sitemap = sitemap.as<bool>();
 				}
-				if (const YAML::Node filename_case = build["filename_case"]; filename_case && filename_case.IsScalar()) {
+				if (const YAML::Node filename_case = build["filename_case"];
+					filename_case && filename_case.IsScalar()) {
 					camus_.output.filename_case = filename_case.as<std::string>();
 				}
 				if (const YAML::Node rss = build["rss"]; rss && rss.IsScalar()) {
