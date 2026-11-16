@@ -62,5 +62,5 @@ watch server listen on http://localhost:3001 or http://<addr>:3001
 - `quit_` 为 `std::atomic<bool>`，当前代码中**没有任何地方将其置为 true**，也没有注册信号处理；因此监听模式只能由外部终止进程（如 Ctrl+C）结束，`watch_server_.stop()` 分支实际上不可达。
 - 端口固定 3001，不支持配置；被占用时 `listen` 失败，服务线程退出，但主循环仍继续轮询。
 - 输出目录 `./dist/html` 与 PDF 目录 `./dist/pdf` 已在哈希计算中排除（含 PDF 的 `index.md` 等产物），构建不会触发持续重建。
-- 每次 `build()` 会重新 `reload()` 配置；注意配置重载的列表累积问题（§3.9）。
+- 每次 `build()` 会重新 `reload()` 配置；`camus.yaml` 内容与上次已加载内容一致时 `reload()` 直接返回（不重复解析、不重扫 `SUMMARY.md`），内容变化时才重载；注意配置重载的列表累积问题（§3.9）。
 - `-W` 下首次构建失败不会阻止进入监听循环。

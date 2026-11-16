@@ -247,6 +247,7 @@ namespace camus::config
 		std::vector<route_transfer_conf> transfers_;
 
 		const std::string filename_;
+		std::string yaml_contents_;
 
 		// 监听模式：本地访问时 public_url 无效，解析后清空
 		bool watch_mode_ = false;

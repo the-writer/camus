@@ -16,7 +16,7 @@
 
 - `build()` 先 `chdir(workdir)` 再 `reload()`，因此**构建时**配置从 `-w` 指定的工作目录读取。
 - `check()` 同样先切到 `workdir` 再 `reload()`，因此 `-w <dir> --check` 读取的是该目录下的配置。
-- 每次 `reload()` 重新读取 `camus.yaml` 并扫描各目录的 `SUMMARY.md`；热重载（watch）依赖此行为。
+- 每次 `reload()` 先读取 `camus.yaml`：内容与上次已加载内容（`yaml_contents_`）一致时直接返回，不重置状态、也不重扫 `SUMMARY.md`；内容变化时才全量重读并扫描各目录的 `SUMMARY.md`。热重载（watch）依赖此行为，因此仅修改 `SUMMARY.md`（`camus.yaml` 不变）不会触发配置重载。
 
 ## 3.2 解析总则
 
@@ -321,7 +321,7 @@ PDF 模板在上述配置 JSON 之外额外接收 `pdf` 对象（封面、目录
 ## 3.8 持久性与重载
 
 - 配置本身持久于磁盘；运行期不写回配置。
-- `reload()` 每次全量重读 `camus.yaml` 并重新扫描 `SUMMARY.md`，先重置上一轮的 `camus_`、`routes_`、`transfers_`、`public_config_`，因此反复构建/热重载不会累积路由或友链。
+- `reload()` 先比较 `camus.yaml` 内容：与上次已加载内容（`yaml_contents_`）一致时直接返回，避免重复解析；内容变化时才全量重读 `camus.yaml` 并重新扫描 `SUMMARY.md`，先重置上一轮的 `camus_`、`routes_`、`transfers_`、`public_config_`，因此反复构建/热重载不会累积路由或友链。
 - 路由/友链的新增在下次构建生效。
 - `writer::check()` 与 `writer::build()` 会先把进程工作目录切到 `--workdir`，因此 `-w <dir> --check` 读取的是该目录下的配置。
 

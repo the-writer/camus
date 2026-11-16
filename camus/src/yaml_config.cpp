@@ -495,6 +495,14 @@ namespace camus::config
 			error::panic("config file not fount name={}", filename_);
 		}
 
+		// 文件未变更时，不进行重复加载
+		const std::string contents = filesystem::read_file(filename_);
+		if (yaml_contents_ == contents) {
+			return;
+		}
+
+		yaml_contents_ = contents;
+
 		// 允许重复 reload（watch / check / build），先重置上一轮状态，避免路由与友链累积
 		camus_ = camus_conf{};
 		routes_.clear();
