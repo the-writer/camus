@@ -35,7 +35,7 @@ flowchart TD
     J --> C
 ```
 
-- 轮询间隔：`500ms`（`writer.cpp:1244`）。
+- 轮询间隔：`1000ms`（`writer.cpp` watch 主循环）。
 - 参与 hash 的文件（递归遍历整个 `workdir`）：
   - 扩展名为 `.md`、`.yaml`、`.json`；
   - **或**路径字符串中包含 `/theme/` 的任意文件；
