@@ -1,6 +1,6 @@
 # 7. 监听模式与本地服务
 
-实现：`writer::watch()`（`camus/src/writer.cpp:1158`）。由 `-W/--watch` 触发；启动前会先执行一次 `build()`。
+实现：`writer::watch()`（`camus/src/writer.cpp`）。由 `-W/--watch` 触发；启动前会先执行一次 `build()`。
 
 ## 7.1 本地 HTTP 服务
 
@@ -21,37 +21,37 @@
 
 ```mermaid
 flowchart TD
-    A[启动 HTTP 服务线程] --> B[初始化 current_hash 为当前工作目录内容 hash]
+    A[启动 HTTP 服务线程] --> B[初始化 current_stamps 为当前工作目录文件签名]
     B --> C{quit_?}
     C -->|是| D[停止服务线程 join]
     C -->|否| E{workdir 存在?}
-    E -->|否| F[fatal 日志后 continue]
-    E -->|是| G[递归遍历 workdir, 跳过 dest_dir / pdf_dir, 收集命中文件的路径与内容 hash]
-    G --> H[按路径排序后汇总 hash]
-    H --> I{hash 变化?}
-    I -->|是| K[更新 hash 并 build]
+    E -->|否| F[fatal 日志后 sleep 1s 再 continue]
+    E -->|是| G[递归遍历 workdir, 跳过 dest_dir / pdf_dir / cache, 收集命中文件的路径 + mtime + size]
+    G --> H[按路径排序得到签名数组]
+    H --> I{与上次签名数组不同?}
+    I -->|是| K[更新签名并 build]
     I -->|否| J
     K --> J
     J --> C
 ```
 
 - 轮询间隔：`1000ms`（`writer.cpp` watch 主循环）。
-- 参与 hash 的文件（递归遍历整个 `workdir`）：
+- 参与变更检测的文件（递归遍历整个 `workdir`）：
   - 扩展名为 `.md`、`.yaml`、`.json`；
   - **或**路径字符串中包含 `/theme/` 的任意文件；
   - **或**路径字符串中包含 `/assets/` 的任意文件（图片、字体等静态资源修改也会触发重建）。
-- 遍历前对 `workdir`、`dest_dir`（`./dist/html`）、`pdf_dir`（`./dist/pdf`）与 PDF 缓存目录（`dest_dir` 的同级 `cache`，即 `./dist/cache`）统一做 `weakly_canonical` 规范化；遍历时同时跳过这三个目录（目录本身不进入、子目录不再递归）。其中 `dist/cache` 存放浏览器 profile 与远程图片缓存，Chrome 运行期间会频繁写入，若不排除会导致 hash 反复变化而死循环。因此 `index.md`、`index.html` 等构建产物都不会参与 hash，符号链接工作目录（如 macOS `/tmp` → `/private/tmp`）也不会因前缀不匹配而漏排除。
-- hash 汇总方式：收集每个命中文件的「规范化绝对路径 + 内容 hash」，按路径排序后拼接，再整体做 hash；避免文件系统目录遍历顺序变化造成 hash 抖动而反复编译。
-- 首次 hash 在进入循环前用当前内容初始化；只有汇总 hash 变化才触发 `build()`。
+- 遍历前对 `workdir`、`dest_dir`（`./dist/html`）、`pdf_dir`（`./dist/pdf`）与 PDF 缓存目录（`dest_dir` 的同级 `cache`，即 `./dist/cache`）统一做 `weakly_canonical` 规范化；遍历时同时跳过这三个目录（目录本身不进入、子目录不再递归）。其中 `dist/cache` 存放浏览器 profile 与远程图片缓存，Chrome 运行期间会频繁写入，若不排除会导致签名反复变化而死循环。因此 `index.md`、`index.html` 等构建产物都不会参与检测，符号链接工作目录（如 macOS `/tmp` → `/private/tmp`）也不会因前缀不匹配而漏排除。
+- 变更签名：每个命中文件记录「规范化绝对路径 + `mtime` + `size`」，按路径排序后与上次的签名数组逐项比较；不再读取文件内容计算 hash，降低大站点轮询开销。
+- 遍历使用 `directory_options::skip_permission_denied`，并通过 `std::error_code` 跳过遍历或 `last_write_time` / `file_size` 失败的条目（权限不足、文件在遍历中被删除/替换），不中断轮询。
+- 首次进入循环时用当前签名初始化基线（`current_stamps`），只有签名数组变化才触发 `build()`。
 - 不存在内容级构建缓存：命中变化后执行完整 `build()`，每次构建都会清空并重写输出目录，因此资源新增 / 修改 / 删除都会反映到 `dist/html`。
-- 文件内容读取失败时返回错误字符串参与 hash（`filesystem::read_file` 行为）。
 
 ## 7.3 日志
 
 启动时输出：
 
 ```text
-watch directory: <dest_dir>
+watch directory: <workdir>
 watch server listen on http://localhost:3001 or http://<addr>:3001
 ```
 
@@ -61,6 +61,6 @@ watch server listen on http://localhost:3001 or http://<addr>:3001
 
 - `quit_` 为 `std::atomic<bool>`，当前代码中**没有任何地方将其置为 true**，也没有注册信号处理；因此监听模式只能由外部终止进程（如 Ctrl+C）结束，`watch_server_.stop()` 分支实际上不可达。
 - 端口固定 3001，不支持配置；被占用时 `listen` 失败，服务线程退出，但主循环仍继续轮询。
-- 输出目录 `./dist/html` 与 PDF 目录 `./dist/pdf` 已在哈希计算中排除（含 PDF 的 `index.md` 等产物），构建不会触发持续重建。
+- 输出目录 `./dist/html` 与 PDF 目录 `./dist/pdf` 已在变更检测中排除（含 PDF 的 `index.md` 等产物），构建不会触发持续重建。
 - 每次 `build()` 会重新 `reload()` 配置；`camus.yaml` 内容与上次已加载内容一致时 `reload()` 直接返回（不重复解析、不重扫 `SUMMARY.md`），内容变化时才重载；注意配置重载的列表累积问题（§3.9）。
 - `-W` 下首次构建失败不会阻止进入监听循环。

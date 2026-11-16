@@ -3148,6 +3148,18 @@ namespace camus
 
 	}
 
+	struct file_stamp {
+		std::string path;
+		std::filesystem::file_time_type mtime;
+		std::uintmax_t size;
+
+		// C++17 需手写：
+		bool operator==(const file_stamp &o) const
+		{
+			return path == o.path && mtime == o.mtime && size == o.size;
+		}
+	};
+
 	void writer::watch()
 	{
 		constexpr uint16_t server_port = 3001;
@@ -3181,8 +3193,15 @@ namespace camus
 			return within(path, dest_dir) || within(path, pdf_dir) || within(path, cache_dir);
 		};
 
-		logging::info("watch directory: {}", dest_dir.string());
-		logging::info("watch server listen on http://localhost:{} or http://{}:{}", server_port, server_addr, server_port);
+		logging::info("watch directory: {}", watch_path.string());
+		logging::info(
+			"watch server listen on http://localhost:{} or http://{}:{}",
+			server_port,
+			server_addr,
+			server_port
+		);
+
+		static std::optional<std::vector<file_stamp>> current_stamps;
 
 		while (true) {
 			if (quit_) {
@@ -3191,14 +3210,26 @@ namespace camus
 
 			if (!std::filesystem::exists(watch_path)) {
 				logging::fatal("watch directory not exists name={}", watch_path.string());
+				std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // 原代码缺 sleep，会打满 CPU
 				continue;
 			}
 
-			// 按路径排序后再汇总，避免目录遍历顺序变化造成 hash 抖动而反复编译
-			std::vector<std::pair<std::string, uint64_t>> files;
-			for (auto it = std::filesystem::recursive_directory_iterator(watch_path);
+			// 按路径排序后再比较，避免目录遍历顺序变化造成抖动
+			std::vector<file_stamp> files;
+			std::error_code ec;
+
+			for (auto it = std::filesystem::recursive_directory_iterator(
+					 watch_path,
+					 std::filesystem::directory_options::skip_permission_denied,
+					 ec
+				 );
 				 it != std::filesystem::recursive_directory_iterator();
-				 ++it) {
+				 it.increment(ec)) {
+				if (ec) {
+					ec.clear();
+					continue;
+				}
+
 				const auto &entry = *it;
 				const std::filesystem::path path = entry.path().lexically_normal();
 				if (is_generated(path)) {
@@ -3215,28 +3246,33 @@ namespace camus
 				const std::string path_name = path.string();
 				const auto ext = path.extension();
 				const bool is_theme = path_name.find("/theme/") != std::string::npos;
-				// assets 下可能包含任意类型的静态资源（图片、字体等），全部纳入签名，
-				// 否则 -W 下新增 / 修改资源不会触发重建，输出仍是旧文件。
 				const bool is_asset = path_name.find("/assets/") != std::string::npos;
-				if (ext == ".md" || ext == ".yaml" || ext == ".json" || is_theme || is_asset) {
-					files.emplace_back(path_name, strings::make_hash(filesystem::read_file(path_name)));
+				if (!(ext == ".md" || ext == ".yaml" || ext == ".json" || is_theme || is_asset)) {
+					continue;
 				}
+
+				// stat 失败通常意味着文件在遍历中途被删除/替换，跳过即可，不要抛异常打断 watch
+				std::error_code fec;
+				const auto mtime = entry.last_write_time(fec);
+				if (fec) {
+					continue;
+				}
+
+				const auto size = entry.file_size(fec);
+				if (fec) {
+					continue;
+				}
+
+				files.push_back({path_name, mtime, size});
 			}
 
-			std::ranges::sort(files, {}, &std::pair<std::string, uint64_t>::first);
+			std::ranges::sort(files, {}, &file_stamp::path);
 
-			std::string signature;
-			for (const auto &[path, hash] : files) {
-				signature += path;
-				signature += ':';
-				signature += std::to_string(hash);
-				signature += '\n';
-			}
-
-			// 如果文件 hash 不同，就重新编译一遍
-			static uint64_t current_hash = strings::make_hash(signature);
-			if (const uint64_t hash = strings::make_hash(signature); current_hash != hash) {
-				current_hash = hash;
+			if (!current_stamps) {
+				// 首次建立基线，不触发构建（与原 current_hash 初始化行为一致）
+				current_stamps = std::move(files);
+			} else if (*current_stamps != files) {
+				current_stamps = std::move(files);
 				std::ignore = build();
 			}
 
