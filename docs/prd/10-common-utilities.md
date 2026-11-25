@@ -125,6 +125,7 @@
 | `CAMUS_SEARCH_PART_SIZE` | `32 * 1024` | 搜索索引分片大小（字节） |
 | `CAMUS_OPEN_TARGET_PROJECT` | `project` | `--open` 默认目标：VS Code 打开工作目录 |
 | `CAMUS_OPEN_TARGET_RUNTIME` | `runtime` | `--open` 目标：文件管理器打开数据目录 |
+| `CAMUS_PROJECTS_FILE` | `projects.json` | 数据目录中的项目清单文件名（已记录项目，见 §2.8） |
 | `CAMUS_PRIVATE_DIR` | `private` | 不参与扫描的私有目录名 |
 | `CAMUS_PDF_THEME_DIR` | `theme/pdf` | PDF 模板与样式目录 |
 | `CAMUS_PDF_TEMPLATE_NAME` | `page.html` | PDF 中间 HTML 模板文件名 |

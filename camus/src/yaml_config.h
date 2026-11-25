@@ -12,6 +12,9 @@
 
 namespace camus::config
 {
+	// 站点默认标题：camus.yaml 未配置 site.title 时使用
+	inline constexpr const char *default_site_title = "A mysterious site";
+
 	struct friend_link_conf {
 		std::string title;
 		std::string desc;
@@ -269,4 +272,7 @@ namespace camus::config
 		// 在所有路由的 transfers 中查找匹配 path 的搬运目标（支持子目录 source）
 		[[nodiscard]] std::filesystem::path match_transfer(const std::filesystem::path &path) const;
 	};
+
+	// 读取目录 SUMMARY.md 的标题：Front Matter 的 title，缺省回退正文首个一级标题；无标题时返回空串
+	[[nodiscard]] std::string read_summary_title(const std::filesystem::path &dir);
 } // namespace camus::config

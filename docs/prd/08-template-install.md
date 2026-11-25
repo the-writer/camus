@@ -17,7 +17,7 @@
 - `data_dirs()` 返回按优先级排列的候选目录；`find(relative)` 返回第一个存在的候选路径。
 - `source_data_dir()` 返回第一个同时包含 `theme/` 与 `assets/` 的数据目录，供 `-c` 使用。
 - `paths::find(CAMUS_CONF_NAME)` 定位包含 `camus.yaml` 的数据目录，供 `-i` 使用。
-- 数据目录只读即可：构建过程不会向其写入。
+- 构建过程不会向数据目录写入；只有运行期状态 `projects.json`（已记录项目清单，见 §2.8）由 `--open` / `--project` 写入，目录不存在时自动创建。
 
 目录内容（由安装包写入）：
 
@@ -35,7 +35,8 @@
 │   └── private/                # 不参与构建的私有内容目录（安装时自动创建，含 README.md）
 ├── camus.yaml                 # 示例配置
 ├── .gitignore                 # 示例忽略规则
-└── Justfile                   # 示例常用命令
+├── Justfile                   # 示例常用命令
+└── projects.json              # 运行期状态：已记录项目清单（由 --open / --project 写入，非安装包内容）
 ```
 
 ## 8.2 安装与复制

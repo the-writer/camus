@@ -8,6 +8,7 @@
 #include "common/filesystem/filesystem.h"
 #include "install.h"
 #include "open.h"
+#include "projects.h"
 #include "repo.h"
 #include "update.h"
 #include "writer.h"
@@ -87,10 +88,13 @@ int main(const int argc, char **argv)
 	arg.add<std::string>(
 		"open",
 		0,
-		"open workdir in VS Code; use 'runtime' to open the data directory",
+		"open workdir in VS Code; use 'runtime' to open the data directory, "
+		"a project id or name to open a recorded project",
 		false,
 		CAMUS_OPEN_TARGET_PROJECT
 	);
+	arg.add("project", 0, "list the projects recorded in the data directory");
+	arg.add<std::string>("delete", 0, "with --project: delete a recorded project by id or name", false, "");
 	arg.add<std::string>("workdir", 'w', "work dir", false, ".");
 
 	const std::vector<std::string> args = normalize_optional_value_args(argc, argv);
@@ -111,6 +115,16 @@ int main(const int argc, char **argv)
 
 	if (arg.exist("fix") && !arg.exist("check")) {
 		std::cout << "option --fix requires --check" << std::endl << std::endl << arg.usage();
+		return 1;
+	}
+
+	if (arg.exist("delete") && !arg.exist("project")) {
+		std::cout << "option --delete requires --project" << std::endl << std::endl << arg.usage();
+		return 1;
+	}
+
+	if (arg.exist("delete") && arg.get<std::string>("delete").empty()) {
+		std::cout << "option needs value: --delete" << std::endl << std::endl << arg.usage();
 		return 1;
 	}
 
@@ -150,6 +164,14 @@ int main(const int argc, char **argv)
 			.watch = arg.exist("watch"),
 			.fix = arg.exist("fix"),
 		};
+
+		// 项目管理：打印已记录项目；--delete 先删除对应记录
+		if (arg.exist("project")) {
+			const std::string delete_key = arg.exist("delete") ? arg.get<std::string>("delete") : "";
+			if (const int managed = camus::projects::manage(delete_key); managed != 0) {
+				return managed;
+			}
+		}
 
 		if (arg.exist("install") || arg.exist("new")) {
 			if (const int installed = camus::install_templates(cmd.workdir); installed != 0) {
@@ -193,7 +215,7 @@ int main(const int argc, char **argv)
 			}
 
 			const bool acted = arg.exist("install") || arg.exist("new") || arg.exist("copy") || arg.exist("repo") ||
-							   arg.exist("create");
+							   arg.exist("create") || arg.exist("project");
 			if (!acted) {
 				std::cout << arg.usage() << std::endl;
 			}

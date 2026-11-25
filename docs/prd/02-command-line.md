@@ -32,7 +32,9 @@ camus [选项] [--workdir <目录>]
 |  | `--new` | 目录字符串 | 创建目录（相对 `--workdir` 或绝对路径），自动执行 `--install`，并继续执行 `--repo`；不触发构建，除非同时指定 `--build` | `main.cpp` |
 | `--create` | 路径字符串 | 在源目录（`src/` 优先，其次 `posts/`）下创建文章：最后一级视为文件名（自动补 `.md`），缺失目录递归创建，并写入模板（`title`（文件名含 `-` 且出现过数字时取最后一个 `-` 之后的片段，否则用文件名）、当前 UTC 时间的 `create-time`，不再自动写入正文标题）；每个新建目录同时生成 `SUMMARY.md`（Front Matter 仅 `title: <目录名>`，目录名同样去除 `01-` 之类的排序前缀，已存在则不覆盖）；文件已存在时不覆盖。不触发构建 | `main.cpp` |
 |  | `--repo` | 可选值：远程地址 | 在 `--workdir` 执行 `git init`；提供值时设置 `origin`（已存在则更新），不提供时只 init | `main.cpp` |
-|  | `--open` | 可选值：`project`（默认）/`runtime` | 只打开目录，不触发构建：`project` 用 VS Code 打开工作目录，`runtime` 用系统文件管理器打开数据目录；未知值打印 WARN 并按 `project` 处理。与 `--build` 同用时构建成功后再打开 | `main.cpp` |
+|  | `--open` | 可选值：`project`（默认）/`runtime`/`<项目 ID>`/`<项目名>` | 只打开目录，不触发构建：`project` 用 VS Code 打开工作目录（要求工作目录是合法 camus 项目，即含 `camus.yaml`；打开成功后把项目路径与项目名记录到 `<数据目录>/projects.json`），`runtime` 用系统文件管理器打开数据目录（目录不存在时自动创建），`<项目 ID>`（纯数字）或 `<项目名>` 打开已记录项目（数字未命中时报错返回 1）；其它未知值打印 WARN 并按 `project` 处理。与 `--build` 同用时构建成功后再打开 | `main.cpp`、`open.cpp` |
+|  | `--project` | 无 | 列出已记录项目的表格（ID / 名称 / 路径），数据来自 `<数据目录>/projects.json`；不触发构建 | `main.cpp`、`projects.cpp` |
+|  | `--delete` | 字符串（ID 或名称） | 仅配合 `--project`：删除对应记录（ID 为纯数字时按 ID 匹配，否则按名称匹配），删除后打印最新表格；未搭配 `--project` 或缺值时打印错误并返回 1 | `main.cpp`、`projects.cpp` |
 | `-w` | `--workdir` | 目录字符串，默认 `.` | 工作目录 | `main.cpp:14` |
 
 > 资源来源：主题、默认资源与示例模板由安装包放到平台数据目录。`-i` 只安装工作目录根部的示例文件；`-c` 默认只生成最小可编辑资源骨架到工作目录 `assets/`（`css/style.css`、`js/camus.js`、空 `fonts/`），`-c --full` 才复制完整资源到 `.camus`，`-c --theme [name]` 则把主题复制到工作目录 `theme/`。资源查找会依次叠加数据目录、`.camus` 与本地 `./assets` / `theme/`（见 §8）。
@@ -45,6 +47,8 @@ camus [选项] [--workdir <目录>]
 - 非选项位置参数被收集到 `rest()`，当前主程序**未使用**。
 - 解析成功后，`-d` 或编译期 `WORK_ON_DEBUG=true`（Debug/RelWithDebInfo 构建）会把日志级别设为 DEBUG。
 - `--open` / `--repo` / `--new` 的值处理：解析前会把裸 `--open` 归一化为 `--open=project`、裸 `--repo` 归一化为 `--repo=`；若下一参数不以 `-` 开头（如 `--open runtime`、`--repo <url>`、`--new mysite`），则作为其值消费。`--name=value` 写法直接按值解析。
+- `--open` 的值语义：`project` / `runtime` 为保留字（项目名与之一冲突时以保留字为准）；纯数字按已记录项目的 ID 匹配；其余按已记录项目的名称精确匹配；都没有命中时打印 WARN 并回退到 `project`（纯数字未命中视为错误，直接返回 1）。
+- `--delete` 必须搭配 `--project`，否则打印 `option --delete requires --project` 并返回 1；`--delete=`（缺值）打印 `option needs value: --delete` 并返回 1。
 - `--new` 必须提供非空目录值；`--new=` 或裸 `--new` 会打印 `option needs value: --new` 并退出 1。`--create` 同理，缺值打印 `option needs value: --create` 并退出 1。
 
 ## 2.4 模式与执行流程
@@ -62,9 +66,13 @@ flowchart TD
     CU -->|是| CUP[请求最新 release: 仅输出下载链接, 返回 0/1]
     CU -->|否| N{--new?}
     N -->|是| NW[按 workdir/new 计算并创建目标目录]
-    N -->|否| I{-i?}
-    NW --> INS[install_templates]
-    I -->|是| INS
+    N -->|否| PJ{--project?}
+    NW --> PJ
+    PJ -->|是| PGM[projects::manage: --delete 先删除记录, 再打印项目表格]
+    PGM -->|失败| PF[返回 1]
+    PGM -->|成功| I{-i?}
+    PJ -->|否| I
+    I -->|是| INS[install_templates]
     I -->|否| CP{-c?}
     INS -->|失败| IF[返回 1]
     INS -->|成功| CP
@@ -86,7 +94,7 @@ flowchart TD
     NEW -->|成功| GATE{--build / -W / --check?}
     GATE -->|否| OP0{--open?}
     OP0 -->|是| OPEN0[open_target, 返回 0/1]
-    OP0 -->|否| ACT{有 install/new/copy/repo/create?}
+    OP0 -->|否| ACT{有 install/new/copy/repo/create/project?}
     ACT -->|否| USAGE[打印 usage, 返回 0]
     ACT -->|是| RET0[返回 0]
     GATE -->|是| C[构造 writer]
@@ -117,7 +125,10 @@ flowchart TD
 - `--check` 在构建前执行：内部把 dryrun 置为 true，重新加载配置并执行一次干跑构建，然后输出工作目录、源目录、主题、资源、PDF 资源和目录树等检查信息；不写文件，结果以退出码 0（OK）/1（FAILED）表示。
 - `-W` 时即使首次 `build()` 返回非 0，也会进入 `watch()` 循环继续等待变化。
 - `--open` 单独使用时直接打开目标目录并返回，不构建；与 `--build` 同用时仅在 `build()` 返回 0 后执行，且只执行一次：非 watch 模式在打开后按结果退出，watch 模式先打开再进入监听循环。
-- `--open project` 依次尝试 `code <workdir>` 与 macOS 的 `open -a "Visual Studio Code" <workdir>`；`--open runtime` 在 macOS 使用 `open <数据目录>`，其它平台使用 `xdg-open <数据目录>`。打开失败打印错误并返回 1（watch 模式不退出）。
+- `--open project` 依次尝试 `code <workdir>` 与 macOS 的 `open -a "Visual Studio Code" <workdir>`；打开前校验工作目录是合法 camus 项目（含 `camus.yaml`），否则打印 `open failed: not a camus project` 并返回 1；打开成功后把「项目路径 + 项目名」写入 `<数据目录>/projects.json`（项目名 = 根目录注册的标题，见 §2.8）。
+- `--open runtime` 在 macOS 使用 `open <数据目录>`，其它平台使用 `xdg-open <数据目录>`；数据目录不存在时先自动创建（创建失败打印错误并返回 1），因此不再出现 `data dir not found`。打开失败打印错误并返回 1（watch 模式不退出）。
+- `--open <ID>` / `--open <项目名>` 打开已记录项目：先按 ID（纯数字）或名称精确匹配 `<数据目录>/projects.json`，未命中时纯数字按错误处理（返回 1），其它值回退到 `project`；命中后校验目录存在且仍是合法 camus 项目，打开成功并刷新记录中的项目名。
+- `--project` 打印已记录项目表格（列：ID / 名称 / 路径，ID 与名称按显示宽度对齐）；记录为空时打印 `No project recorded.`。`--delete <ID|名称>` 先删除对应记录再打印表格；目标不存在或清单写入失败时打印错误并返回 1。
 
 ## 2.5 版本输出
 
@@ -149,7 +160,9 @@ Build Time: 2025-07-24 15:44:00 hash=<40 位 git hash>
 | 安装/复制失败（数据目录无资源或复制异常） | 1 | `install_templates` / `copy_resources` 返回 1 |
 | `git init` / remote 设置失败 | 1 | `init_repository` 返回 1 |
 | `--check` 发现错误 | 1 | `writer::check()` 返回 1 |
-| `--open` 打开失败 | 1 | `open_target` 返回 1（仅非 watch 模式退出） |
+| `--open` 打开失败 / 目标不是合法 camus 项目 / 项目 ID 不存在 | 1 | `open_target` 返回 1（仅非 watch 模式退出） |
+| `--project --delete` 目标不存在或清单写入失败 | 1 | `projects::manage` 返回 1 |
+| `--delete` 未搭配 `--project` 或缺值 | 1 | `main.cpp` 参数校验 |
 | 致命错误（配置缺失、渲染失败、输出目录文件过多等） | 127 | `logging::fatal` → `std::exit(127)` |
 | 未捕获异常 | 127 | catch 中 `logging::fatal` 退出 |
 
@@ -176,4 +189,39 @@ camus -D -v               # 版本信息（-D 对 -v 无影响）
 camus -dw /tmp/site --build # 调试日志 + 构建
 camus --open              # 在 VS Code 打开工作目录（不构建）
 camus --open runtime      # 用文件管理器打开数据目录（不构建）
+camus --project           # 列出已记录的项目（ID / 名称 / 路径）
+camus --project --delete 1        # 删除 ID 为 1 的记录
+camus --project --delete "My Site" # 按名称删除记录
+camus --open 1             # 在 VS Code 打开 ID 为 1 的已记录项目
+camus --open "My Site"     # 在 VS Code 打开名称为 My Site 的已记录项目
 ```
+
+## 2.8 项目记录（`projects.json`）
+
+实现：`camus/src/projects.h`、`camus/src/projects.cpp`。
+
+- 位置：`<数据目录>/projects.json`（macOS `~/Library/Application Support/Camus`，Linux `/var/lib/camus`），常量 `CAMUS_PROJECTS_FILE`（`config.h.in`）。
+- 结构：
+
+```json
+{
+    "projects": [
+        {
+            "id": 1,
+            "name": "Musicals",
+            "path": "/Users/alex/Projects/Alex/camus/example"
+        }
+    ]
+}
+```
+
+| 字段 | 含义 |
+|---|---|
+| `id` | 自增 ID，从 1 开始；记录后保持不变，删除其它条目不会改变已有 ID |
+| `name` | 项目名 = 根目录注册的标题 |
+| `path` | 项目绝对路径 |
+
+- 项目名（根目录注册的标题）解析顺序：源目录（`src` 优先，其次 `posts`）根部的 `SUMMARY.md` 标题（Front Matter `title`，缺省回退正文首个一级标题）→ `camus.yaml` 的 `site.title`（默认值 `A mysterious site` 视为未设置）→ 目录名。
+- 写入时机：`--open` 打开成功后写入；同一路径只保留一条记录（更新名称）；按 ID / 名称打开已记录项目时刷新名称。
+- 合法性判定：目录存在且包含 `camus.yaml` 即视为合法 camus 项目；不合法时 `--open` 打印错误并返回 1。
+- 持久性：清单文件持久于磁盘，进程重启后仍可列出；文件不存在或内容非法时视为空清单（读取失败打印错误）。

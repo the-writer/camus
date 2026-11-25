@@ -10,7 +10,7 @@ Camus 是一个用 C++23 编写的静态站点生成器：读取 Markdown 文章
 - 目录树与目录索引页、统计页、友链页、`sitemap.xml` 与 `feed.xml`（RSS）生成。
 - 可选 PDF 输出：把全部可见文章合并为单个 Markdown，经 cmark-gfm 转 HTML 后调用 Chrome/Edge 无头模式打印为 PDF；PDF 的 HTML 模板、打印样式、字体样式与自定义字体位于 `theme/pdf/`，同样支持本地覆盖。封面优先使用根 `SUMMARY.md` 的 `cover`（兼容旧键 `cover_image`；相对路径按 `camus.yaml` 所在目录、源目录、站点 `assets` 目录依次解析）整页铺满，并注入可交互书签大纲。
 - `-W` 监听模式：轮询文件变化并自动重建，同时提供本地 HTTP 服务。
-- `--open`：构建成功后用 VS Code 打开工作目录；`--open runtime` 用系统文件管理器打开数据目录。
+- `--open`：构建成功后用 VS Code 打开工作目录（要求工作目录是合法 camus 项目）；`--open runtime` 用系统文件管理器打开数据目录；`--open <ID|项目名>` 打开已记录项目，`--project` 列出已记录项目。
 - `private` 目录：源目录下任意名为 `private` 的子目录不参与扫描与生成，也不能作为目录页路由。
 
 当前版本见 `docs/PRD.md` 项目表（与 `CMakeLists.txt` 的 `project(... VERSION ...)` 保持一致），本文档不写死具体版本号。
@@ -41,7 +41,7 @@ Camus 是一个用 C++23 编写的静态站点生成器：读取 Markdown 文章
 | macOS（回退） | `/Library/Application Support/Camus` | 安装到系统域（如 `installer -target /`）时的位置 |
 | Linux | `/var/lib/camus` | 由 deb 安装包写入 |
 
-目录内容为 `theme/`、`assets/`、`posts/`（含各目录的 `SUMMARY.md`）、`camus.yaml`、`.gitignore` 与 `Justfile`。查找规则：
+目录内容为 `theme/`、`assets/`、`posts/`（含各目录的 `SUMMARY.md`）、`camus.yaml`、`.gitignore` 与 `Justfile`；运行期还会写入 `projects.json`（已记录项目清单，见 §2.8）。查找规则：
 
 - 主题：工作目录 `theme/{name}/{type}.html` → `.camus/theme/...` → 数据目录。
 - PDF 模板/样式：工作目录 `theme/pdf/{page.html,style.css,fonts.css}` → `.camus/theme/pdf/...` → 数据目录；字体使用站点 `assets/fonts/`。

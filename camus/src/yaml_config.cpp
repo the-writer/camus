@@ -1175,7 +1175,7 @@ namespace camus::config
 		});
 
 		// 为空的继承根目录属性，如果根目录存在
-		camus_.site = {.path = "/", .title = "A mysterious site"};
+		camus_.site = {.path = "/", .title = default_site_title};
 		for (auto &c : routes_) {
 			if (c.path == "/") {
 				camus_.site = c;
@@ -1184,7 +1184,7 @@ namespace camus::config
 		}
 
 		if (camus_.site.title.empty()) {
-			camus_.site.title = "A mysterious site";
+			camus_.site.title = default_site_title;
 		}
 
 		// 如果没出现，则不会自动继承属性。因此目录会出现为空的情况
@@ -1324,5 +1324,10 @@ namespace camus::config
 		}
 
 		return {};
+	}
+
+	std::string read_summary_title(const std::filesystem::path &dir)
+	{
+		return read_summary_meta(dir).title;
 	}
 } // namespace camus::config

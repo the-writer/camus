@@ -25,6 +25,8 @@
 #define CAMUS_SEARCH_PART_SIZE (32 * 1024)
 #define CAMUS_OPEN_TARGET_PROJECT "project"
 #define CAMUS_OPEN_TARGET_RUNTIME "runtime"
+// 运行期记录的项目清单文件（位于数据目录）
+#define CAMUS_PROJECTS_FILE "projects.json"
 #define CAMUS_PRIVATE_DIR "private"
 #define CAMUS_PDF_THEME_DIR "theme/pdf"
 #define CAMUS_PDF_TEMPLATE_NAME "page.html"
