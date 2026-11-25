@@ -83,13 +83,7 @@ int main(const int argc, char **argv)
 	arg.add("dryrun", 'D', "dry run");
 	arg.add("check", 'C', "validate configuration and run a dry build");
 	arg.add("fix", 0, "with --check: add missing title/create-time and SUMMARY.md");
-	arg.add<std::string>(
-		"repo",
-		0,
-		"git init in workdir; optional value sets remote origin",
-		false,
-		""
-	);
+	arg.add<std::string>("repo", 0, "git init in workdir; optional value sets remote origin", false, "");
 	arg.add<std::string>(
 		"open",
 		0,
@@ -185,8 +179,7 @@ int main(const int argc, char **argv)
 		}
 
 		if (arg.exist("create")) {
-			if (const int created = camus::create_article(cmd.workdir, arg.get<std::string>("create"));
-				created != 0) {
+			if (const int created = camus::create_article(cmd.workdir, arg.get<std::string>("create")); created != 0) {
 				return created;
 			}
 		}
@@ -199,8 +192,8 @@ int main(const int argc, char **argv)
 				return camus::open_target(arg.get<std::string>("open"), cmd.workdir);
 			}
 
-			const bool acted = arg.exist("install") || arg.exist("new") || arg.exist("copy") ||
-							   arg.exist("repo") || arg.exist("create");
+			const bool acted = arg.exist("install") || arg.exist("new") || arg.exist("copy") || arg.exist("repo") ||
+							   arg.exist("create");
 			if (!acted) {
 				std::cout << arg.usage() << std::endl;
 			}
