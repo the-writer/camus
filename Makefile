@@ -25,7 +25,8 @@ build:
 
 .PHONY: install
 install: package
-	@sudo installer -pkg build/release/_CPack_Packages/Darwin/productbuild/camus-*-arm64.pkg -target /
+	@installer -pkg build/release/_CPack_Packages/Darwin/productbuild/camus-*-arm64.pkg -target CurrentUserHomeDirectory
+	@sudo ln -sf "$(HOME)/Library/Application Support/Camus/bin/camus" /usr/local/bin/camus
 
 .PHONY: serve
 serve: build

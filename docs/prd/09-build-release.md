@@ -30,7 +30,7 @@
 `camus/CMakeLists.txt`：
 
 - 静态库 `camus`（`src/*`）+ 可执行文件 `Camus`，输出名为 `camus`，目录 `${CMAKE_BINARY_DIR}/bin`。
-- 安装 `example/` 的 `theme/`（含 `theme/pdf/`）、`assets/`、`posts/`（含各目录的 `SUMMARY.md`）、`camus.yaml`、`.gitignore` 与 `Justfile` 到平台数据目录（Linux `var/lib/camus`，macOS `Library/Application Support/Camus`，见 §8.4）。
+- 安装 `example/` 的 `theme/`（含 `theme/pdf/`）、`assets/`、`posts/`（含各目录的 `SUMMARY.md`）、`camus.yaml`、`.gitignore` 与 `Justfile` 到平台数据目录（Linux `var/lib/camus`，macOS `~/Library/Application Support/Camus`，见 §8.4）；macOS 可执行文件也装到该目录的 `bin/` 下。
 - 注册 CTest `build-test-site`：在源码根目录执行 `${CMAKE_BINARY_DIR}/bin/camus -d site`，超时 10 秒。
 - CPack 配置见 §9.5。
 
@@ -71,8 +71,8 @@
 | `CPACK_PACKAGE_FILE_NAME` | `${NAME}-v${VERSION}_${OS_NAME}${OS_RELEASE}-${PROCESSOR}`，整体转小写 |
 
 - Linux：可执行文件安装到 `./usr/local/bin`，资源安装到 `var/lib/camus`，生成 DEB（`CPACK_MONOLITHIC_INSTALL ON`）。
-- macOS `productbuild`：可执行文件安装到 `./usr/local/bin`（组件 `Runtime`），资源安装到 `Library/Application Support/Camus`（组件 `Resources`），identifier `io.github.the-writer.Camus`。
-- macOS `productbuild` 启用用户域与系统域：用户域落到 `~/Library/Application Support/Camus`，系统域（如 `installer -target /`）落到 `/Library/Application Support/Camus`。
+- macOS `productbuild`：整个包只启用当前用户域（`CPACK_PRODUCTBUILD_DOMAINS_USER=ON`，`..._ROOT` / `..._ANYWHERE=OFF`），因此 payload 的 `Library/Application Support/Camus` 释放为 `~/Library/Application Support/Camus`（组件 `Resources`），可执行文件释放为 `~/Library/Application Support/Camus/bin/camus`（组件 `Runtime`，`install(TARGETS Camus DESTINATION "${CAMUS_RESOURCE_DIR}/bin")`）；identifier `io.github.the-writer.Camus`。安装后由安装脚本建立 `/usr/local/bin/camus` 软链。
+- macOS `productbuild` 不再提供系统域（`/Library/Application Support/Camus`）安装；`/Library/...` 仅作为旧版安装的只读回退被运行期查找（§8.1）。
 - macOS `DragNDrop` 分支存在但当前 Makefile 默认用 `productbuild`。
 - 产物命名示例：`camus-v{PROJECT_VERSION}_ubuntu24.04-x86_64.deb`（实际版本号见 `CMakeLists.txt`，`OS_RELEASE` 由主机决定）。
 
@@ -84,7 +84,7 @@
 |---|---|---|---|
 | `check-main` | `ubuntu-24.04` | 全量 checkout → `safe.directory` → `git fetch origin main` → 用 `merge-base --is-ancestor` 判断 tag 提交是否在 `main` 上，输出 `build` | `build=true/false` |
 | `build-ubuntu` | `ubuntu-24.04` 容器 | 仅当 `check-main` 判定 `build=true`：安装依赖（含 `mold`、`libssl-dev`、`zlib1g-dev`）→ submodule → `make package` → `dpkg -i` + `camus -v` + `camus --build -dw "$GITHUB_WORKSPACE/example"` + `camus -iw /tmp/site` + `camus -cw /tmp/site-copy` | `build/release/packages` |
-| `build-macos` | `macos-15` | 仅当 `check-main` 判定 `build=true`：brew 安装依赖（含 `openssl@3`，并设置 `PKG_CONFIG_PATH`）→ submodule → `make package` → `sudo installer -pkg *.pkg -target /` + `camus -v` + `camus --build -dw "$GITHUB_WORKSPACE/example"` + `camus -iw /tmp/site` | `build/release/packages` |
+| `build-macos` | `macos-15` | 仅当 `check-main` 判定 `build=true`：brew 安装依赖（含 `openssl@3`，并设置 `PKG_CONFIG_PATH`）→ submodule → `make package` → `installer -pkg *.pkg -target CurrentUserHomeDirectory` + `sudo ln -sf "$HOME/Library/Application Support/Camus/bin/camus" /usr/local/bin/camus` + `camus -v` + `camus --build -dw "$GITHUB_WORKSPACE/example"` + `camus -iw /tmp/site` | `build/release/packages` |
 | `release` | `ubuntu-24.04` | 仅在 tag 上运行：下载并合并产物 → 生成 `latest.json`（`version` / `tag` / `published_at` / `assets`）→ `softprops/action-gh-release` 发布（含 `latest.json` 与 `*.dmg/*.pkg/*.rpm/*.deb/*.exe`） | GitHub Release |
 | `pages` | `ubuntu-24.04` 容器 | 仅在 tag 上运行且 tag 提交位于 `main` 历史时部署：安装 git → 全量 checkout → `safe.directory` 后校验 tag 在 `main` → `actions/configure-pages` 取得 `base_url` 并经 `CAMUS_PUBLIC_URL` 注入 → 安装 deb → `camus --build -dw example`（`CAMUS_AUTO_CHECK_UPDATE=false`）→ 上传并部署 GitHub Pages | `example/dist/html` |
 
@@ -116,6 +116,6 @@ curl -fsSL https://raw.githubusercontent.com/the-writer/camus/main/scripts/insta
 
 1. 仅支持两种平台组合：`Darwin-arm64`（macOS Apple Silicon，用 `.pkg`）与 `Linux-x86_64` / `Linux-amd64`（用 `.deb`）；其它组合报错退出（退出码 1）。
 2. 下载 `https://github.com/the-writer/camus/releases/latest/download/latest.json`（与 `--update` 同一份元数据），用 `grep` 取第一条以对应扩展名结尾的资产 URL，不依赖 `jq`。
-3. 下载资产到临时目录（退出时清理），非 root 时用 `sudo` 安装：macOS 执行 `installer -pkg <file> -target /`；Linux 执行 `dpkg -i <file>`，失败时回退 `apt-get -f install -y` 后重试。
+3. 下载资产到临时目录（退出时清理）：macOS 用 `installer -pkg <file> -target CurrentUserHomeDirectory` 装到当前用户域（资源与可执行文件释放到 `~/Library/Application Support/Camus`），随后用 `sudo ln -sf "$HOME/Library/Application Support/Camus/bin/camus" /usr/local/bin/camus` 建立命令软链；Linux 非 root 时用 `sudo dpkg -i <file>`，失败时回退 `apt-get -f install -y` 后重试。
 
 对 `curl` 下载重定向 `< /dev/null`，避免 `curl ... | bash` 时命令消费脚本自身的标准输入。

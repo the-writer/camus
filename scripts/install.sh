@@ -41,7 +41,10 @@ SUDO=""
 
 echo "installing: $(basename "$file")" >&2
 if [ "$ext" = "pkg" ]; then
-	$SUDO installer -pkg "$file" -target /
+	# macOS pkg 安装到当前用户域：资源与可执行文件释放到 ~/Library/Application Support/Camus，
+	# 再建立 /usr/local/bin/camus 软链，使命令在 PATH 中可用。
+	installer -pkg "$file" -target CurrentUserHomeDirectory
+	$SUDO ln -sf "$HOME/Library/Application Support/Camus/bin/camus" /usr/local/bin/camus
 else
 	$SUDO dpkg -i "$file" || {
 		$SUDO apt-get -f install -y

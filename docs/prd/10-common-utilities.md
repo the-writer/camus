@@ -92,7 +92,7 @@
 | 签名 | 行为 |
 |---|---|
 | `path data_dir()` | macOS 返回 `$HOME/Library/Application Support/Camus`（`$HOME` 缺失时回退 `/Library/Application Support/Camus`）；Linux 返回 `/var/lib/camus` |
-| `std::vector<path> data_dirs()` | 按优先级返回候选数据目录；macOS 追加系统级 `/Library/Application Support/Camus` |
+| `std::vector<path> data_dirs()` | 按优先级返回候选数据目录；macOS 追加系统级 `/Library/Application Support/Camus`（旧版系统域安装的只读回退） |
 | `path runtime_dir()` | 运行期目录：候选数据目录中第一个包含 `theme/` 的目录（安装包写入主题的位置）；没有候选目录包含 `theme/` 时回退到 `data_dir()`。`--open runtime` 打开它，`projects.json` 也优先写入它 |
 | `path local_data_dir()` | 返回工作目录 `.camus`（`CAMUS_LOCAL_DATA_DIR`） |
 | `path find(relative_path)` | 在候选数据目录下查找相对路径，返回第一个存在的路径；找不到返回空路径 |

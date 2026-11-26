@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include "common/logging/logging.h"
+#include "common/paths/paths.h"
 #include "common/str/str.h"
 
 namespace
@@ -334,7 +335,10 @@ namespace
 	std::string install_command(const std::filesystem::path &file)
 	{
 #if defined(__APPLE__)
-		return "sudo installer -pkg " + shell_quote(file.string()) + " -target /";
+		// pkg 只装到当前用户域；安装后建立 /usr/local/bin/camus 软链，保证命令仍在 PATH 中。
+		const std::filesystem::path binary = camus::paths::data_dir() / "bin" / "camus";
+		return "installer -pkg " + shell_quote(file.string()) + " -target CurrentUserHomeDirectory && " +
+			   "sudo ln -sf " + shell_quote(binary.string()) + " /usr/local/bin/camus";
 #elif defined(__linux__)
 		const std::string name = file.filename().string();
 		if (name.ends_with(".deb")) {

@@ -39,8 +39,8 @@ set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-v${CPACK_PACKAGE_VERSION}_${H
 string(TOLOWER ${CPACK_PACKAGE_FILE_NAME} CPACK_PACKAGE_FILE_NAME)
 
 if (APPLE)
-    # macOS 默认安装到用户目录 ~/Library/Application Support/Camus；
-    # 选择系统域（如 installer -target /）时落到 /Library/Application Support/Camus，运行期作为回退路径。
+    # macOS 安装包只装到当前用户域：~/Library/Application Support/Camus（见下方 productbuild 分支）；
+    # 旧版系统域安装的 /Library/Application Support/Camus 仅作为运行期只读回退。
     set(CAMUS_RESOURCE_DIR "Library/Application Support/Camus")
 
     if (CPACK_GENERATOR MATCHES "DragNDrop")
@@ -60,9 +60,12 @@ if (APPLE)
         # pkgutil --pkgs
         # pkgutil --pkg-info io.github.the-writer.Camus.Runtime
         # 手动卸载
-        # rm -f /usr/local/bin/Camus
+        # rm -f /usr/local/bin/camus
         # pkgutil --forget io.github.the-writer.Camus.Runtime
-        install(TARGETS Camus DESTINATION "./usr/local/bin" COMPONENT Runtime)
+        #
+        # 整包安装到当前用户域：资源与可执行文件都释放到 ~/Library/Application Support/Camus，
+        # 可执行文件位于该目录下的 bin/，由安装脚本建立 /usr/local/bin/camus 软链。
+        install(TARGETS Camus DESTINATION "${CAMUS_RESOURCE_DIR}/bin" COMPONENT Runtime)
         install(DIRECTORY "${CMAKE_SOURCE_DIR}/example/theme" "${CMAKE_SOURCE_DIR}/example/assets"
                 "${CMAKE_SOURCE_DIR}/example/posts"
                 DESTINATION "${CAMUS_RESOURCE_DIR}" COMPONENT Resources)
@@ -77,9 +80,11 @@ if (APPLE)
         set(CPACK_MONOLITHIC_INSTALL OFF)
         set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
         set(CPACK_PRODUCTBUILD_IDENTIFIER "io.github.the-writer.Camus")
+        # 只允许安装到当前用户目录（~/Library/Application Support/Camus），不提供系统域 / 任意卷。
         set(CPACK_PRODUCTBUILD_DOMAINS ON)
+        set(CPACK_PRODUCTBUILD_DOMAINS_ANYWHERE OFF)
         set(CPACK_PRODUCTBUILD_DOMAINS_USER ON)
-        set(CPACK_PRODUCTBUILD_DOMAINS_ROOT ON)
+        set(CPACK_PRODUCTBUILD_DOMAINS_ROOT OFF)
     endif ()
 elseif (UNIX)
     set(CAMUS_RESOURCE_DIR "var/lib/camus")

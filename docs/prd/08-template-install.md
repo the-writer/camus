@@ -16,7 +16,7 @@
 - 常量来源：`config.h.in` 的 `CAMUS_DATA_DIR_MACOS`（`Library/Application Support/Camus`）与 `CAMUS_DATA_DIR_LINUX`（`/var/lib/camus`）。
 - `data_dirs()` 返回按优先级排列的候选目录；`find(relative)` 返回第一个存在的候选路径。
 - `source_data_dir()` 返回第一个同时包含 `theme/` 与 `assets/` 的数据目录，供 `-c` 使用。
-- `runtime_dir()` 返回**运行期目录**：候选数据目录中第一个包含 `theme/` 的目录（安装包写入主题的位置，macOS 用户域安装为 `~/Library/Application Support/Camus`，系统域安装为 `/Library/Application Support/Camus`）；没有候选目录包含 `theme/` 时回退到平台默认数据目录。`--open runtime` 打开的就是它，`projects.json` 也优先存放在它（不可写时回退到平台默认数据目录，见 §2.8）。
+- `runtime_dir()` 返回**运行期目录**：候选数据目录中第一个包含 `theme/` 的目录（安装包写入主题的位置；macOS 安装包只装到当前用户域 `~/Library/Application Support/Camus`，旧版系统域安装为 `/Library/Application Support/Camus`）；没有候选目录包含 `theme/` 时回退到平台默认数据目录。`--open runtime` 打开的就是它，`projects.json` 也优先存放在它（不可写时回退到平台默认数据目录，见 §2.8）。
 - `paths::find(CAMUS_CONF_NAME)` 定位包含 `camus.yaml` 的数据目录，供 `-i` 使用。
 - 构建过程不会向数据目录写入；只有运行期状态 `projects.json`（已记录项目清单，见 §2.8）由 `--open` / `--project` 写入，存放目录不存在时自动创建（`--open runtime` 本身不会创建目录）。
 
@@ -38,10 +38,11 @@
 ├── camus.yaml                 # 示例配置
 ├── .gitignore                 # 示例忽略规则
 ├── Justfile                   # 示例常用命令
+├── bin/camus                  # macOS pkg：可执行文件（/usr/local/bin/camus 指向它的软链）
 └── projects.json              # 运行期状态：已记录项目清单（由 --open / --project 写入，非安装包内容）
 ```
 
-- 上表中的目录即**运行期目录**（`paths::runtime_dir()`）：macOS 用户域安装为 `~/Library/Application Support/Camus`，系统域安装为 `/Library/Application Support/Camus`，Linux 为 `/var/lib/camus`；`--open runtime` 打开该目录，`projects.json` 也优先写入该目录。
+- 上表中的目录即**运行期目录**（`paths::runtime_dir()`）：macOS 安装包只装到当前用户域 `~/Library/Application Support/Camus`（可执行文件也在该目录的 `bin/` 下），Linux 为 `/var/lib/camus`；`--open runtime` 打开该目录，`projects.json` 也优先写入该目录。旧版系统域安装的 `/Library/Application Support/Camus` 仅作为只读回退。
 
 ## 8.2 安装与复制
 
@@ -154,17 +155,17 @@ PDF 模板、样式与字体（`writer.cpp` 的 `read_pdf_theme_file()` / `copy_
 
 ## 8.4 安装位置（CPack）
 
-`camus/CMakeLists.txt` 安装 `example/` 下的 `theme/`、`assets/`、`posts/`（含各目录的 `SUMMARY.md`）、`camus.yaml`、`.gitignore` 与 `Justfile`：
+`camus/CMakeLists.txt` 安装 `example/` 下的 `theme/`、`assets/`、`posts/`（含各目录的 `SUMMARY.md`）、`camus.yaml`、`.gitignore` 与 `Justfile`，以及可执行文件：
 
-| 平台 / 生成器 | 资源安装目标 |
+| 平台 / 生成器 | 安装目标 |
 |---|---|
-| Linux（DEB） | `var/lib/camus`（最终 `/var/lib/camus`） |
-| macOS（productbuild，当前用户域） | `Library/Application Support/Camus` → `~/Library/Application Support/Camus` |
-| macOS（productbuild，系统域，如 `installer -target /`） | `Library/Application Support/Camus` → `/Library/Application Support/Camus` |
+| Linux（DEB） | 资源 → `var/lib/camus`（最终 `/var/lib/camus`）；可执行文件 → `/usr/local/bin/camus` |
+| macOS（productbuild） | 仅当前用户域：资源 → `Library/Application Support/Camus` → `~/Library/Application Support/Camus`；可执行文件 → `~/Library/Application Support/Camus/bin/camus`，由安装脚本建立 `/usr/local/bin/camus` 软链 |
 
 - 安装 `example/theme` 的整个目录，因此包含 `theme/pdf/{page.html,style.css,fonts.css}` 与 `example/assets`（含 `fonts/`）。
-- 可执行文件仍安装到 `/usr/local/bin/camus`。
-- macOS 通过 `CPACK_PRODUCTBUILD_DOMAINS` 同时启用用户域与系统域；用户域安装到 `~/Library/...`，系统域安装到 `/Library/...`，运行期按 §8.1 的顺序查找。
+- macOS 通过 `CPACK_PRODUCTBUILD_DOMAINS` **只启用当前用户域**（`CPACK_PRODUCTBUILD_DOMAINS_USER=ON`，`..._ROOT` / `..._ANYWHERE=OFF`），因此 `installer -pkg <file> -target CurrentUserHomeDirectory` 会把整个包释放到当前用户目录；不再提供系统域安装。旧版系统域安装（`/Library/Application Support/Camus`）仍作为只读回退被 §8.1 的 `data_dirs()` 找到。
+- 安装完成后由 `scripts/install.sh` / `make install` / CI 执行 `sudo ln -sf "$HOME/Library/Application Support/Camus/bin/camus" /usr/local/bin/camus`，使 `camus` 在 PATH 中可用。
+- 卸载：`rm -f /usr/local/bin/camus`，删除 `~/Library/Application Support/Camus`，再 `pkgutil --forget io.github.the-writer.Camus.Runtime` / `...Resources`。
 
 ## 8.5 持久性
 

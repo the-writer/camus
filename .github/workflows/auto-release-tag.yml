@@ -110,7 +110,8 @@ jobs:
                 env:
                     CAMUS_AUTO_CHECK_UPDATE: "false"
                 run: |
-                    sudo installer -pkg *.pkg -target /
+                    installer -pkg *.pkg -target CurrentUserHomeDirectory
+                    sudo ln -sf "$HOME/Library/Application Support/Camus/bin/camus" /usr/local/bin/camus
                     camus -v
                     camus --build -dw "$GITHUB_WORKSPACE/example"
                     camus -iw /tmp/site

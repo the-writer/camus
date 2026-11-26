@@ -37,8 +37,8 @@ Camus 是一个用 C++23 编写的静态站点生成器：读取 Markdown 文章
 
 | 平台 | 默认数据目录 | 说明 |
 |---|---|---|
-| macOS | `~/Library/Application Support/Camus` | `$HOME` 缺失时回退 `/Library/Application Support/Camus` |
-| macOS（回退） | `/Library/Application Support/Camus` | 安装到系统域（如 `installer -target /`）时的位置 |
+| macOS | `~/Library/Application Support/Camus` | 安装包只装到当前用户域（含 `bin/camus`）；`$HOME` 缺失时回退 `/Library/Application Support/Camus` |
+| macOS（回退） | `/Library/Application Support/Camus` | 旧版系统域安装（`installer -target /`）的位置，运行期仅作只读回退 |
 | Linux | `/var/lib/camus` | 由 deb 安装包写入 |
 
 目录内容为 `theme/`、`assets/`、`posts/`（含各目录的 `SUMMARY.md`）、`camus.yaml`、`.gitignore` 与 `Justfile`；运行期还会写入 `projects.json`（已记录项目清单，见 §2.8）。查找规则：
