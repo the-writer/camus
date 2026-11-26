@@ -225,7 +225,7 @@ flowchart TD
     CA --> G[读取 theme/pdf/page.html / style.css / fonts.css, 用 inja 渲染完整文档]
     G --> H[复制 dist/html/fonts -> dist/pdf/fonts, 写 dist/pdf/index.html（内联样式与字体样式）]
     H --> I[调用浏览器 --headless --print-to-pdf=<解析后的输出路径>]
-    I --> J{退出码为 0 且 PDF 非空?}
+    I --> J{PDF 非空且由本次命令重写?}
     J -->|否| W2[WARN 并跳过]
     J -->|是| N[解析 PDF 命名目标得到每篇起始物理页码]
     N --> O{解析到页码?}
@@ -261,6 +261,8 @@ flowchart TD
 - PDF 输出路径默认 `dist/pdf/index.pdf`；`--print-to-pdf` 中可用 `{{dist_dir}}`（`dist` 根）或 `{{dest_dir}}`（`dist/pdf`，历史命名）占位符自定义，如 `--print-to-pdf={{dist_dir}}/pdf/docs/book.pdf`（相对路径按 `dist/pdf` 解析）。
 - PDF 中间产物 `index.md`、`index.html` 与最终 `index.pdf` 均位于 `dist/pdf`，与 HTML 站点目录分离；站点字体 `assets/fonts/` 会复制为 `dist/pdf/fonts/`。
 - 浏览器的 stderr（含 macOS `CVDisplayLinkCreateWithCGDisplay failed` 等噪声日志）不直接输出到终端，而是重定向到临时日志 `camus-pdf-<pid>.log`（位于系统临时目录）；构建成功且两遍打印均正常时删除该文件，命令失败或未产出 PDF 时保留，并在告警中给出 `log=<绝对路径>` 便于排查。
+- 成功判定以**产物**为准：命令返回后检查 `--print-to-pdf` 目标文件存在、非空，且（命令退出码非 0 时）其 `mtime` / `size` 相对本次命令执行前已发生变化。Chrome / Edge 在 macOS 上打印完成后可能因 `Teardown watchdog expired` 以退出码 `2` 结束（`std::system` 返回 `512`），此时 PDF 实际已写出，按成功处理并仅在调试日志记录该退出码，避免把已生成的 PDF 误报为失败。
+- 第二遍打印（回填目录页码）失败时保留第一遍已生成的 PDF 并输出 `pdf generation with toc page numbers failed, keep previous output`，目录仍可点击跳转。
 - PDF 生成成功后以 **info** 级别输出 `pdf generated dest=<绝对路径>`，提示产物位置（浏览器自身日志仍按上述规则隐藏）。
 - `html.copy_pdf` 为 `true` 时，PDF 生成成功后会再把最终 PDF（`pdf_path`，含自定义 `--print-to-pdf` 路径）以原文件名复制到 HTML 输出根目录 `./dist/html`（覆盖已存在文件），并输出 `pdf copied to html dest=<绝对路径>`；复制失败仅告警，不影响构建结果。默认为 `false`，不产生复制。
 - 复制动作在 PDF 后台线程内执行并持有构建锁，避免与 HTML 构建同时写输出目录。由于 HTML 构建会清空 `dist/html`，每次 HTML 构建结束后会把已生成的 PDF **重新复制**到输出根目录，保证 `html.copy_pdf` 的产物不丢失。

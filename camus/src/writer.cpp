@@ -3309,25 +3309,50 @@ namespace camus
 
 		logging::debug("pdf command: {}", command);
 
+		// 记录 PDF 产物签名（mtime + size），用于判断本次命令是否真的写出了新文件。
+		// Chrome 在 macOS 上写完 PDF 后可能因 Teardown watchdog 超时以非 0 退出，
+		// 此时仅凭退出码会误判为失败，因此以产物是否被本次命令重写作为成功依据。
+		const auto pdf_stamp = [](const std::filesystem::path &path) {
+			std::error_code stamp_ec;
+			const auto mtime = std::filesystem::last_write_time(path, stamp_ec);
+			const bool time_ok = !stamp_ec;
+			const auto size = std::filesystem::file_size(path, stamp_ec);
+			const bool size_ok = !stamp_ec;
+
+			return std::tuple{
+				time_ok ? mtime : std::filesystem::file_time_type{},
+				size_ok ? size : std::uintmax_t{0},
+				time_ok && size_ok
+			};
+		};
+
 		bool keep_browser_log = false;
 		const auto render_and_print = [&]() {
 			filesystem::write_file(html_path, render::inja_render(ctx.inja, template_source, view));
 
+			const auto before = pdf_stamp(pdf_path);
 			const int status = std::system(command.c_str());
-			if (status != 0) {
-				keep_browser_log = true;
-				logging::warn("pdf generation command failed status={} log={}", status, browser_log_path.string());
-				return false;
-			}
+			const auto after = pdf_stamp(pdf_path);
+			const bool after_ok = std::get<2>(after);
+			const std::uintmax_t after_size = std::get<1>(after);
 
-			if (!std::filesystem::exists(pdf_path) || std::filesystem::file_size(pdf_path, ec) == 0) {
+			if (!after_ok || after_size == 0 || (status != 0 && after == before)) {
 				keep_browser_log = true;
 				logging::warn(
-					"pdf generation failed, output not found name={} log={}",
+					"pdf generation failed status={} name={} log={}",
+					status,
 					pdf_path.string(),
 					browser_log_path.string()
 				);
 				return false;
+			}
+
+			if (status != 0) {
+				logging::debug(
+					"pdf generation command status={} but output written, treat as success name={}",
+					status,
+					pdf_path.string()
+				);
 			}
 
 			return true;
