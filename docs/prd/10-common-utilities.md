@@ -72,6 +72,11 @@
 - 仅当 stdout 是终端、未设置 `NO_COLOR`、且存在 `TERM` 时使用颜色。
 - `logging::fatal(...)` 打印后 `std::exit(127)`。
 - `error::panic(...)` 等价于 `logging::fatal(...)`（`common/common/error/error.h`）。
+- **退出阶段安全**：日志互斥量与输出通道都不随静态对象销毁。
+  - 互斥量为「泄漏单例」（`common/common/logging/logging.cpp` 的 `log_mutex()`），进程退出时不执行 `pthread_mutex_destroy`。
+  - 输出直接写 C 层 `stdout`（`fwrite` + `fflush`），不使用会在静态析构阶段被销毁的 `std::cout`。
+  - 原因：进程退出（`std::exit` / 静态对象析构）时后台线程（自动更新、PDF 构建）仍可能在打印日志。若锁到已销毁的互斥量，macOS 会返回 `EINVAL`，libc++ 抛出 `std::system_error("mutex lock failed: Invalid argument")`；该异常无人捕获会直接终止进程。
+- `render::render_markdown` 的 `std::once_flag` 同样为「泄漏单例」（`common/common/render/render.cpp` 的 `once_registry()`），避免退出阶段其它线程调用 `std::call_once` 时命中已销毁对象。
 
 ## 10.5 网络 `net`（`common/common/net/net.h`）
 

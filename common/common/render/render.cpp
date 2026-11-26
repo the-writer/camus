@@ -13,10 +13,18 @@ namespace render
 {
 	namespace
 	{
+		// once_flag 同样常驻（进程退出时不销毁）：
+		// 退出阶段若仍有线程渲染 Markdown，销毁后的 once_flag 会让
+		// std::call_once 抛出 std::system_error 并终止进程。
+		std::once_flag &once_registry()
+		{
+			static std::once_flag *instance = new std::once_flag();
+			return *instance;
+		}
+
 		void ensure_markdown_extensions()
 		{
-			static std::once_flag registered;
-			std::call_once(registered, [] {
+			std::call_once(once_registry(), [] {
 				cmark_gfm_core_extensions_ensure_registered();
 			});
 		}

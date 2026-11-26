@@ -1,6 +1,6 @@
 #include "logging.h"
 
-#include <iostream>
+#include <cstdio>
 #include <mutex>
 #include <sstream>
 
@@ -9,12 +9,20 @@
 #include "common/functions/functions.h"
 #include "common/str/str.h"
 
-#if defined(__clang__)
-static std::mutex mtx;
-#elif defined(__GNUC__) || defined(__GNUG__)
-#include <syncstream>
-#define HAS_SYNCSTREAM 1
-#endif
+namespace
+{
+	// 日志互斥量：故意常驻（进程退出时不销毁）。
+	//
+	// 退出阶段（std::exit / 静态对象析构）仍可能有后台线程在打印日志
+	//（自动更新、PDF 构建等）。若互斥量随静态对象被销毁，线程再去 lock
+	// 会得到 EINVAL，libc++ 抛出 std::system_error("mutex lock failed: Invalid argument")
+	// 且无人捕获，直接终止进程。这里用泄漏的单例保证互斥量始终有效。
+	std::mutex &log_mutex()
+	{
+		static std::mutex *instance = new std::mutex();
+		return *instance;
+	}
+} // namespace
 
 namespace logging
 {
@@ -100,13 +108,11 @@ namespace logging
 
 		void write_out(const std::string &text)
 		{
-#ifdef HAS_SYNCSTREAM
-			std::osyncstream sync_out(std::cout);
-			sync_out << text;
-#else
-			std::lock_guard guard(mtx);
-			std::cout << text << std::flush;
-#endif
+			// 直接写 C 层的 stdout：std::cout 会在静态对象析构阶段被销毁，
+			// 退出阶段继续使用它是未定义行为。
+			std::lock_guard guard(log_mutex());
+			std::fwrite(text.data(), 1, text.size(), stdout);
+			std::fflush(stdout);
 		}
 	} // namespace
 
