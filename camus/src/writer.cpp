@@ -3568,7 +3568,7 @@ namespace camus
 			// 控制面板请求：立即构建 / 立即重建 PDF。
 			// 由主循环统一执行，避免与主循环的构建并发。
 			if (manual_build_requested_.exchange(false)) {
-				logging::info("manual build requested by watch panel");
+				logging::info("manual html build requested by watch panel");
 				std::ignore = build();
 			}
 

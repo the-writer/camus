@@ -387,6 +387,21 @@
         updatePanelPosition();
     }
 
+    // 点击面板与悬浮球之外的空白处时收起面板（保持与常见悬浮控件一致的交互）。
+    function onDocumentClick(event) {
+        if (!state.opened || !panel || panel.hidden) {
+            return;
+        }
+
+        const target = event.target;
+        if (panel.contains(target) || (ball && ball.contains(target))) {
+            return;
+        }
+
+        state.opened = false;
+        panel.hidden = true;
+    }
+
     // --------------------------------------------------------------------------
     // 拖动
     // --------------------------------------------------------------------------
@@ -496,6 +511,9 @@
 
             togglePanel();
         });
+
+        // 空白处点击收起面板；面板内点击与悬浮球点击不触发。
+        document.addEventListener("click", onDocumentClick);
 
         el(ID.build).addEventListener("click", function () {
             const button = el(ID.build);
