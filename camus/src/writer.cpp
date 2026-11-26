@@ -24,10 +24,10 @@
 #include <tuple>
 #include <utility>
 #include <vector>
-#include <zlib.h>
 
 #include <build/build.h>
 #include <unistd.h>
+#include <zlib.h>
 
 #include "common/error/error.h"
 #include "common/filesystem/filesystem.h"
@@ -220,8 +220,8 @@ namespace
 
 			if (value == "file_first" || value == "dir_first" || value == "mixed") {
 				const camus::config::pdf_sort_mode mode = value == "dir_first" ? camus::config::PDF_SORT_DIR_FIRST
-												   : value == "mixed" ? camus::config::PDF_SORT_MIXED
-																	  : camus::config::PDF_SORT_FILE_FIRST;
+														  : value == "mixed"   ? camus::config::PDF_SORT_MIXED
+																			   : camus::config::PDF_SORT_FILE_FIRST;
 				if (group_set && spec.group != mode) {
 					logging::warn("multiple {}.sort group values, using last value={}", label, value);
 				}
@@ -288,8 +288,8 @@ namespace
 		const char c = hex[16];
 		const int value = c >= 'a' ? c - 'a' + 10 : c - '0';
 		hex[16] = variant[value & 0x3];
-		return hex.substr(0, 8) + "-" + hex.substr(8, 4) + "-" + hex.substr(12, 4) + "-" +
-			   hex.substr(16, 4) + "-" + hex.substr(20, 12);
+		return hex.substr(0, 8) + "-" + hex.substr(8, 4) + "-" + hex.substr(12, 4) + "-" + hex.substr(16, 4) + "-" +
+			   hex.substr(20, 12);
 	}
 
 	// 校验 create-time：支持 YYYY-MM-DD 与 YYYY-MM-DD HH:MM:SS 两种格式。
@@ -317,8 +317,7 @@ namespace
 		}
 
 		if (with_time &&
-			(tm.tm_hour < 0 || tm.tm_hour > 23 || tm.tm_min < 0 || tm.tm_min > 59 ||
-			 tm.tm_sec < 0 || tm.tm_sec > 60)) {
+			(tm.tm_hour < 0 || tm.tm_hour > 23 || tm.tm_min < 0 || tm.tm_min > 59 || tm.tm_sec < 0 || tm.tm_sec > 60)) {
 			return false;
 		}
 
@@ -475,11 +474,7 @@ namespace
 		const std::filesystem::path target = pdf_dir / "assets.css";
 		std::filesystem::copy_file(source, target, std::filesystem::copy_options::overwrite_existing, ec);
 		if (ec) {
-			logging::warn(
-				"pdf asset style copy failed source={} error={}",
-				source.string(),
-				ec.message()
-			);
+			logging::warn("pdf asset style copy failed source={} error={}", source.string(), ec.message());
 			return false;
 		}
 
@@ -572,13 +567,10 @@ namespace
 			return false;
 		}
 
-		const auto response = client.Get(
-			path,
-			[&](const char *data, const std::size_t length) -> bool {
-				out.write(data, static_cast<std::streamsize>(length));
-				return static_cast<bool>(out);
-			}
-		);
+		const auto response = client.Get(path, [&](const char *data, const std::size_t length) -> bool {
+			out.write(data, static_cast<std::streamsize>(length));
+			return static_cast<bool>(out);
+		});
 
 		out.close();
 
@@ -649,10 +641,7 @@ namespace
 	}
 
 	// 计算远程图片在 cache/images 下的本地路径：保留 host 与 URL 路径（去查询/锚点）。
-	std::filesystem::path remote_image_cache_file(
-		const std::string &url,
-		const std::filesystem::path &images_dir
-	)
+	std::filesystem::path remote_image_cache_file(const std::string &url, const std::filesystem::path &images_dir)
 	{
 		std::string origin;
 		std::string path;
@@ -742,8 +731,10 @@ namespace
 			}
 
 			const std::string normalized = strings::to_lower(strings::trim_space(value));
-			return !(normalized.empty() || normalized == "0" || normalized == "false" || normalized == "no" ||
-					 normalized == "off");
+			return !(
+				normalized.empty() || normalized == "0" || normalized == "false" || normalized == "no" ||
+				normalized == "off"
+			);
 		};
 
 		return truthy("GITHUB_ACTIONS") || truthy("GITLAB_CI") || truthy("CI");
@@ -757,8 +748,7 @@ namespace
 		output.reserve(html.size());
 
 		std::size_t cursor = 0;
-		for (auto it = std::sregex_iterator(html.begin(), html.end(), pattern); it != std::sregex_iterator();
-			 ++it) {
+		for (auto it = std::sregex_iterator(html.begin(), html.end(), pattern); it != std::sregex_iterator(); ++it) {
 			const std::smatch &match = *it;
 			output.append(html, cursor, match.position() - cursor);
 			cursor = match.position() + match.length();
@@ -790,9 +780,7 @@ namespace
 	// 把 HTML 中的远程图片提前下载到 cache/images，并把 src 改写为相对 pdf 目录的本地路径。
 	// 已存在的缓存文件直接复用；下载失败时保留原 URL，避免中断构建。
 	void localize_pdf_images(
-		std::string &html,
-		const std::filesystem::path &images_dir,
-		const std::filesystem::path &pdf_dir
+		std::string &html, const std::filesystem::path &images_dir, const std::filesystem::path &pdf_dir
 	)
 	{
 		// 仅匹配 <img> 标签内的远程 src，保留标签其余属性。
@@ -807,8 +795,7 @@ namespace
 		std::map<std::string, std::string> resolved;
 		std::vector<std::string> urls;
 		std::set<std::string> seen;
-		for (auto it = std::sregex_iterator(html.begin(), html.end(), pattern); it != std::sregex_iterator();
-			 ++it) {
+		for (auto it = std::sregex_iterator(html.begin(), html.end(), pattern); it != std::sregex_iterator(); ++it) {
 			std::string url = (*it)[2].str();
 			url = strings::replace(url, "&amp;", "&");
 			if (seen.insert(url).second) {
@@ -852,8 +839,7 @@ namespace
 
 		// 第二遍（并发）：按实际任务数启动线程，上限默认 6，可由环境变量覆盖。
 		std::vector<std::string> results(tasks.size());
-		const std::size_t worker_count =
-			std::min<std::size_t>(pdf_image_download_concurrency(), tasks.size());
+		const std::size_t worker_count = std::min<std::size_t>(pdf_image_download_concurrency(), tasks.size());
 		if (worker_count > 0) {
 			std::atomic<std::size_t> next{0};
 			std::vector<std::thread> threads;
@@ -897,8 +883,7 @@ namespace
 		std::string output;
 		output.reserve(html.size());
 		std::size_t cursor = 0;
-		for (auto it = std::sregex_iterator(html.begin(), html.end(), pattern); it != std::sregex_iterator();
-			 ++it) {
+		for (auto it = std::sregex_iterator(html.begin(), html.end(), pattern); it != std::sregex_iterator(); ++it) {
 			const std::smatch &match = *it;
 			output.append(html, cursor, match.position() - cursor);
 			cursor = match.position() + match.length();
@@ -923,10 +908,8 @@ namespace
 	// 解析 PDF 封面图：绝对路径直接使用；相对路径依次按 camus.yaml 所在目录（workdir）、
 	// 源目录与站点 assets 目录尝试，命中第一个普通文件。返回空表示未找到。
 	std::filesystem::path resolve_cover_image(
-		const std::filesystem::path &workdir,
-		const std::filesystem::path &source_dir,
-		const std::filesystem::path &assets_dir,
-		const std::string &cover_image,
+		const std::filesystem::path &workdir, const std::filesystem::path &source_dir,
+		const std::filesystem::path &assets_dir, const std::string &cover_image,
 		std::vector<std::filesystem::path> *attempted = nullptr
 	)
 	{
@@ -987,11 +970,7 @@ namespace
 		}
 
 		if (!valid) {
-			logging::warn(
-				"invalid pdf.page.font_size '{}', only pt is supported, fallback to {}",
-				value,
-				default_size
-			);
+			logging::warn("invalid pdf.page.font_size '{}', only pt is supported, fallback to {}", value, default_size);
 			return default_size;
 		}
 
@@ -1092,6 +1071,7 @@ namespace
 		return "\n:root { --pdf-font-size: " + font_size + "; }\n@page { size: " + size + "; margin: " + margin +
 			   "; }\n@page cover { size: " + size + "; margin: 0; }\n";
 	}
+
 	std::string normalize_search_text(std::string value)
 	{
 		value = strings::replace(value, "\t", " ");
@@ -1225,10 +1205,7 @@ namespace camus
 
 	void writer::inject_watch_script(std::string &html) const
 	{
-		const std::string src = filesystem::clean_path(
-			"/js/watch.js",
-			conf_.camus().public_url.path_prefix
-		);
+		const std::string src = filesystem::clean_path("/js/watch.js", conf_.camus().public_url.path_prefix);
 		const std::string tag = "<script src=\"" + src + "\"></script>";
 
 		// 优先插到 </body> 之前；模板没有 body 结束时追加到文末。
@@ -1549,12 +1526,8 @@ namespace camus
 			std::lock_guard guard(build_mutex_);
 			target = conf_.camus().dest_dir() / name;
 			std::filesystem::create_directories(target.parent_path(), ec);
-			if (ec || !std::filesystem::copy_file(
-						   source,
-						   target,
-						   std::filesystem::copy_options::overwrite_existing,
-						   ec
-					   ) ||
+			if (ec ||
+				!std::filesystem::copy_file(source, target, std::filesystem::copy_options::overwrite_existing, ec) ||
 				ec) {
 				logging::warn(
 					"pdf export to html failed source={} target={} error={}",
@@ -1803,8 +1776,8 @@ namespace camus
 		// 文章：全部扁平化到根目录。
 		constexpr size_t seq_start = 1000;
 		for (size_t i = 0; i < articles.size(); ++i) {
-			const std::string name = mode == "seq" ? std::to_string(seq_start + i)
-												   : encode(articles[i]->path.generic_string());
+			const std::string name =
+				mode == "seq" ? std::to_string(seq_start + i) : encode(articles[i]->path.generic_string());
 			articles[i]->property.output_path = std::filesystem::path("/" + name + ".html");
 		}
 
@@ -1817,12 +1790,9 @@ namespace camus
 				children.push_back(&child);
 			}
 
-			std::ranges::sort(
-				children,
-				[this](const catalog::catalog_node *a, const catalog::catalog_node *b) {
-					return sort_spec_less(a, b, html_sort_spec_);
-				}
-			);
+			std::ranges::sort(children, [this](const catalog::catalog_node *a, const catalog::catalog_node *b) {
+				return sort_spec_less(a, b, html_sort_spec_);
+			});
 
 			for (auto *child : children) {
 				if (!child->is_directory()) {
@@ -1831,8 +1801,7 @@ namespace camus
 
 				++directory_seq;
 				const std::string name =
-					mode == "seq" ? "d" + std::to_string(directory_seq)
-								  : encode(child->path.generic_string());
+					mode == "seq" ? "d" + std::to_string(directory_seq) : encode(child->path.generic_string());
 				child->property.output_path = std::filesystem::path("/" + name + ".html");
 				walk(*child);
 			}
@@ -2022,8 +1991,7 @@ namespace camus
 
 		// 供小说阅读主题使用的扁平章节列表（按源路径升序，标记当前章节与所属分卷）。
 		auto chapters = build_chapter_items();
-		const std::string current_path =
-			filesystem::clean_path(node.link_url(), conf_.camus().public_url.path_prefix);
+		const std::string current_path = filesystem::clean_path(node.link_url(), conf_.camus().public_url.path_prefix);
 		for (auto &item : chapters) {
 			if (item.value("path", "") == current_path) {
 				item["current"] = true;
@@ -2162,8 +2130,7 @@ namespace camus
 			}
 
 			const std::string title = normalize_search_text(node.property.display_name);
-			const std::string url =
-				filesystem::clean_path(node.link_url(), conf_.camus().public_url.path_prefix);
+			const std::string url = filesystem::clean_path(node.link_url(), conf_.camus().public_url.path_prefix);
 			const std::string time = functions::format_time_t(node.property.write_time, "%Y-%m-%d");
 
 			std::string tags;
@@ -2207,8 +2174,7 @@ namespace camus
 		const size_t part_size = CAMUS_SEARCH_PART_SIZE;
 		for (size_t offset = 0, index_part = 1; offset < compressed.size(); offset += part_size, ++index_part) {
 			const size_t length = std::min(part_size, compressed.size() - offset);
-			const std::string name =
-				strings::sha1_hex(strings::uuid_v4() + std::to_string(index_part)) + ".bin";
+			const std::string name = strings::sha1_hex(strings::uuid_v4() + std::to_string(index_part)) + ".bin";
 			add_write(conf_.camus().dest_dir() / name, compressed.substr(offset, length));
 			manifest["parts"].push_back(name);
 		}
@@ -2217,10 +2183,7 @@ namespace camus
 
 		nlohmann::json j = conf_.json();
 		j["chapters"] = build_chapter_items();
-		add_write(
-			conf_.camus().dest_dir() / "search.html",
-			render::inja_render(inja_, search_template, j)
-		);
+		add_write(conf_.camus().dest_dir() / "search.html", render::inja_render(inja_, search_template, j));
 	}
 
 	void writer::emit_toc()
@@ -2416,20 +2379,20 @@ namespace camus
 		time_t latest_write_time = 0;
 		for (const auto *article : articles) {
 			latest_write_time = std::max(latest_write_time, article->property.write_time);
-			const std::string link = std::format(
-				"{}{}", conf_.camus().public_url.full_prefix(), article->link_url().string()
+			const std::string link =
+				std::format("{}{}", conf_.camus().public_url.full_prefix(), article->link_url().string());
+			items.push_back(
+				std::format(
+					R"(<item><title>{}</title><link>{}</link><guid isPermaLink="true">{}</guid><pubDate>{}</pubDate></item>)",
+					html_escape(article->property.display_name),
+					html_escape(link),
+					html_escape(link),
+					functions::format_time_t(article->property.write_time, "%a, %d %b %Y %H:%M:%S %z")
+				)
 			);
-			items.push_back(std::format(
-				R"(<item><title>{}</title><link>{}</link><guid isPermaLink="true">{}</guid><pubDate>{}</pubDate></item>)",
-				html_escape(article->property.display_name),
-				html_escape(link),
-				html_escape(link),
-				functions::format_time_t(article->property.write_time, "%a, %d %b %Y %H:%M:%S %z")
-			));
 		}
 
-		const std::string site_title =
-			conf_.camus().site.title.empty() ? "Camus" : conf_.camus().site.title;
+		const std::string site_title = conf_.camus().site.title.empty() ? "Camus" : conf_.camus().site.title;
 		const std::string home_link =
 			conf_.camus().public_url.full_prefix().empty() ? "/" : conf_.camus().public_url.full_prefix() + "/";
 		const time_t build_time = std::time(nullptr);
@@ -2655,8 +2618,8 @@ namespace camus
 		std::string icon_type = "image/png";
 
 		if (!logo.empty()) {
-			const bool absolute = logo.rfind("//", 0) == 0 || logo.find("://") != std::string::npos ||
-								  logo.rfind("data:", 0) == 0;
+			const bool absolute =
+				logo.rfind("//", 0) == 0 || logo.find("://") != std::string::npos || logo.rfind("data:", 0) == 0;
 			if (!absolute) {
 				if (logo.rfind("./", 0) == 0) {
 					logo = logo.substr(2);
@@ -2673,8 +2636,7 @@ namespace camus
 			icon_sizes = "any";
 			icon_purpose = "any";
 
-			const std::string ext =
-				strings::to_lower(std::filesystem::path(logo).extension().string());
+			const std::string ext = strings::to_lower(std::filesystem::path(logo).extension().string());
 			if (ext == ".png") {
 				icon_type = "image/png";
 			} else if (ext == ".jpg" || ext == ".jpeg") {
@@ -2738,10 +2700,7 @@ namespace camus
 		}
 		manifest["icons"].push_back(std::move(icon));
 
-		add_write(
-			conf_.camus().dest_dir() / std::format("manifest-{}.webmanifest", current->name),
-			manifest.dump()
-		);
+		add_write(conf_.camus().dest_dir() / std::format("manifest-{}.webmanifest", current->name), manifest.dump());
 	}
 
 	// PDF 构建：只依赖上下文快照，可在后台线程执行，不与主线程共享可变状态。
@@ -2814,9 +2773,8 @@ namespace camus
 		std::string markdown = std::format("# {}\n\n{}\n", site_title, ctx.conf.site.description);
 
 		const camus::config::pdf_page_conf page_conf = ctx.conf.pdf.page;
-		const std::string page_size = strings::trim_space(page_conf.size).empty()
-										  ? camus::config::pdf_page_size_default
-										  : strings::trim_space(page_conf.size);
+		const std::string page_size = strings::trim_space(page_conf.size).empty() ? camus::config::pdf_page_size_default
+																				  : strings::trim_space(page_conf.size);
 		const std::string page_margin = strings::trim_space(page_conf.margin).empty()
 											? camus::config::pdf_page_margin_default
 											: strings::trim_space(page_conf.margin);
@@ -2891,8 +2849,7 @@ namespace camus
 						parts.push_back(use_chinese ? "小于1分钟" : "<1 min");
 					} else {
 						parts.push_back(
-							use_chinese ? std::format("约 {} 分钟", read_minutes)
-										: std::format("~{} min", read_minutes)
+							use_chinese ? std::format("约 {} 分钟", read_minutes) : std::format("~{} min", read_minutes)
 						);
 					}
 				} else if (token == "created-time" && node.property.write_time > 0) {
@@ -2913,11 +2870,8 @@ namespace camus
 
 		// 目录按真实目录树多级输出：目录节点作为分组标题，文章节点作为可跳转条目。
 		// 启用时间排序（time_asc / time_desc）时额外按年分卷，年份作为一级分组。
-		const sort_spec sort_spec = parse_sort_spec(
-			ctx.conf.pdf.sort,
-			"pdf",
-			camus::sort_spec{config::PDF_SORT_FILE_FIRST, true, false}
-		);
+		const sort_spec sort_spec =
+			parse_sort_spec(ctx.conf.pdf.sort, "pdf", camus::sort_spec{config::PDF_SORT_FILE_FIRST, true, false});
 		const bool group_by_year = sort_spec.has_time && ctx.conf.pdf.auto_volume != "disable";
 		int index = 0;
 
@@ -2982,10 +2936,7 @@ namespace camus
 
 			if (const std::string meta = article_meta(node); !meta.empty()) {
 				if (const auto heading_end = article_html.find("</h2>"); heading_end != std::string::npos) {
-					article_html.insert(
-						heading_end + 5,
-						std::format("<p class=\"pdf-article__meta\">{}</p>", meta)
-					);
+					article_html.insert(heading_end + 5, std::format("<p class=\"pdf-article__meta\">{}</p>", meta));
 				}
 			}
 
@@ -3078,15 +3029,12 @@ namespace camus
 			for (const auto &[year, _] : stats) {
 				years.push_back(year);
 			}
-			std::ranges::sort(years, [&](const int a, const int b) {
-				return sort_spec.time_desc ? a > b : a < b;
-			});
+			std::ranges::sort(years, [&](const int a, const int b) { return sort_spec.time_desc ? a > b : a < b; });
 
 			int year_index = 0;
 			for (const int year : years) {
 				const year_stats &item = stats.at(year);
-				const std::string title =
-					year > 0 ? std::to_string(year) : (use_chinese ? "未知时间" : "Unknown");
+				const std::string title = year > 0 ? std::to_string(year) : (use_chinese ? "未知时间" : "Unknown");
 
 				std::vector<std::string> meta;
 				if (item.min_time > 0) {
@@ -3097,12 +3045,9 @@ namespace camus
 					);
 				}
 				meta.push_back(
-					use_chinese ? std::format("{} 篇", item.articles)
-								: std::format("{} articles", item.articles)
+					use_chinese ? std::format("{} 篇", item.articles) : std::format("{} articles", item.articles)
 				);
-				meta.push_back(
-					use_chinese ? std::format("{} 字", item.words) : std::format("{} words", item.words)
-				);
+				meta.push_back(use_chinese ? std::format("{} 字", item.words) : std::format("{} words", item.words));
 				const std::string subtitle = strings::string_join(meta, " · ");
 				const std::string year_anchor = std::format("pdf-year-{}", ++year_index);
 
@@ -3130,8 +3075,8 @@ namespace camus
 				// index.md 同样用一级标题标记年份，便于人工检查合并结果。
 				markdown += std::format("\n\n---\n\n# {}\n", title);
 
-				std::function<bool(const catalog::catalog_node &)> has_year =
-					[&](const catalog::catalog_node &node) -> bool {
+				std::function<bool(const catalog::catalog_node &)> has_year = [&](const catalog::catalog_node &node
+																			  ) -> bool {
 					if (node.is_directory()) {
 						for (const auto &child : node.children) {
 							if (has_year(child)) {
@@ -3141,8 +3086,7 @@ namespace camus
 						return false;
 					}
 
-					return node.path.extension() == ".md" &&
-						   node.property.visibility != catalog::hidden &&
+					return node.path.extension() == ".md" && node.property.visibility != catalog::hidden &&
 						   utc_year(node.property.write_time) == year;
 				};
 
@@ -3216,8 +3160,7 @@ namespace camus
 		copy_pdf_asset_fonts(ctx.conf.dest_dir(), pdf_dir);
 		pdf["asset_style"] = copy_pdf_asset_style(ctx.conf.dest_dir(), pdf_dir);
 
-		if (const std::string cover = strings::trim_space(ctx.conf.site.cover);
-			!cover.empty()) {
+		if (const std::string cover = strings::trim_space(ctx.conf.site.cover); !cover.empty()) {
 			std::vector<std::filesystem::path> attempted;
 			std::filesystem::path cover_path;
 
@@ -3235,13 +3178,8 @@ namespace camus
 					cover_path = owned_cover.path;
 				}
 			} else {
-				cover_path = resolve_cover_image(
-					ctx.cmd.workdir,
-					ctx.conf.source_dir,
-					ctx.conf.assets_dir,
-					cover,
-					&attempted
-				);
+				cover_path =
+					resolve_cover_image(ctx.cmd.workdir, ctx.conf.source_dir, ctx.conf.assets_dir, cover, &attempted);
 			}
 
 			if (cover_path.empty()) {
@@ -3378,11 +3316,7 @@ namespace camus
 			const int status = std::system(command.c_str());
 			if (status != 0) {
 				keep_browser_log = true;
-				logging::warn(
-					"pdf generation command failed status={} log={}",
-					status,
-					browser_log_path.string()
-				);
+				logging::warn("pdf generation command failed status={} log={}", status, browser_log_path.string());
 				return false;
 			}
 
@@ -3421,8 +3355,8 @@ namespace camus
 		}
 
 		int page_offset = 0;
-		if (const auto first = anchor_pages.find(first_article_anchor); !first_article_anchor.empty() &&
-																	first != anchor_pages.end()) {
+		if (const auto first = anchor_pages.find(first_article_anchor);
+			!first_article_anchor.empty() && first != anchor_pages.end()) {
 			page_offset = 1 - first->second;
 		}
 
@@ -3460,8 +3394,8 @@ namespace camus
 				"\n@counter-style camus-page { system: fixed; first: 0; symbols: " + symbols.str() + "; }\n";
 
 			view["pdf_page_offset"] = page_offset;
-			view["pdf"]["style"] =
-				render::inja_render(ctx.inja, style_source, view) + pdf_page_style(page_conf, page_font_size) + counter_css;
+			view["pdf"]["style"] = render::inja_render(ctx.inja, style_source, view) +
+								   pdf_page_style(page_conf, page_font_size) + counter_css;
 			logging::debug(
 				"pdf page offset={} toc page numbers resolved count={} total_pages={}",
 				page_offset,
@@ -3576,8 +3510,7 @@ namespace camus
 		const std::filesystem::path dest_dir = std::filesystem::weakly_canonical(conf_.camus().dest_dir());
 		const std::filesystem::path pdf_dir = std::filesystem::weakly_canonical(conf_.camus().pdf_dir());
 		// PDF 浏览器 profile 与远程图片缓存也是构建产物（且运行时会频繁写入），必须排除。
-		const std::filesystem::path cache_dir =
-			std::filesystem::weakly_canonical(conf_.camus().dist_dir() / "cache");
+		const std::filesystem::path cache_dir = std::filesystem::weakly_canonical(conf_.camus().dist_dir() / "cache");
 
 		const auto is_generated = [&](const std::filesystem::path &path) {
 			const auto within = [](const std::filesystem::path &p, const std::filesystem::path &dir) {
@@ -3767,28 +3700,22 @@ namespace camus
 		}
 
 		const uint32_t safe_limit = camus.safe_clean_limit();
-		const auto check_output_dir =
-			[&report_issue, safe_limit](const std::filesystem::path &path, const std::string &name) {
-				std::error_code ec;
-				if (!std::filesystem::is_directory(path, ec) || ec) {
-					return;
-				}
+		const auto check_output_dir = [&report_issue,
+									   safe_limit](const std::filesystem::path &path, const std::string &name) {
+			std::error_code ec;
+			if (!std::filesystem::is_directory(path, ec) || ec) {
+				return;
+			}
 
-				const uint32_t scan_limit = std::max<uint32_t>(10000, safe_limit);
-				const int files = filesystem::scan_path_files(path, scan_limit);
-				if (static_cast<uint32_t>(files) > safe_limit) {
-					report_issue(
-						true,
-						std::format(
-							"{} has {} files (>{}); build will abort: {}",
-							name,
-							files,
-							safe_limit,
-							path.string()
-						)
-					);
-				}
-			};
+			const uint32_t scan_limit = std::max<uint32_t>(10000, safe_limit);
+			const int files = filesystem::scan_path_files(path, scan_limit);
+			if (static_cast<uint32_t>(files) > safe_limit) {
+				report_issue(
+					true,
+					std::format("{} has {} files (>{}); build will abort: {}", name, files, safe_limit, path.string())
+				);
+			}
+		};
 
 		check_output_dir(camus.dest_dir(), "output dir");
 		check_output_dir(camus.pdf_dir(), "pdf dir");
@@ -3827,13 +3754,8 @@ namespace camus
 					pdf_state += " cover=" + cover;
 				} else {
 					std::vector<std::filesystem::path> attempted;
-					const std::filesystem::path cover_path = resolve_cover_image(
-						cmd_.workdir,
-						camus.source_dir,
-						camus.assets_dir,
-						cover,
-						&attempted
-					);
+					const std::filesystem::path cover_path =
+						resolve_cover_image(cmd_.workdir, camus.source_dir, camus.assets_dir, cover, &attempted);
 
 					if (cover_path.empty()) {
 						std::string tried;
@@ -3874,8 +3796,7 @@ namespace camus
 			frontmatter_info info;
 			info.raw = filesystem::read_file(path.string());
 			auto lines = strings::split(info.raw, '\n');
-			if (lines.empty() ||
-				strings::trim_space(strings::trim_right(lines.front(), "\r")) != "---") {
+			if (lines.empty() || strings::trim_space(strings::trim_right(lines.front(), "\r")) != "---") {
 				return info;
 			}
 
@@ -3904,13 +3825,9 @@ namespace camus
 				if (!std::filesystem::is_regular_file(summary_path, ec) || ec) {
 					if (cmd_.fix) {
 						const std::string title =
-							node.path == "/"
-								? (camus.site.title.empty() ? std::string("Home") : camus.site.title)
-								: node.path.filename().string();
-						filesystem::write_file(
-							summary_path.string(),
-							std::format("---\ntitle: {}\n---\n", title)
-						);
+							node.path == "/" ? (camus.site.title.empty() ? std::string("Home") : camus.site.title)
+											 : node.path.filename().string();
+						filesystem::write_file(summary_path.string(), std::format("---\ntitle: {}\n---\n", title));
 						fixes.emplace_back(display_path(summary_path), "created");
 					} else {
 						frontmatter_issues.emplace_back(display_path(summary_path), "missing");
@@ -3962,9 +3879,7 @@ namespace camus
 						if (created <= 0) {
 							created = std::time(nullptr);
 						}
-						inserted.emplace_back(
-							"create-time: " + functions::format_time_t(created, "%Y-%m-%d %H:%M:%S")
-						);
+						inserted.emplace_back("create-time: " + functions::format_time_t(created, "%Y-%m-%d %H:%M:%S"));
 					}
 				}
 
@@ -3978,21 +3893,13 @@ namespace camus
 				}
 
 				filesystem::write_file(file_path.string(), content);
-				fixes.emplace_back(
-					display_path(file_path),
-					"added " + strings::string_join(missing_fields, ",")
-				);
+				fixes.emplace_back(display_path(file_path), "added " + strings::string_join(missing_fields, ","));
 			} else if (!problems.empty()) {
-				frontmatter_issues.emplace_back(
-					display_path(file_path),
-					strings::string_join(problems, ",")
-				);
+				frontmatter_issues.emplace_back(display_path(file_path), strings::string_join(problems, ","));
 			}
 		});
 
-		const auto count_text = [](const int value) {
-			return value < 0 ? std::string("-") : std::to_string(value);
-		};
+		const auto count_text = [](const int value) { return value < 0 ? std::string("-") : std::to_string(value); };
 
 		const auto row = [](const std::string &name, const std::string &value) {
 			std::cout << "  " << std::format("{:<10}", name) << value << '\n';
@@ -4006,18 +3913,15 @@ namespace camus
 		row("site", camus.site.title);
 		row("public", camus.public_url.url.empty() ? "(none)" : camus.public_url.url);
 		row("output", camus.dest_dir().string());
-		row(
-			"assets",
+		row("assets",
 			std::format(
 				"local={} .camus={} data={}",
 				count_text(user_assets),
 				count_text(local_assets),
 				count_text(data_assets)
-			)
-		);
+			));
 		row("pdf", pdf_state);
-		row(
-			"catalog",
+		row("catalog",
 			std::format(
 				"dirs={} articles={} hidden={} hidden_in_toc={} words={}",
 				directories,
@@ -4025,8 +3929,7 @@ namespace camus
 				hidden,
 				hidden_in_toc,
 				words
-			)
-		);
+			));
 		row("build", build_code == 0 ? "ok (dry-run)" : std::format("failed code={}", build_code));
 
 		size_t max_width = 0;
@@ -4046,10 +3949,8 @@ namespace camus
 			}
 
 			const std::string indent(depth == 0 ? 0 : (depth - 1) * 2, ' ');
-			const std::string path = strings::padding_left(
-				node.path.empty() ? "/" : node.path.generic_string(),
-				max_width
-			);
+			const std::string path =
+				strings::padding_left(node.path.empty() ? "/" : node.path.generic_string(), max_width);
 			std::cout << "  " << tag << " " << indent << path << " -> " << node.link_url().string() << '\n';
 		});
 
@@ -4080,7 +3981,8 @@ namespace camus
 		if (!issues.empty()) {
 			std::cout << '\n' << strings::coloring_bright_yellow("Issues:") << '\n';
 			for (const auto &issue : issues) {
-				std::cout << "  " << (issue.error ? strings::coloring_red("[error]") : strings::coloring_yellow("[warn ]"))
+				std::cout << "  "
+						  << (issue.error ? strings::coloring_red("[error]") : strings::coloring_yellow("[warn ]"))
 						  << " " << issue.text << '\n';
 			}
 		}
@@ -4091,8 +3993,7 @@ namespace camus
 		}
 
 		std::cout << '\n'
-				  << (failed ? strings::coloring_red("Result: FAILED") : strings::coloring_green("Result: OK"))
-				  << '\n';
+				  << (failed ? strings::coloring_red("Result: FAILED") : strings::coloring_green("Result: OK")) << '\n';
 		return failed ? 1 : 0;
 	}
 
@@ -4110,11 +4011,8 @@ namespace camus
 		conf_.reload();
 
 		// HTML 同层排序（html.sort，默认目录优先 + 时间倒序），与 pdf.sort 共用同一套逻辑。
-		html_sort_spec_ = parse_sort_spec(
-			conf_.camus().html.sort,
-			"html",
-			sort_spec{config::PDF_SORT_DIR_FIRST, true, true}
-		);
+		html_sort_spec_ =
+			parse_sort_spec(conf_.camus().html.sort, "html", sort_spec{config::PDF_SORT_DIR_FIRST, true, true});
 
 		// 启动时自动更新：在后台子进程中异步执行，结果不影响构建；watch 重建不重复执行。
 		// auto = 下载并安装，check-only = 仅检测并打印链接，disable = 跳过。
@@ -4178,12 +4076,7 @@ namespace camus
 
 		const double html_elapsed =
 			std::chrono::duration<double>(std::chrono::steady_clock::now() - html_started).count();
-		logging::info(
-			"html build complete files={} bytes={} elapsed={:.2f}s",
-			html_files,
-			html_bytes,
-			html_elapsed
-		);
+		logging::info("html build complete files={} bytes={} elapsed={:.2f}s", html_files, html_bytes, html_elapsed);
 
 		// 统计参与构建的文章数（控制面板展示内容数量）。
 		size_t article_count = 0;
@@ -4238,8 +4131,7 @@ namespace camus
 		// PDF 在后台线程构建：监听模式只在首次构建时自动生成，
 		// 之后由控制面板手动触发；非监听模式等待构建完成再返回。
 		const std::string pdf_engine = strings::trim_space(conf_.camus().pdf.engine);
-		const bool pdf_enabled =
-			!pdf_engine.empty() && strings::to_lower(pdf_engine) != "disable" && !cmd_.dryrun;
+		const bool pdf_enabled = !pdf_engine.empty() && strings::to_lower(pdf_engine) != "disable" && !cmd_.dryrun;
 		if (pdf_enabled && (!cmd_.watch || !pdf_auto_started_)) {
 			if (cmd_.watch) {
 				pdf_auto_started_ = true;
