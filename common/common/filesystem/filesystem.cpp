@@ -156,10 +156,7 @@ namespace filesystem
 	}
 
 	void empty_path(
-		const std::filesystem::path &path,
-		const bool safe_check,
-		const bool auto_create,
-		const uint32_t safe_limit
+		const std::filesystem::path &path, const bool safe_check, const bool auto_create, const uint32_t safe_limit
 	)
 	{
 		if (!std::filesystem::exists(path)) {
