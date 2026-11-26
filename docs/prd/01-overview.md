@@ -9,7 +9,7 @@ Camus 是一个用 C++23 编写的静态站点生成器：读取 Markdown 文章
 - 多主题：数据目录内置 `default`、`document`、`pixel`、`terminal`、`tomato` 等主题，本地 `theme/` 可覆盖或自定义。
 - 目录树与目录索引页、统计页、友链页、`sitemap.xml` 与 `feed.xml`（RSS）生成。
 - 可选 PDF 输出：把全部可见文章合并为单个 Markdown，经 cmark-gfm 转 HTML 后调用 Chrome/Edge 无头模式打印为 PDF；PDF 的 HTML 模板、打印样式、字体样式与自定义字体位于 `theme/pdf/`，同样支持本地覆盖。封面优先使用根 `SUMMARY.md` 的 `cover`（兼容旧键 `cover_image`；相对路径按 `camus.yaml` 所在目录、源目录、站点 `assets` 目录依次解析）整页铺满，并注入可交互书签大纲。
-- `-W` 监听模式：轮询文件变化并自动重建，同时提供本地 HTTP 服务。
+- `-W` 监听模式：轮询文件变化并自动重建，同时提供本地 HTTP 服务与右下角的闪电悬浮控制面板（可查看构建状态、立即构建、立即重建 PDF、查看 PDF，详见 §7）。
 - `--open`：构建成功后用 VS Code 打开工作目录（要求工作目录是合法 camus 项目）；`--open runtime` 用系统文件管理器打开数据目录；`--open <ID|项目名>` 打开已记录项目，`--project` 列出已记录项目。
 - `private` 目录：源目录下任意名为 `private` 的子目录不参与扫描与生成，也不能作为目录页路由。
 
@@ -66,12 +66,17 @@ flowchart TD
     G2 --> H[emit_assets]
     H --> I[flush_writes 统一落盘]
     I --> P{pdf.engine 非空且不为 disable?}
-    P -->|是| Q[emit_pdf: 合并 Markdown + 封面/扉页/目录 -> HTML -> Chrome/Edge 打印]
+    P -->|是| Q[后台线程 build_pdf: 合并 Markdown + 封面/扉页/目录 -> HTML -> Chrome/Edge 打印]
     P -->|否| J
-    Q --> J[返回 0]
+    Q --> Q2{监听模式?}
+    Q2 -->|否| Q3[等待 PDF 构建完成后返回 0]
+    Q2 -->|是| J[返回 0, 监听循环继续, 后续重建不再自动构建 PDF]
+    J --> J2[返回 0]
 ```
 
 `emit_article` 内部又分为：路由解析 → Front Matter 解析 → 清空输出目录 → 收集文章 → 填充上一篇/下一篇 → 计算 TOC → 逐篇渲染与统计 → 统计页 → 目录属性收尾（详见 §4、§6）。
+
+PDF 在后台线程构建，使用构建开始前的状态快照（配置、目录树、模板数据），不与 HTML 构建共享可变状态：非监听模式等待 PDF 完成后进程才退出；监听模式只在首次构建时自动生成一次，之后由控制面板手动触发（详见 §6.10、§7.3）。
 
 ## 1.5 关键术语
 

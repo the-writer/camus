@@ -18,7 +18,7 @@
 ## 核心设计
 
 - **外部资源安装**：主题、默认静态资源与示例模板由安装包放到平台数据目录（macOS `~/Library/Application Support/Camus`，Linux `/var/lib/camus`）；`-i` 安装示例文件与 `posts/private/`，`-c` 默认把最小资源骨架复制到工作目录 `assets/`，`-c --full` 把完整资源复制到 `.camus`，`-c --theme [name]` 把整个或单个主题复制到工作目录 `theme/`；静态资源按数据目录 → `.camus` → 本地 `./assets` 叠加（详见 §8）。
-- **流水线式构建**：`writer::build()` 依次执行 `emit_article → emit_toc → emit_friends → emit_sitemap → emit_assets → flush_writes → emit_pdf`，所有文件写入先进入内存队列统一落盘，最后按需调用 Chrome/Edge 生成 PDF，封面取自根 `SUMMARY.md` 的 `cover`（兼容旧键 `cover_image`），并注入可交互书签大纲（详见 §1.4、§6）。
+- **流水线式构建**：`writer::build()` 依次执行 `emit_article → emit_toc → emit_friends → emit_sitemap → emit_assets → flush_writes`，所有文件写入先进入内存队列统一落盘；随后在**后台线程**按需调用 Chrome/Edge 生成 PDF（`build_pdf()`，使用构建前的状态快照），封面取自根 `SUMMARY.md` 的 `cover`（兼容旧键 `cover_image`），并注入可交互书签大纲。非监听模式等待 PDF 完成后才退出；监听模式只在首次构建时自动生成一次，之后由控制面板手动触发（详见 §1.4、§6、§7）。
 - **配置驱动**：`camus.yaml` 提供站点、输出、渲染、公开地址、友链与目录搬运配置，各目录下的 `SUMMARY.md` 提供目录页元信息（标题/副标题/描述）；配置每次构建重新加载（详见 §3）。源目录固定按 `src` → `posts` 探测，资源目录固定 `./assets`，输出固定 `./dist/html` 与 `./dist/pdf`。
 - **编辑/运行目录直达**：`--open` 在构建成功后用 VS Code 打开工作目录（要求工作目录是合法 camus 项目），`--open runtime` 用系统文件管理器打开数据目录；打开成功的项目会记录到 `<数据目录>/projects.json`，`--project` 列出记录、`--open <ID|项目名>` 直接打开（详见 §2）。
 - **内存目录树**：构建开始时扫描源目录（`src`/`posts`）生成 `catalog_node` 树，文章 Front Matter、路由映射、导航、统计都在该树上完成（详见 §4）。
@@ -36,7 +36,7 @@
 | `docs/prd/04-catalog-and-posts.md` | 4. 内容目录树与文章解析 | 改动扫描、Front Matter、可见性、路由、URL、统计时 |
 | `docs/prd/05-rendering.md` | 5. 模板与渲染 | 改动 Markdown/HTML 渲染、主题、inja 函数、渲染数据时 |
 | `docs/prd/06-output.md` | 6. 输出产物 | 改动页面、目录页、stats、friends、sitemap、assets 输出时 |
-| `docs/prd/07-watch-mode.md` | 7. 监听模式与本地服务 | 改动 `-W` 热更新与服务端口时 |
+| `docs/prd/07-watch-mode.md` | 7. 监听模式与本地服务 | 改动 `-W` 热更新、服务端口与控制面板（接口、界面、PDF 触发）时 |
 | `docs/prd/08-template-install.md` | 8. 资源安装与数据目录 | 改动资源安装位置、数据目录解析、主题/资源查找时 |
 | `docs/prd/09-build-release.md` | 9. 构建、测试与发布 | 改动 CMake、Makefile、CTest、CPack、CI 时 |
 | `docs/prd/10-common-utilities.md` | 10. 公共模块与工具 | 改动字符串、文件、日志、网络、解压等公共能力时 |
@@ -50,7 +50,7 @@
 | 改动扫描、Front Matter、可见性、路由、URL | `04-catalog-and-posts.md`；涉及产出路径时同步 `06-output.md` |
 | 改动 Markdown/HTML 渲染、主题、inja 函数 | `05-rendering.md`；涉及模板数据结构时同步 `06-output.md` |
 | 改动输出文件、目录清理、dryrun 行为 | `06-output.md` |
-| 改动监听/本地服务 | `07-watch-mode.md` |
+| 改动监听/本地服务、控制面板 | `07-watch-mode.md`；涉及 PDF 产物时同步 `06-output.md` |
 | 改动资源安装、数据目录、主题/资源解析 | `08-template-install.md`；必要时同步 `05-rendering.md`、`06-output.md` |
 | 改动构建脚本、测试、打包、CI、产物命名 | `09-build-release.md`；版本变更时同步本索引项目表与 `CMakeLists.txt` |
 | 改动公共函数签名/行为 | `10-common-utilities.md`；被调用章节同步 |

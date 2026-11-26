@@ -1135,10 +1135,52 @@ namespace
 
 		return output;
 	}
+
+	// 本地时间格式化：构建时间用本地时区显示更直观
+	// （functions::format_time_t 按 UTC 输出，文章时间沿用该口径）。
+	std::string local_time_text(const time_t value)
+	{
+		if (value <= 0) {
+			return "-";
+		}
+
+		std::tm tm{};
+		localtime_r(&value, &tm);
+
+		char buffer[32] = {};
+		if (std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm) == 0) {
+			return "-";
+		}
+
+		return buffer;
+	}
+
+	// 注册模板回调：prefix_provider 返回当前生效的 public_url.path_prefix。
+	// 主线程用实时配置，PDF 后台线程用快照值，两者互不影响。
+	void setup_inja(inja::Environment &inja, const std::function<std::filesystem::path()> &prefix_provider)
+	{
+		inja.add_callback("format_datetime", 1, [](const inja::Arguments &args) {
+			const int unix_ts = args.at(0)->get<int>();
+			return functions::format_time_t(unix_ts);
+		});
+
+		inja.add_callback("format_date", 1, [](const inja::Arguments &args) {
+			const int unix_ts = args.at(0)->get<int>();
+			return functions::format_time_t(unix_ts, "%Y-%m-%d");
+		});
+
+		inja.add_callback("with_prefix", 1, [prefix_provider](const inja::Arguments &args) {
+			const std::string name = args.at(0)->get<std::string>();
+			return filesystem::clean_path(name, prefix_provider().string());
+		});
+	}
 } // namespace
 
 namespace camus
 {
+	// PDF 构建：只依赖上下文快照，可在后台线程执行，不与主线程共享可变状态。
+	static pdf_result build_pdf(pdf_context &ctx);
+
 	void writer::run_only_live(const std::function<void()> &func) const
 	{
 		if (cmd_.dryrun) {
@@ -1169,10 +1211,363 @@ namespace camus
 	{
 		for (const auto &[path, content] : pending_writes_) {
 			std::filesystem::create_directories(path.parent_path());
-			filesystem::write_file(path, content);
+
+			std::string data(content);
+			if (cmd_.watch && path.extension() == ".html") {
+				inject_watch_script(data);
+			}
+
+			filesystem::write_file(path, data);
 		}
 
 		pending_writes_.clear();
+	}
+
+	void writer::inject_watch_script(std::string &html) const
+	{
+		const std::string src = filesystem::clean_path(
+			"/js/watch.js",
+			conf_.camus().public_url.path_prefix
+		);
+		const std::string tag = "<script src=\"" + src + "\"></script>";
+
+		// 优先插到 </body> 之前；模板没有 body 结束时追加到文末。
+		const auto pos = html.find("</body>");
+		if (pos == std::string::npos) {
+			html += "\n" + tag + "\n";
+			return;
+		}
+
+		html.insert(pos, tag + "\n");
+	}
+
+	void writer::ensure_watch_script() const
+	{
+		if (!cmd_.watch || cmd_.dryrun) {
+			return;
+		}
+
+		const std::filesystem::path target = conf_.camus().dest_dir() / "js" / "watch.js";
+		std::error_code ec;
+		if (std::filesystem::exists(target, ec) && !ec) {
+			return;
+		}
+
+		// 本地 assets 未提供 watch.js 时，从数据目录补齐，保证控制面板可用。
+		const std::filesystem::path source = paths::find_resource(std::filesystem::path("assets") / "js" / "watch.js");
+		if (source.empty()) {
+			logging::warn("watch script not found, control panel unavailable name=assets/js/watch.js");
+			return;
+		}
+
+		std::filesystem::create_directories(target.parent_path(), ec);
+		if (ec) {
+			logging::warn("watch script copy failed target={} error={}", target.string(), ec.message());
+			return;
+		}
+
+		std::filesystem::copy_file(source, target, std::filesystem::copy_options::overwrite_existing, ec);
+		if (ec) {
+			logging::warn("watch script copy failed target={} error={}", target.string(), ec.message());
+			return;
+		}
+
+		logging::debug("watch script copied source={} target={}", source.string(), target.string());
+	}
+
+	pdf_context writer::make_pdf_snapshot()
+	{
+		pdf_context ctx;
+		ctx.conf = conf_.camus();
+		ctx.public_json = conf_.json();
+		ctx.cmd = cmd_;
+
+		// 目录树快照：后台线程不再读取主线程的目录树。
+		ctx.catalog = catalog_;
+
+		// PDF 不需要渲染后的正文 HTML，清空以降低快照内存占用。
+		catalog::traverse_catalog_tree(ctx.catalog, [](catalog::catalog_node &node, int) {
+			node.render_data_.page.contents.clear();
+		});
+
+		// 独立模板引擎：回调只依赖快照，不引用主线程状态。
+		const std::filesystem::path prefix = ctx.conf.public_url.path_prefix;
+		setup_inja(ctx.inja, [prefix]() { return prefix; });
+
+		// 远程封面：主线程的临时文件在构建结束就会被删除，
+		// 这里复制一份交给后台线程，避免与主线程争用同一个文件。
+		if (!remote_cover_path_.empty()) {
+			const std::filesystem::path snapshot =
+				std::filesystem::temp_directory_path() /
+				std::format("camus-pdf-cover-{}{}", getpid(), remote_cover_path_.extension().string());
+			std::error_code ec;
+			std::filesystem::copy_file(
+				remote_cover_path_,
+				snapshot,
+				std::filesystem::copy_options::overwrite_existing,
+				ec
+			);
+			if (ec) {
+				logging::warn(
+					"pdf cover snapshot failed source={} error={}",
+					remote_cover_path_.string(),
+					ec.message()
+				);
+			} else {
+				ctx.cover_path = snapshot;
+			}
+		}
+
+		return ctx;
+	}
+
+	void writer::start_pdf_build()
+	{
+		if (pdf_running_.exchange(true)) {
+			logging::debug("pdf build already running, skip");
+			return;
+		}
+
+		std::unique_ptr<pdf_context> ctx;
+		{
+			// 快照需要读取主线程状态（配置 / 目录树），与 HTML 构建互斥。
+			std::lock_guard guard(build_mutex_);
+			ctx = std::make_unique<pdf_context>(make_pdf_snapshot());
+		}
+
+		{
+			std::lock_guard guard(status_mutex_);
+			status_.pdf_status = watch_status::PDF_RUNNING;
+			status_.pdf_error.clear();
+		}
+
+		{
+			std::lock_guard guard(pdf_thread_mutex_);
+			if (pdf_thread_.joinable()) {
+				pdf_thread_.join();
+			}
+
+			pdf_thread_ = std::thread([this, ctx = std::move(ctx)]() {
+				pdf_result result;
+				try {
+					result = build_pdf(*ctx);
+				} catch (const std::exception &e) {
+					result.error = e.what();
+					logging::error("pdf build failed error={}", e.what());
+				}
+
+				// 后台线程下载的封面副本由本次构建独占，结束后清理。
+				if (!ctx->cover_path.empty()) {
+					std::error_code ec;
+					std::filesystem::remove(ctx->cover_path, ec);
+				}
+
+				{
+					std::lock_guard guard(status_mutex_);
+					++status_.pdf_seq;
+					status_.pdf_time = std::time(nullptr);
+					status_.pdf_elapsed = result.elapsed;
+					status_.pdf_articles = result.articles;
+					status_.pdf_pages = result.pages;
+					status_.pdf_error = result.error;
+					status_.pdf_status = result.success ? watch_status::PDF_DONE : watch_status::PDF_FAILED;
+					if (result.success) {
+						status_.pdf_file = result.path.filename().string();
+						status_.pdf_path = result.path.string();
+					}
+				}
+
+				// html.copy_pdf：把 PDF 复制到 HTML 输出根目录（与 HTML 构建互斥）。
+				if (result.success) {
+					std::lock_guard guard(build_mutex_);
+					if (conf_.camus().html.copy_pdf) {
+						const std::filesystem::path target = conf_.camus().dest_dir() / result.path.filename();
+						std::error_code copy_ec;
+						std::filesystem::create_directories(target.parent_path(), copy_ec);
+						if (std::filesystem::copy_file(
+								result.path,
+								target,
+								std::filesystem::copy_options::overwrite_existing,
+								copy_ec
+							)) {
+							logging::info("pdf copied to html dest={}", target.string());
+						} else {
+							logging::warn(
+								"pdf copy to html failed source={} target={} error={}",
+								result.path.string(),
+								target.string(),
+								copy_ec.message()
+							);
+						}
+					}
+				}
+
+				pdf_running_ = false;
+			});
+		}
+	}
+
+	void writer::wait_pdf_build()
+	{
+		std::lock_guard guard(pdf_thread_mutex_);
+		if (pdf_thread_.joinable()) {
+			pdf_thread_.join();
+		}
+	}
+
+	void writer::register_watch_api()
+	{
+		// 控制面板接口放在 /__camus/ 前缀下，用 pre-routing 拦截，
+		// 避免与静态资源挂载点（/）冲突。
+		static const std::string api_prefix = "/__camus/";
+
+		watch_server_.set_pre_routing_handler([this](const httplib::Request &req, httplib::Response &res) {
+			if (!req.path.starts_with(api_prefix)) {
+				return httplib::Server::HandlerResponse::Unhandled;
+			}
+
+			const std::string action = req.path.substr(api_prefix.size());
+			res.set_header("Cache-Control", "no-store");
+
+			if (req.method == "GET" && action == "status") {
+				res.set_content(watch_status_json().dump(), "application/json");
+				return httplib::Server::HandlerResponse::Handled;
+			}
+
+			if (req.method == "POST" && action == "build") {
+				// 立即构建：由监听主循环执行，避免与主循环的构建并发。
+				manual_build_requested_ = true;
+				res.set_content(watch_status_json().dump(), "application/json");
+				return httplib::Server::HandlerResponse::Handled;
+			}
+
+			if (req.method == "POST" && action == "pdf") {
+				// 立即重建 PDF：后台线程执行，主循环负责派发。
+				manual_pdf_requested_ = true;
+				res.set_content(watch_status_json().dump(), "application/json");
+				return httplib::Server::HandlerResponse::Handled;
+			}
+
+			if (req.method == "POST" && action == "pdf/view") {
+				const std::string url = export_pdf_to_html();
+				nlohmann::json data{{"ok", !url.empty()}, {"url", url}};
+				if (url.empty()) {
+					data["error"] = "pdf not available";
+					res.status = 404;
+				}
+
+				res.set_content(data.dump(), "application/json");
+				return httplib::Server::HandlerResponse::Handled;
+			}
+
+			res.status = 404;
+			res.set_content(R"({"error":"not found"})", "application/json");
+			return httplib::Server::HandlerResponse::Handled;
+		});
+	}
+
+	nlohmann::json writer::watch_status_json()
+	{
+		watch_status snapshot;
+		{
+			std::lock_guard guard(status_mutex_);
+			snapshot = status_;
+		}
+
+		const auto time_text = [](const time_t value) { return local_time_text(value); };
+
+		const char *pdf_state = "idle";
+		switch (snapshot.pdf_status) {
+		case watch_status::PDF_RUNNING:
+			pdf_state = "running";
+			break;
+		case watch_status::PDF_DONE:
+			pdf_state = "done";
+			break;
+		case watch_status::PDF_FAILED:
+			pdf_state = "failed";
+			break;
+		default:
+			pdf_state = "idle";
+			break;
+		}
+
+		nlohmann::json json;
+		json["version"] = PROJECT_VERSION;
+		json["html"] = {
+			{"seq", snapshot.html_seq},
+			{"time", time_text(snapshot.html_time)},
+			{"timestamp", static_cast<int64_t>(snapshot.html_time)},
+			{"elapsed", snapshot.html_elapsed},
+			{"files", snapshot.html_files},
+			{"bytes", snapshot.html_bytes},
+			{"articles", snapshot.html_articles},
+		};
+		json["pdf"] = {
+			{"seq", snapshot.pdf_seq},
+			{"state", pdf_state},
+			{"time", time_text(snapshot.pdf_time)},
+			{"timestamp", static_cast<int64_t>(snapshot.pdf_time)},
+			{"elapsed", snapshot.pdf_elapsed},
+			{"articles", snapshot.pdf_articles},
+			{"pages", snapshot.pdf_pages},
+			{"file", snapshot.pdf_file},
+			{"error", snapshot.pdf_error},
+		};
+
+		return json;
+	}
+
+	std::string writer::export_pdf_to_html()
+	{
+		std::string source;
+		std::string name;
+		{
+			std::lock_guard guard(status_mutex_);
+			if (status_.pdf_status != watch_status::PDF_DONE) {
+				return {};
+			}
+
+			source = status_.pdf_path;
+			name = status_.pdf_file;
+		}
+
+		if (source.empty() || name.empty()) {
+			return {};
+		}
+
+		std::error_code ec;
+		if (!std::filesystem::exists(source, ec) || ec) {
+			logging::warn("pdf not found, cannot export source={}", source);
+			return {};
+		}
+
+		std::filesystem::path target;
+		{
+			// 与 HTML 构建互斥：避免输出目录清理与复制同时发生，
+			// 同时避免与主线程的配置重载并发读取。
+			std::lock_guard guard(build_mutex_);
+			target = conf_.camus().dest_dir() / name;
+			std::filesystem::create_directories(target.parent_path(), ec);
+			if (ec || !std::filesystem::copy_file(
+						   source,
+						   target,
+						   std::filesystem::copy_options::overwrite_existing,
+						   ec
+					   ) ||
+				ec) {
+				logging::warn(
+					"pdf export to html failed source={} target={} error={}",
+					source,
+					target.string(),
+					ec.message()
+				);
+				return {};
+			}
+		}
+
+		logging::info("pdf copied to html dest={}", target.string());
+		return "/" + strings::url_encode(name);
 	}
 
 	void writer::emit_article()
@@ -1365,7 +1760,12 @@ namespace camus
 		run_only_live([&]() {
 			const uint32_t safe_limit = conf_.camus().safe_clean_limit();
 			filesystem::empty_path(conf_.camus().dest_dir(), true, false, safe_limit);
-			filesystem::empty_path(conf_.camus().pdf_dir(), true, false, safe_limit);
+
+			// 监听模式：PDF 目录只在首次构建时清理。
+			// 之后 PDF 由控制面板手动重建，若每次构建都清理会删掉已生成的 PDF。
+			if (!cmd_.watch || !pdf_auto_started_) {
+				filesystem::empty_path(conf_.camus().pdf_dir(), true, false, safe_limit);
+			}
 		});
 	}
 
@@ -2344,21 +2744,24 @@ namespace camus
 		);
 	}
 
-	void writer::emit_pdf()
+	// PDF 构建：只依赖上下文快照，可在后台线程执行，不与主线程共享可变状态。
+	static pdf_result build_pdf(pdf_context &ctx)
 	{
-		const std::string pdf_engine = strings::trim_space(conf_.camus().pdf.engine);
+		pdf_result result;
+		const std::string pdf_engine = strings::trim_space(ctx.conf.pdf.engine);
 		if (pdf_engine.empty() || strings::to_lower(pdf_engine) == "disable") {
-			return;
+			return result;
 		}
 
-		if (cmd_.dryrun) {
-			return;
+		if (ctx.cmd.dryrun) {
+			return result;
 		}
 
 		const std::string engine = resolve_pdf_engine(pdf_engine);
 		if (engine.empty()) {
 			logging::warn("pdf engine not found, skip pdf generation name={}", pdf_engine);
-			return;
+			result.error = "pdf engine not found: " + pdf_engine;
+			return result;
 		}
 
 		struct pdf_article {
@@ -2367,7 +2770,7 @@ namespace camus
 		};
 
 		std::vector<pdf_article> articles;
-		catalog::traverse_catalog_tree(catalog_, [&](const catalog::catalog_node &node, int) {
+		catalog::traverse_catalog_tree(ctx.catalog, [&](const catalog::catalog_node &node, int) {
 			if (node.path.extension() != ".md" || node.property.visibility == catalog::hidden) {
 				return;
 			}
@@ -2379,14 +2782,15 @@ namespace camus
 
 		if (articles.empty()) {
 			logging::debug("skip pdf generation: no articles");
-			return;
+			result.error = "no articles";
+			return result;
 		}
 
 		const auto pdf_started = std::chrono::steady_clock::now();
 		logging::info("pdf build started articles={} engine={}", articles.size(), engine);
 
 		// 跨构建复用的缓存目录：浏览器 profile 与远程正文图片都放在 dist/cache 下。
-		const std::filesystem::path cache_root = conf_.camus().dist_dir() / "cache";
+		const std::filesystem::path cache_root = ctx.conf.dist_dir() / "cache";
 		const std::filesystem::path cache_images_dir = cache_root / "images";
 		// CI 中缓存是冷的，串行下载比浏览器并发加载更慢，直接跳过图片本地化。
 		const bool cache_remote_images = !running_in_ci();
@@ -2394,22 +2798,22 @@ namespace camus
 			logging::debug("skip pdf image cache in ci environment");
 		}
 
-		const std::string &site_title = conf_.camus().site.title;
+		const std::string &site_title = ctx.conf.site.title;
 		const std::string cover_title = html_escape(site_title.empty() ? "Camus" : site_title);
-		const std::string cover_subtitle = html_escape(conf_.camus().site.subtitle);
-		const std::string cover_desc = html_escape(conf_.camus().site.description);
+		const std::string cover_subtitle = html_escape(ctx.conf.site.subtitle);
+		const std::string cover_desc = html_escape(ctx.conf.site.description);
 		const std::string generated_at = functions::format_time_t(std::time(nullptr), "%Y-%m-%d");
-		const std::string domain = html_escape(conf_.camus().public_url.domain_name);
+		const std::string domain = html_escape(ctx.conf.public_url.domain_name);
 
 		const std::string template_source = read_pdf_theme_file(CAMUS_PDF_TEMPLATE_NAME);
 		const std::string style_source = read_pdf_theme_file(CAMUS_PDF_STYLE_NAME);
 		const std::string fonts_source = read_pdf_theme_file(CAMUS_PDF_FONTS_NAME, false);
 
-		nlohmann::json view = conf_.json();
+		nlohmann::json view = ctx.public_json;
 		view["pdf_page_offset"] = 0;
-		std::string markdown = std::format("# {}\n\n{}\n", site_title, conf_.camus().site.description);
+		std::string markdown = std::format("# {}\n\n{}\n", site_title, ctx.conf.site.description);
 
-		const camus::config::pdf_page_conf page_conf = conf_.camus().pdf.page;
+		const camus::config::pdf_page_conf page_conf = ctx.conf.pdf.page;
 		const std::string page_size = strings::trim_space(page_conf.size).empty()
 										  ? camus::config::pdf_page_size_default
 										  : strings::trim_space(page_conf.size);
@@ -2421,13 +2825,13 @@ namespace camus
 		nlohmann::json pdf;
 		pdf["lang"] = site_title.empty() ? "en" : "zh-CN";
 		pdf["title"] = cover_title;
-		pdf["style"] = render::inja_render(inja_, style_source, view) + pdf_page_style(page_conf, page_font_size);
+		pdf["style"] = render::inja_render(ctx.inja, style_source, view) + pdf_page_style(page_conf, page_font_size);
 		pdf["page"] = {
 			{"size", page_size},
 			{"margin", page_margin},
 			{"font_size", page_font_size},
 		};
-		pdf["fonts"] = fonts_source.empty() ? "" : render::inja_render(inja_, fonts_source, view);
+		pdf["fonts"] = fonts_source.empty() ? "" : render::inja_render(ctx.inja, fonts_source, view);
 		pdf["asset_style"] = false;
 		pdf["cover"] = {
 			{"eyebrow", "Camus"},
@@ -2452,7 +2856,7 @@ namespace camus
 		};
 
 		// 依据全部文章 Markdown 的中文占比决定 PDF 预定义名称使用中文还是英文。
-		std::string ratio_source = std::format("# {}\n\n{}\n", site_title, conf_.camus().site.description);
+		std::string ratio_source = std::format("# {}\n\n{}\n", site_title, ctx.conf.site.description);
 		for (const auto &article : articles) {
 			ratio_source += article.markdown;
 			ratio_source += '\n';
@@ -2468,7 +2872,7 @@ namespace camus
 		const std::string label_compiler = use_chinese ? "编译器" : "Compiler";
 		logging::debug("pdf language ratio={:.2f}% chinese={}", cn_ratio, use_chinese);
 
-		const bool toc_index = conf_.camus().pdf.toc.index;
+		const bool toc_index = ctx.conf.pdf.toc.index;
 		const auto article_meta = [&](const catalog::catalog_node &node) -> std::string {
 			if (page_conf.meta.empty()) {
 				return "";
@@ -2510,11 +2914,11 @@ namespace camus
 		// 目录按真实目录树多级输出：目录节点作为分组标题，文章节点作为可跳转条目。
 		// 启用时间排序（time_asc / time_desc）时额外按年分卷，年份作为一级分组。
 		const sort_spec sort_spec = parse_sort_spec(
-			conf_.camus().pdf.sort,
+			ctx.conf.pdf.sort,
 			"pdf",
 			camus::sort_spec{config::PDF_SORT_FILE_FIRST, true, false}
 		);
-		const bool group_by_year = sort_spec.has_time && conf_.camus().pdf.auto_volume != "disable";
+		const bool group_by_year = sort_spec.has_time && ctx.conf.pdf.auto_volume != "disable";
 		int index = 0;
 
 		const auto push_directory = [&](const catalog::catalog_node &node, const int depth) {
@@ -2572,8 +2976,8 @@ namespace camus
 			const std::string body_markdown = std::format("## {}\n\n{}", label, article_markdown);
 			std::string article_html = render::render_markdown(
 				body_markdown.c_str(),
-				conf_.camus().render.markdown_engine,
-				conf_.camus().render.markdown_options
+				ctx.conf.render.markdown_engine,
+				ctx.conf.render.markdown_options
 			);
 
 			if (const std::string meta = article_meta(node); !meta.empty()) {
@@ -2586,7 +2990,7 @@ namespace camus
 			}
 
 			if (cache_remote_images) {
-				localize_pdf_images(article_html, cache_images_dir, conf_.camus().pdf_dir());
+				localize_pdf_images(article_html, cache_images_dir, ctx.conf.pdf_dir());
 			}
 
 			add_pdf_code_line_numbers(article_html);
@@ -2640,7 +3044,7 @@ namespace camus
 				}
 			};
 
-			append_node(catalog_, 0);
+			append_node(ctx.catalog, 0);
 		} else {
 			struct year_stats {
 				uint32_t articles = 0;
@@ -2650,7 +3054,7 @@ namespace camus
 			};
 
 			std::map<int, year_stats> stats;
-			catalog::traverse_catalog_tree(catalog_, [&](const catalog::catalog_node &node, int) {
+			catalog::traverse_catalog_tree(ctx.catalog, [&](const catalog::catalog_node &node, int) {
 				if (node.is_directory() || node.path.extension() != ".md" ||
 					node.property.visibility == catalog::hidden) {
 					return;
@@ -2762,7 +3166,7 @@ namespace camus
 					}
 				};
 
-				for (const auto *child : sort_children(catalog_)) {
+				for (const auto *child : sort_children(ctx.catalog)) {
 					if (has_year(*child)) {
 						append_year_node(*child, 1);
 					}
@@ -2785,41 +3189,56 @@ namespace camus
 		pdf["toc"] = std::move(toc_items);
 		pdf["articles"] = std::move(article_items);
 
-		const std::filesystem::path pdf_dir = conf_.camus().pdf_dir();
+		const std::filesystem::path pdf_dir = ctx.conf.pdf_dir();
 		const std::filesystem::path markdown_path = pdf_dir / "index.md";
 		const std::filesystem::path html_path = pdf_dir / "index.html";
 		std::filesystem::path pdf_path = pdf_dir / "index.pdf";
 		const std::filesystem::path browser_log_path =
 			std::filesystem::temp_directory_path() / std::format("camus-pdf-{}.log", getpid());
 
+		// 线程内自持的临时文件（远程封面兜底下载），函数退出时自动清理。
+		struct temp_file_guard {
+			std::filesystem::path path;
+
+			~temp_file_guard()
+			{
+				if (path.empty()) {
+					return;
+				}
+
+				std::error_code ec;
+				std::filesystem::remove(path, ec);
+			}
+		} owned_cover;
+
 		std::filesystem::create_directories(pdf_dir);
 		filesystem::write_file(markdown_path, markdown);
-		copy_pdf_asset_fonts(conf_.camus().dest_dir(), pdf_dir);
-		pdf["asset_style"] = copy_pdf_asset_style(conf_.camus().dest_dir(), pdf_dir);
+		copy_pdf_asset_fonts(ctx.conf.dest_dir(), pdf_dir);
+		pdf["asset_style"] = copy_pdf_asset_style(ctx.conf.dest_dir(), pdf_dir);
 
-		if (const std::string cover = strings::trim_space(conf_.camus().site.cover);
+		if (const std::string cover = strings::trim_space(ctx.conf.site.cover);
 			!cover.empty()) {
 			std::vector<std::filesystem::path> attempted;
 			std::filesystem::path cover_path;
 
 			if (is_remote_url(cover)) {
-				// PDF 封面默认强制下载远程图片；正常情况下构建开始前已下载，此处兜底。
-				if (remote_cover_path_.empty()) {
-					const std::filesystem::path temp =
-						std::filesystem::temp_directory_path() /
-						std::format("camus-cover-{}{}", getpid(), remote_image_extension(cover));
-					if (!download_remote_image(cover, temp)) {
+				// PDF 封面默认强制下载远程图片：优先使用上下文快照（主线程下载的副本），
+				// 快照缺失时由本线程兜底下载（临时文件在函数退出时清理）。
+				cover_path = ctx.cover_path;
+				if (cover_path.empty()) {
+					owned_cover.path = std::filesystem::temp_directory_path() /
+									   std::format("camus-pdf-cover-{}{}", getpid(), remote_image_extension(cover));
+					if (!download_remote_image(cover, owned_cover.path)) {
 						error::panic("cover image download failed url={}", cover);
 					}
-					remote_cover_path_ = temp;
-				}
 
-				cover_path = remote_cover_path_;
+					cover_path = owned_cover.path;
+				}
 			} else {
 				cover_path = resolve_cover_image(
-					cmd_.workdir,
-					conf_.camus().source_dir,
-					conf_.camus().assets_dir,
+					ctx.cmd.workdir,
+					ctx.conf.source_dir,
+					ctx.conf.assets_dir,
 					cover,
 					&attempted
 				);
@@ -2870,8 +3289,8 @@ namespace camus
 		bool has_user_data_dir = false;
 		const std::string engine_cache_name = pdf_engine_cache_name(pdf_engine);
 		const std::map<std::string, std::string> placeholders = {
-			{"{{dist_dir}}", conf_.camus().dist_dir().string()},
-			{"{{ dist_dir }}", conf_.camus().dist_dir().string()},
+			{"{{dist_dir}}", ctx.conf.dist_dir().string()},
+			{"{{ dist_dir }}", ctx.conf.dist_dir().string()},
 			{"{{dest_dir}}", pdf_dir.string()},
 			{"{{ dest_dir }}", pdf_dir.string()},
 			{"{{cache_dir}}", cache_root.string()},
@@ -2880,7 +3299,7 @@ namespace camus
 			{"{{ engine }}", engine_cache_name},
 		};
 
-		for (const auto &raw_option : conf_.camus().pdf.build) {
+		for (const auto &raw_option : ctx.conf.pdf.build) {
 			if (raw_option.empty()) {
 				continue;
 			}
@@ -2954,7 +3373,7 @@ namespace camus
 
 		bool keep_browser_log = false;
 		const auto render_and_print = [&]() {
-			filesystem::write_file(html_path, render::inja_render(inja_, template_source, view));
+			filesystem::write_file(html_path, render::inja_render(ctx.inja, template_source, view));
 
 			const int status = std::system(command.c_str());
 			if (status != 0) {
@@ -2981,7 +3400,8 @@ namespace camus
 		};
 
 		if (!render_and_print()) {
-			return;
+			result.error = "pdf generation failed";
+			return result;
 		}
 
 		const std::map<std::string, int> anchor_pages = pdf::read_anchor_pages(pdf_path);
@@ -3041,7 +3461,7 @@ namespace camus
 
 			view["pdf_page_offset"] = page_offset;
 			view["pdf"]["style"] =
-				render::inja_render(inja_, style_source, view) + pdf_page_style(page_conf, page_font_size) + counter_css;
+				render::inja_render(ctx.inja, style_source, view) + pdf_page_style(page_conf, page_font_size) + counter_css;
 			logging::debug(
 				"pdf page offset={} toc page numbers resolved count={} total_pages={}",
 				page_offset,
@@ -3089,27 +3509,6 @@ namespace camus
 		logging::info("pdf generated dest={}", pdf_path.string());
 		logging::debug("make pdf dest={} engine={}", pdf_path.string(), engine);
 
-		if (conf_.camus().html.copy_pdf) {
-			const std::filesystem::path target = conf_.camus().dest_dir() / pdf_path.filename();
-			std::error_code copy_ec;
-			std::filesystem::create_directories(target.parent_path(), copy_ec);
-			if (std::filesystem::copy_file(
-					pdf_path,
-					target,
-					std::filesystem::copy_options::overwrite_existing,
-					copy_ec
-				)) {
-				logging::info("pdf copied to html dest={}", target.string());
-			} else {
-				logging::warn(
-					"pdf copy to html failed source={} target={} error={}",
-					pdf_path.string(),
-					target.string(),
-					copy_ec.message()
-				);
-			}
-		}
-
 		const double pdf_elapsed =
 			std::chrono::duration<double>(std::chrono::steady_clock::now() - pdf_started).count();
 		std::error_code size_ec;
@@ -3121,6 +3520,13 @@ namespace camus
 			size_ec ? 0 : pdf_bytes,
 			pdf_elapsed
 		);
+
+		result.success = true;
+		result.path = pdf_path;
+		result.articles = articles.size();
+		result.pages = total_pages;
+		result.elapsed = pdf_elapsed;
+		return result;
 	}
 
 	writer::writer(const cmdline &cmd) : conf_(CAMUS_CONF_NAME), cmd_(cmd)
@@ -3131,21 +3537,8 @@ namespace camus
 
 		conf_.set_watch_mode(cmd_.watch);
 
-		inja_.add_callback("format_datetime", 1, [](const inja::Arguments &args) {
-			const int unix_ts = args.at(0)->get<int>();
-			return functions::format_time_t(unix_ts);
-		});
-
-		inja_.add_callback("format_date", 1, [](const inja::Arguments &args) {
-			const int unix_ts = args.at(0)->get<int>();
-			return functions::format_time_t(unix_ts, "%Y-%m-%d");
-		});
-
-		inja_.add_callback("with_prefix", 1, [&](const inja::Arguments &args) {
-			const std::string name = args.at(0)->get<std::string>();
-			return filesystem::clean_path(name, conf_.camus().public_url.path_prefix);
-		});
-
+		// 模板回调读取实时配置（配置重载后立即生效）。
+		setup_inja(inja_, [this]() { return conf_.camus().public_url.path_prefix; });
 	}
 
 	struct file_stamp {
@@ -3165,6 +3558,12 @@ namespace camus
 		constexpr uint16_t server_port = 3001;
 		const std::string server_addr = net::get_local_addr();
 		assert(!server_addr.empty());
+
+		// 控制面板接口（/__camus/*）：状态查询、立即构建、立即重建 PDF、查看 PDF。
+		register_watch_api();
+
+		// 构建期间接口可能等待较久（输出目录互斥），放宽写超时避免连接被提前关闭。
+		watch_server_.set_write_timeout(60);
 
 		std::thread server_thread([&]() {
 			watch_server_.set_mount_point("/", conf_.camus().dest_dir());
@@ -3206,6 +3605,18 @@ namespace camus
 		while (true) {
 			if (quit_) {
 				break;
+			}
+
+			// 控制面板请求：立即构建 / 立即重建 PDF。
+			// 由主循环统一执行，避免与主循环的构建并发。
+			if (manual_build_requested_.exchange(false)) {
+				logging::info("manual build requested by watch panel");
+				std::ignore = build();
+			}
+
+			if (manual_pdf_requested_.exchange(false)) {
+				logging::info("manual pdf build requested by watch panel");
+				start_pdf_build();
 			}
 
 			if (!std::filesystem::exists(watch_path)) {
@@ -3283,6 +3694,9 @@ namespace camus
 		if (server_thread.joinable()) {
 			server_thread.join();
 		}
+
+		// 退出前等待后台 PDF 构建结束，避免线程被强行终止。
+		wait_pdf_build();
 	}
 
 	int writer::check()
@@ -3684,6 +4098,9 @@ namespace camus
 
 	int writer::build()
 	{
+		// HTML 构建串行执行：监听主循环与控制面板触发的构建不能并发。
+		std::unique_lock build_guard(build_mutex_);
+
 		std::filesystem::current_path(cmd_.workdir);
 
 		if (cmd_.dryrun) {
@@ -3727,6 +4144,9 @@ namespace camus
 		emit_assets();
 		emit_pwa();
 
+		// 监听模式：确保输出目录存在控制面板脚本 watch.js。
+		ensure_watch_script();
+
 		const size_t html_files = pending_writes_.size();
 		size_t html_bytes = 0;
 		for (const auto &[path, content] : pending_writes_) {
@@ -3765,7 +4185,78 @@ namespace camus
 			html_elapsed
 		);
 
-		emit_pdf();
+		// 统计参与构建的文章数（控制面板展示内容数量）。
+		size_t article_count = 0;
+		catalog::traverse_catalog_tree(catalog_, [&](const catalog::catalog_node &node, int) {
+			if (node.is_directory() || node.path.extension() != ".md") {
+				return;
+			}
+
+			if (node.property.visibility != catalog::hidden) {
+				++article_count;
+			}
+		});
+
+		{
+			std::lock_guard guard(status_mutex_);
+			++status_.html_seq;
+			status_.html_time = std::time(nullptr);
+			status_.html_elapsed = html_elapsed;
+			status_.html_files = html_files;
+			status_.html_bytes = html_bytes;
+			status_.html_articles = article_count;
+		}
+
+		// html.copy_pdf：输出目录每次构建都会被清空，
+		// 这里把已生成的 PDF 重新复制到 HTML 输出根目录。
+		if (conf_.camus().html.copy_pdf) {
+			std::string pdf_source;
+			std::string pdf_name;
+			{
+				std::lock_guard guard(status_mutex_);
+				pdf_source = status_.pdf_path;
+				pdf_name = status_.pdf_file;
+			}
+
+			if (!pdf_source.empty() && !pdf_name.empty()) {
+				const std::filesystem::path target = conf_.camus().dest_dir() / pdf_name;
+				std::error_code copy_ec;
+				if (std::filesystem::exists(pdf_source, copy_ec) && !copy_ec &&
+					std::filesystem::copy_file(
+						pdf_source,
+						target,
+						std::filesystem::copy_options::overwrite_existing,
+						copy_ec
+					) &&
+					!copy_ec) {
+					logging::debug("pdf copied to html dest={}", target.string());
+				}
+			}
+		}
+
+		// ── PDF 构建 ──────────────────────────────
+		// PDF 在后台线程构建：监听模式只在首次构建时自动生成，
+		// 之后由控制面板手动触发；非监听模式等待构建完成再返回。
+		const std::string pdf_engine = strings::trim_space(conf_.camus().pdf.engine);
+		const bool pdf_enabled =
+			!pdf_engine.empty() && strings::to_lower(pdf_engine) != "disable" && !cmd_.dryrun;
+		if (pdf_enabled && (!cmd_.watch || !pdf_auto_started_)) {
+			if (cmd_.watch) {
+				pdf_auto_started_ = true;
+			}
+
+			// 释放构建锁：PDF 线程需要读取 HTML 输出目录（字体与样式）。
+			build_guard.unlock();
+
+			start_pdf_build();
+
+			if (!cmd_.watch) {
+				// 非监听模式：等待 PDF 构建完成后再退出。
+				wait_pdf_build();
+			}
+
+			build_guard.lock();
+		}
 
 		std::error_code cleanup_ec;
 		if (!remote_logo_path_.empty() && remote_logo_path_ != remote_cover_path_) {

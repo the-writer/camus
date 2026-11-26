@@ -25,7 +25,7 @@ camus [选项] [--workdir <目录>]
 |  | `--full` | 无 | 与 `--copy` 搭配时复制平台数据目录的完整资源树到 `.camus` | `main.cpp` |
 | `-f` | `--force` | 无 | `--copy` 时覆盖目标（`assets` 或 `--full` 的 `.camus`）中已存在的同名资源 | `main.cpp` |
 | `-d` | `--debug` | 无 | 开启调试日志 | `main.cpp:11` |
-| `-W` | `--watch` | 无 | 监听文件变化并自动重建，同时启动本地服务（隐含 `--build`） | `main.cpp:11` |
+| `-W` | `--watch` | 无 | 监听文件变化并自动重建，同时启动本地服务与控制面板（隐含 `--build`） | `main.cpp:11` |
 | `-D` | `--dryrun` | 无 | 干跑：不写任何输出文件 | `main.cpp:12` |
 | `-C` | `--check` | 无 | 校验配置、资源与 PDF 设置，并执行一次干跑构建后输出检查报告；不写文件 | `main.cpp` |
 |  | `--fix` | 无 | 仅配合 `--check`：自动补全文章缺失的 `title` / `create-time`（时间取文件创建时间，macOS 为 birth time，其它平台回退修改时间），并创建缺失的 `SUMMARY.md`；不改动格式错误（`(invalid)`）的文件；在 `Fixes:` 区块打印修复记录。`--fix` 未搭配 `--check` 时报错返回 1 | `main.cpp`、`writer.cpp` |
@@ -124,6 +124,7 @@ flowchart TD
 - `--repo` 在 `--workdir` 执行 `git -C <workdir> init -q`；提供远程地址时进一步执行 `git remote get-url origin`，已存在则 `remote set-url origin`，否则 `remote add origin`。无远程地址时只初始化。失败返回 1。
 - `--check` 在构建前执行：内部把 dryrun 置为 true，重新加载配置并执行一次干跑构建，然后输出工作目录、源目录、主题、资源、PDF 资源和目录树等检查信息；不写文件，结果以退出码 0（OK）/1（FAILED）表示。
 - `-W` 时即使首次 `build()` 返回非 0，也会进入 `watch()` 循环继续等待变化。
+- `-W` 会在页面右下角注入闪电悬浮控制面板（查看构建状态、立即构建、立即重建 PDF、查看 PDF）；PDF 只在首次构建时自动生成，之后只能由控制面板手动触发（详见 §7）。
 - `--open` 单独使用时直接打开目标目录并返回，不构建；与 `--build` 同用时仅在 `build()` 返回 0 后执行，且只执行一次：非 watch 模式在打开后按结果退出，watch 模式先打开再进入监听循环。
 - `--open project` 依次尝试 `code <workdir>` 与 macOS 的 `open -a "Visual Studio Code" <workdir>`；打开前校验工作目录是合法 camus 项目（含 `camus.yaml`），否则打印 `open failed: not a camus project` 并返回 1；打开成功后把「项目路径 + 项目名」写入 `<数据目录>/projects.json`（项目名 = 根目录注册的标题，见 §2.8）。
 - `--open runtime` 在 macOS 使用 `open <数据目录>`，其它平台使用 `xdg-open <数据目录>`；数据目录不存在时先自动创建（创建失败打印错误并返回 1），因此不再出现 `data dir not found`。打开失败打印错误并返回 1（watch 模式不退出）。

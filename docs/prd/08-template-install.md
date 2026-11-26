@@ -29,6 +29,7 @@
 ├── assets/                    # 默认静态资源（css/js/fonts/imgs/robots.txt 等）
 │   ├── css/style.css          # 公共样式入口，默认空文件
 │   ├── js/camus.js           # 公共脚本入口，默认空文件
+│   ├── js/watch.js           # 监听模式控制面板脚本（仅 -W 注入页面，详见 §7.4）
 │   └── fonts/                 # 站点与 PDF 共用的字体文件
 ├── posts/                     # 示例文章
 │   ├── SUMMARY.md              # 示例站点与目录元信息（可配置 PDF cover 与 HTML logo）

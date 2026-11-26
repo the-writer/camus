@@ -1,5 +1,11 @@
 #pragma once
 
+#include <atomic>
+#include <cstdint>
+#include <mutex>
+#include <string>
+#include <thread>
+
 #include "catalog.h"
 #include "httplib.h"
 #include "inja/inja.hpp"
@@ -38,6 +44,64 @@ namespace camus
 		bool time_desc = false;
 	};
 
+	// 监听控制面板展示的构建状态（由 writer 更新，经 /__camus/status 输出）。
+	struct watch_status {
+		// HTML 构建：每次完成递增 seq，前端据此判断需要刷新页面
+		uint64_t html_seq = 0;
+		time_t html_time = 0;
+		double html_elapsed = 0;
+		size_t html_files = 0;
+		size_t html_bytes = 0;
+		size_t html_articles = 0;
+
+		// PDF 构建状态
+		enum pdf_state : int { PDF_IDLE = 0, PDF_RUNNING = 1, PDF_DONE = 2, PDF_FAILED = 3 };
+
+		uint64_t pdf_seq = 0;
+		int pdf_status = PDF_IDLE;
+		time_t pdf_time = 0;
+		double pdf_elapsed = 0;
+		size_t pdf_articles = 0;
+		int pdf_pages = 0;
+		// 生成的 PDF 文件名（用户可通过 pdf.build 的 --print-to-pdf 自定义）
+		std::string pdf_file;
+		// 生成的 PDF 完整路径
+		std::string pdf_path;
+		std::string pdf_error;
+	};
+
+	// PDF 构建上下文：后台线程使用的一份状态快照，
+	// 避免 PDF 构建与主线程的 HTML 构建共享可变状态。
+	struct pdf_context {
+		// 配置快照（camus.yaml 解析结果）
+		config::camus_conf conf;
+		// 模板数据（配置的公开 JSON）
+		nlohmann::json public_json;
+		// 目录树快照
+		catalog::catalog_node catalog;
+		// 命令行参数
+		cmdline cmd;
+		// 独立模板引擎（回调只依赖快照，不引用主线程状态）
+		inja::Environment inja;
+		// 远程封面的本地副本（为空表示没有封面）
+		std::filesystem::path cover_path;
+	};
+
+	// PDF 构建结果
+	struct pdf_result {
+		bool success = false;
+		// 生成的 PDF 路径
+		std::filesystem::path path;
+		// 参与构建的文章数
+		size_t articles = 0;
+		// PDF 总页数
+		int pages = 0;
+		// 构建耗时（秒）
+		double elapsed = 0;
+		// 失败原因（成功时为空）
+		std::string error;
+	};
+
 	class writer
 	{
 		// 停止服务
@@ -63,9 +127,44 @@ namespace camus
 		// HTML 同层排序（html.sort，默认目录优先 + 时间倒序）
 		sort_spec html_sort_spec_{config::PDF_SORT_DIR_FIRST, true, true};
 
+		// HTML 构建互斥：串行化监听循环构建与控制面板触发的构建
+		std::mutex build_mutex_;
+		// PDF 构建线程（后台执行）与状态
+		std::thread pdf_thread_;
+		std::mutex pdf_thread_mutex_;
+		std::atomic<bool> pdf_running_{false};
+		// 构建状态快照（供控制面板读取）
+		std::mutex status_mutex_;
+		watch_status status_;
+		// 控制面板请求：立即构建 / 立即重建 PDF
+		std::atomic<bool> manual_build_requested_{false};
+		std::atomic<bool> manual_pdf_requested_{false};
+		// 监听模式：PDF 只在首次构建时自动生成，之后由控制面板手动触发
+		bool pdf_auto_started_ = false;
+
 		void add_write(const std::filesystem::path &path, std::string_view content);
 		void flush_writes();
 		void run_only_live(const std::function<void()> &func) const;
+		// 监听模式注入控制面板脚本（watch.js）
+		void inject_watch_script(std::string &html) const;
+		// 确保输出目录存在 watch.js（资源缺失时从数据目录补齐）
+		void ensure_watch_script() const;
+
+		// ── PDF 构建 ────────────────────────────────
+		// 在后台线程构建 PDF；已在构建时直接返回
+		void start_pdf_build();
+		// 等待后台 PDF 构建结束
+		void wait_pdf_build();
+		// 生成 PDF 构建上下文快照（读取主线程状态，需持有 build_mutex_）
+		pdf_context make_pdf_snapshot();
+
+		// ── 监听控制面板 ────────────────────────────
+		// 注册 /__camus/* 接口
+		void register_watch_api();
+		// 输出构建状态 JSON
+		nlohmann::json watch_status_json();
+		// 复制最新 PDF 到 HTML 输出目录，返回可访问的相对 URL
+		std::string export_pdf_to_html();
 
 		// ── emit_article 子阶段 ────────────────────────
 		void resolve_directory_routes();
@@ -100,7 +199,6 @@ namespace camus
 		// html.pwa=true 时生成各主题的 PWA manifest（name/icon 取自站点配置）。
 		void emit_pwa();
 		void prepare_remote_cover();
-		void emit_pdf();
 
 	  public:
 		explicit writer(const cmdline &cmd);
