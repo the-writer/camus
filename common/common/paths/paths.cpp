@@ -33,6 +33,19 @@ namespace camus::paths
 		return CAMUS_LOCAL_DATA_DIR;
 	}
 
+	std::filesystem::path runtime_dir()
+	{
+		// 安装包把主题与资源写进平台数据目录：取第一个包含 theme/ 的候选目录。
+		for (const auto &root : data_dirs()) {
+			std::error_code ec;
+			if (std::filesystem::is_directory(root / CAMUS_THEME_DIR, ec) && !ec) {
+				return root;
+			}
+		}
+
+		return data_dir();
+	}
+
 	std::filesystem::path find(const std::filesystem::path &relative_path)
 	{
 		for (const auto &root : data_dirs()) {

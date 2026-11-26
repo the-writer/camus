@@ -16,8 +16,9 @@
 - 常量来源：`config.h.in` 的 `CAMUS_DATA_DIR_MACOS`（`Library/Application Support/Camus`）与 `CAMUS_DATA_DIR_LINUX`（`/var/lib/camus`）。
 - `data_dirs()` 返回按优先级排列的候选目录；`find(relative)` 返回第一个存在的候选路径。
 - `source_data_dir()` 返回第一个同时包含 `theme/` 与 `assets/` 的数据目录，供 `-c` 使用。
+- `runtime_dir()` 返回**运行期目录**：候选数据目录中第一个包含 `theme/` 的目录（安装包写入主题的位置，macOS 用户域安装为 `~/Library/Application Support/Camus`，系统域安装为 `/Library/Application Support/Camus`）；没有候选目录包含 `theme/` 时回退到平台默认数据目录。`--open runtime` 打开的就是它，`projects.json` 也优先存放在它（不可写时回退到平台默认数据目录，见 §2.8）。
 - `paths::find(CAMUS_CONF_NAME)` 定位包含 `camus.yaml` 的数据目录，供 `-i` 使用。
-- 构建过程不会向数据目录写入；只有运行期状态 `projects.json`（已记录项目清单，见 §2.8）由 `--open` / `--project` 写入，目录不存在时自动创建。
+- 构建过程不会向数据目录写入；只有运行期状态 `projects.json`（已记录项目清单，见 §2.8）由 `--open` / `--project` 写入，存放目录不存在时自动创建（`--open runtime` 本身不会创建目录）。
 
 目录内容（由安装包写入）：
 
@@ -39,6 +40,8 @@
 ├── Justfile                   # 示例常用命令
 └── projects.json              # 运行期状态：已记录项目清单（由 --open / --project 写入，非安装包内容）
 ```
+
+- 上表中的目录即**运行期目录**（`paths::runtime_dir()`）：macOS 用户域安装为 `~/Library/Application Support/Camus`，系统域安装为 `/Library/Application Support/Camus`，Linux 为 `/var/lib/camus`；`--open runtime` 打开该目录，`projects.json` 也优先写入该目录。
 
 ## 8.2 安装与复制
 

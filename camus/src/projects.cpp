@@ -86,11 +86,31 @@ namespace camus::projects
 
 			return std::nullopt;
 		}
+
+		// 项目清单存放位置：优先运行期目录（安装包写入主题的目录，与 --open runtime 打开的一致）；
+		// 该目录不可写时（例如系统级安装）回退到平台默认数据目录。
+		std::filesystem::path resolve_store_file()
+		{
+			const std::filesystem::path runtime = paths::runtime_dir();
+			if (filesystem::path_writable(runtime)) {
+				return runtime / CAMUS_PROJECTS_FILE;
+			}
+
+			const std::filesystem::path fallback = paths::data_dir() / CAMUS_PROJECTS_FILE;
+			logging::warn(
+				"projects store fallback to data dir: runtime directory is not writable runtime={} store={}",
+				filesystem::path_abs(runtime),
+				filesystem::path_abs(fallback)
+			);
+
+			return fallback;
+		}
 	} // namespace
 
 	std::filesystem::path store_file()
 	{
-		return paths::data_dir() / CAMUS_PROJECTS_FILE;
+		static const std::filesystem::path file = resolve_store_file();
+		return file;
 	}
 
 	std::vector<project_record> load()

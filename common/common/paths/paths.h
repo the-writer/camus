@@ -10,6 +10,8 @@ namespace camus::paths
 	[[nodiscard]] std::filesystem::path data_dir();
 	// 候选数据目录，按优先级排列（macOS 会追加系统级 /Library/Application Support/Camus）
 	[[nodiscard]] std::vector<std::filesystem::path> data_dirs();
+	// 运行期目录：安装包写入主题与资源的目录（候选数据目录中第一个含 theme/ 的目录）；找不到时回退到平台默认数据目录
+	[[nodiscard]] std::filesystem::path runtime_dir();
 	// 工作目录下的本地资源目录 .camus（由 --install 生成）
 	[[nodiscard]] std::filesystem::path local_data_dir();
 	// 在候选数据目录下查找相对路径，返回第一个存在的路径；找不到返回空路径

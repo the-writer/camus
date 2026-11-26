@@ -18,6 +18,7 @@
 #define CAMUS_LOCAL_DATA_DIR ".camus"
 #define CAMUS_DATA_DIR_MACOS "Library/Application Support/Camus"
 #define CAMUS_DATA_DIR_LINUX "/var/lib/camus"
+#define CAMUS_THEME_DIR "theme"
 #define CAMUS_CONF_NAME "camus.yaml"
 #define CAMUS_SUMMARY_NAME "SUMMARY.md"
 #define CAMUS_SEARCH_INDEX_NAME "9f3a7c1e.bin"

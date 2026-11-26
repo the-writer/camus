@@ -110,24 +110,16 @@ namespace
 
 	int open_runtime()
 	{
-		const std::filesystem::path data_dir = camus::paths::data_dir();
+		// 运行期目录：安装包写入主题与资源的目录（不主动创建，避免打开空目录）。
+		const std::filesystem::path runtime = camus::paths::runtime_dir();
 
 		std::error_code ec;
-		if (!std::filesystem::exists(data_dir, ec) || ec) {
-			std::filesystem::create_directories(data_dir, ec);
-			if (ec) {
-				logging::error(
-					"open runtime failed: cannot create data dir path={} error={}",
-					data_dir.string(),
-					ec.message()
-				);
-				return 1;
-			}
-
-			logging::info("data dir created path={}", data_dir.string());
+		if (!std::filesystem::is_directory(runtime, ec) || ec) {
+			logging::error("open runtime failed: runtime directory not found path={}", filesystem::path_abs(runtime));
+			return 1;
 		}
 
-		const std::string path = shell_quote(data_dir.string());
+		const std::string path = shell_quote(filesystem::path_abs(runtime));
 
 #ifdef __APPLE__
 		const std::string command = "open " + path;
@@ -136,7 +128,7 @@ namespace
 #endif
 
 		if (run_command(command) != 0) {
-			logging::error("open runtime failed path={}", data_dir.string());
+			logging::error("open runtime failed path={}", filesystem::path_abs(runtime));
 			return 1;
 		}
 

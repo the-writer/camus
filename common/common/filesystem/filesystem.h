@@ -35,4 +35,6 @@ namespace filesystem
 	);
 	// 判断两个路径是否指向相同的文件
 	bool path_equal(const std::filesystem::path &p1, const std::filesystem::path &p2, const bool clean_check = false);
+	// 判断目录是否存在且当前用户可写
+	bool path_writable(const std::filesystem::path &path);
 } // namespace filesystem

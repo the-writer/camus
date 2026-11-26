@@ -43,6 +43,7 @@
 | `std::string path_abs(path)` | `absolute()` 后把 `//` 替换为 `/` |
 | `void empty_path(path, safe_check=false, auto_create=false)` | 递归删除；`safe_check` 时文件数 >200 触发 fatal；`auto_create` 删除后重建 |
 | `bool path_equal(p1, p2, clean_check=false)` | 先字符串比较，再 `equivalent`，失败则 `weakly_canonical`；`clean_check` 时再比较 `clean_path` |
+| `bool path_writable(path)` | 路径是已存在目录且当前用户对其可写（`access(W_OK)`）时返回 true；否则 false |
 
 ## 10.3 时间与随机 `functions`（`common/common/functions/functions.h`）
 
@@ -92,6 +93,7 @@
 |---|---|
 | `path data_dir()` | macOS 返回 `$HOME/Library/Application Support/Camus`（`$HOME` 缺失时回退 `/Library/Application Support/Camus`）；Linux 返回 `/var/lib/camus` |
 | `std::vector<path> data_dirs()` | 按优先级返回候选数据目录；macOS 追加系统级 `/Library/Application Support/Camus` |
+| `path runtime_dir()` | 运行期目录：候选数据目录中第一个包含 `theme/` 的目录（安装包写入主题的位置）；没有候选目录包含 `theme/` 时回退到 `data_dir()`。`--open runtime` 打开它，`projects.json` 也优先写入它 |
 | `path local_data_dir()` | 返回工作目录 `.camus`（`CAMUS_LOCAL_DATA_DIR`） |
 | `path find(relative_path)` | 在候选数据目录下查找相对路径，返回第一个存在的路径；找不到返回空路径 |
 | `path find_resource(relative_path)` | 先查 `.camus/relative`，再调用 `find`；找不到返回空路径 |
@@ -124,13 +126,14 @@
 | `CAMUS_LOCAL_DATA_DIR` | `.camus` | 工作目录本地资源目录 |
 | `CAMUS_DATA_DIR_MACOS` | `Library/Application Support/Camus` | macOS 用户数据目录（相对 `$HOME`） |
 | `CAMUS_DATA_DIR_LINUX` | `/var/lib/camus` | Linux 数据目录 |
+| `CAMUS_THEME_DIR` | `theme` | 主题目录名（`runtime_dir()` 以它判定安装包写入主题的目录） |
 | `CAMUS_CONF_NAME` | `camus.yaml` | 主配置文件名 |
 | `CAMUS_SUMMARY_NAME` | `SUMMARY.md` | 目录元信息文件名（源目录及子目录，扫描时跳过文章树） |
 | `CAMUS_SEARCH_INDEX_NAME` | `9f3a7c1e.bin` | 搜索索引 manifest 文件名 |
 | `CAMUS_SEARCH_PART_SIZE` | `32 * 1024` | 搜索索引分片大小（字节） |
 | `CAMUS_OPEN_TARGET_PROJECT` | `project` | `--open` 默认目标：VS Code 打开工作目录 |
-| `CAMUS_OPEN_TARGET_RUNTIME` | `runtime` | `--open` 目标：文件管理器打开数据目录 |
-| `CAMUS_PROJECTS_FILE` | `projects.json` | 数据目录中的项目清单文件名（已记录项目，见 §2.8） |
+| `CAMUS_OPEN_TARGET_RUNTIME` | `runtime` | `--open` 目标：文件管理器打开运行期目录 |
+| `CAMUS_PROJECTS_FILE` | `projects.json` | 项目清单文件名（优先位于运行期目录，不可写时回退数据目录，见 §2.8） |
 | `CAMUS_PRIVATE_DIR` | `private` | 不参与扫描的私有目录名 |
 | `CAMUS_PDF_THEME_DIR` | `theme/pdf` | PDF 模板与样式目录 |
 | `CAMUS_PDF_TEMPLATE_NAME` | `page.html` | PDF 中间 HTML 模板文件名 |

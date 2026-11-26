@@ -32,8 +32,8 @@ camus [选项] [--workdir <目录>]
 |  | `--new` | 目录字符串 | 创建目录（相对 `--workdir` 或绝对路径），自动执行 `--install`，并继续执行 `--repo`；不触发构建，除非同时指定 `--build` | `main.cpp` |
 | `--create` | 路径字符串 | 在源目录（`src/` 优先，其次 `posts/`）下创建文章：最后一级视为文件名（自动补 `.md`），缺失目录递归创建，并写入模板（`title`（文件名含 `-` 且出现过数字时取最后一个 `-` 之后的片段，否则用文件名）、当前 UTC 时间的 `create-time`，不再自动写入正文标题）；每个新建目录同时生成 `SUMMARY.md`（Front Matter 仅 `title: <目录名>`，目录名同样去除 `01-` 之类的排序前缀，已存在则不覆盖）；文件已存在时不覆盖。不触发构建 | `main.cpp` |
 |  | `--repo` | 可选值：远程地址 | 在 `--workdir` 执行 `git init`；提供值时设置 `origin`（已存在则更新），不提供时只 init | `main.cpp` |
-|  | `--open` | 可选值：`project`（默认）/`runtime`/`<项目 ID>`/`<项目名>` | 只打开目录，不触发构建：`project` 用 VS Code 打开工作目录（要求工作目录是合法 camus 项目，即含 `camus.yaml`；打开成功后把项目路径与项目名记录到 `<数据目录>/projects.json`），`runtime` 用系统文件管理器打开数据目录（目录不存在时自动创建），`<项目 ID>`（纯数字）或 `<项目名>` 打开已记录项目（数字未命中时报错返回 1）；其它未知值打印 WARN 并按 `project` 处理。与 `--build` 同用时构建成功后再打开 | `main.cpp`、`open.cpp` |
-|  | `--project` | 无 | 列出已记录项目的表格（ID / 名称 / 路径），数据来自 `<数据目录>/projects.json`；不触发构建 | `main.cpp`、`projects.cpp` |
+|  | `--open` | 可选值：`project`（默认）/`runtime`/`<项目 ID>`/`<项目名>` | 只打开目录，不触发构建：`project` 用 VS Code 打开工作目录（要求工作目录是合法 camus 项目，即含 `camus.yaml`；打开成功后把项目路径与项目名记录到 `<运行期目录>/projects.json`），`runtime` 用系统文件管理器打开运行期目录（安装包写入主题与资源的目录，目录不存在时不会自动创建，直接报错返回 1），`<项目 ID>`（纯数字）或 `<项目名>` 打开已记录项目（数字未命中时报错返回 1）；其它未知值打印 WARN 并按 `project` 处理。与 `--build` 同用时构建成功后再打开 | `main.cpp`、`open.cpp` |
+|  | `--project` | 无 | 列出已记录项目的表格（ID / 名称 / 路径），数据来自 `<运行期目录>/projects.json`；不触发构建 | `main.cpp`、`projects.cpp` |
 |  | `--delete` | 字符串（ID 或名称） | 仅配合 `--project`：删除对应记录（ID 为纯数字时按 ID 匹配，否则按名称匹配），删除后打印最新表格；未搭配 `--project` 或缺值时打印错误并返回 1 | `main.cpp`、`projects.cpp` |
 | `-w` | `--workdir` | 目录字符串，默认 `.` | 工作目录 | `main.cpp:14` |
 
@@ -126,9 +126,9 @@ flowchart TD
 - `-W` 时即使首次 `build()` 返回非 0，也会进入 `watch()` 循环继续等待变化。
 - `-W` 会在页面右下角注入闪电悬浮控制面板（查看构建状态、立即构建、立即重建 PDF、查看 PDF）；PDF 只在首次构建时自动生成，之后只能由控制面板手动触发（详见 §7）。
 - `--open` 单独使用时直接打开目标目录并返回，不构建；与 `--build` 同用时仅在 `build()` 返回 0 后执行，且只执行一次：非 watch 模式在打开后按结果退出，watch 模式先打开再进入监听循环。
-- `--open project` 依次尝试 `code <workdir>` 与 macOS 的 `open -a "Visual Studio Code" <workdir>`；打开前校验工作目录是合法 camus 项目（含 `camus.yaml`），否则打印 `open failed: not a camus project` 并返回 1；打开成功后把「项目路径 + 项目名」写入 `<数据目录>/projects.json`（项目名 = 根目录注册的标题，见 §2.8）。
-- `--open runtime` 在 macOS 使用 `open <数据目录>`，其它平台使用 `xdg-open <数据目录>`；数据目录不存在时先自动创建（创建失败打印错误并返回 1），因此不再出现 `data dir not found`。打开失败打印错误并返回 1（watch 模式不退出）。
-- `--open <ID>` / `--open <项目名>` 打开已记录项目：先按 ID（纯数字）或名称精确匹配 `<数据目录>/projects.json`，未命中时纯数字按错误处理（返回 1），其它值回退到 `project`；命中后校验目录存在且仍是合法 camus 项目，打开成功并刷新记录中的项目名。
+- `--open project` 依次尝试 `code <workdir>` 与 macOS 的 `open -a "Visual Studio Code" <workdir>`；打开前校验工作目录是合法 camus 项目（含 `camus.yaml`），否则打印 `open failed: not a camus project` 并返回 1；打开成功后把「项目路径 + 项目名」写入 `<运行期目录>/projects.json`（项目名 = 根目录注册的标题，见 §2.8）。
+- `--open runtime` 在 macOS 使用 `open <运行期目录>`，其它平台使用 `xdg-open <运行期目录>`；运行期目录是安装包写入主题与资源的目录（`paths::runtime_dir()`，见 §8.1），**不会自动创建**：目录不存在时打印 `open runtime failed: runtime directory not found` 并返回 1。打开失败打印错误并返回 1（watch 模式不退出）。
+- `--open <ID>` / `--open <项目名>` 打开已记录项目：先按 ID（纯数字）或名称精确匹配 `<运行期目录>/projects.json`，未命中时纯数字按错误处理（返回 1），其它值回退到 `project`；命中后校验目录存在且仍是合法 camus 项目，打开成功并刷新记录中的项目名。
 - `--project` 打印已记录项目表格（列：ID / 名称 / 路径，ID 与名称按显示宽度对齐）；记录为空时打印 `No project recorded.`。`--delete <ID|名称>` 先删除对应记录再打印表格；目标不存在或清单写入失败时打印错误并返回 1。
 
 ## 2.5 版本输出
@@ -189,7 +189,7 @@ camus --repo git@github.com:user/site.git               # git init 并设置 ori
 camus -D -v               # 版本信息（-D 对 -v 无影响）
 camus -dw /tmp/site --build # 调试日志 + 构建
 camus --open              # 在 VS Code 打开工作目录（不构建）
-camus --open runtime      # 用文件管理器打开数据目录（不构建）
+camus --open runtime      # 用文件管理器打开运行期目录（安装包写入主题的目录，不构建）
 camus --project           # 列出已记录的项目（ID / 名称 / 路径）
 camus --project --delete 1        # 删除 ID 为 1 的记录
 camus --project --delete "My Site" # 按名称删除记录
@@ -201,7 +201,7 @@ camus --open "My Site"     # 在 VS Code 打开名称为 My Site 的已记录项
 
 实现：`camus/src/projects.h`、`camus/src/projects.cpp`。
 
-- 位置：`<数据目录>/projects.json`（macOS `~/Library/Application Support/Camus`，Linux `/var/lib/camus`），常量 `CAMUS_PROJECTS_FILE`（`config.h.in`）。
+- 位置：`<运行期目录>/projects.json`，常量 `CAMUS_PROJECTS_FILE`（`config.h.in`）。运行期目录是安装包写入主题与资源的目录（`paths::runtime_dir()`，见 §8.1）：macOS 用户域安装为 `~/Library/Application Support/Camus`，系统域安装为 `/Library/Application Support/Camus`，Linux 为 `/var/lib/camus`。该目录不可写时（例如系统级安装）回退到平台默认数据目录，并打印 WARN 说明实际存放位置。
 - 结构：
 
 ```json

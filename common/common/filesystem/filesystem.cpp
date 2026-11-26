@@ -207,4 +207,14 @@ namespace filesystem
 
 		return check;
 	}
+
+	bool path_writable(const std::filesystem::path &path)
+	{
+		std::error_code ec;
+		if (!std::filesystem::is_directory(path, ec) || ec) {
+			return false;
+		}
+
+		return ::access(path.c_str(), W_OK) == 0;
+	}
 } // namespace filesystem
