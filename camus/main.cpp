@@ -17,18 +17,26 @@ namespace
 {
 	// cmdline 的带值选项会强制消费下一个参数，这里把可选值选项的裸写法归一化：
 	// 裸 --open 等价 --open=project，裸 --repo 等价 --repo=（只执行 git init），
-	// 裸 --theme 等价 --theme=（复制整个 theme 目录）。
+	// 裸 --theme 等价 --theme=（复制整个 theme 目录），
+	// 裸 --update 等价 --update=install（检查并安装最新 release）。
 	std::vector<std::string> normalize_optional_value_args(const int argc, char **argv)
 	{
 		std::vector<std::string> args;
 		for (int i = 0; i < argc; i++) {
 			const std::string current = argv[i];
-			if (current != "--open" && current != "--repo" && current != "--new" && current != "--theme") {
+			if (current != "--open" && current != "--repo" && current != "--new" && current != "--theme" &&
+				current != "--update") {
 				args.push_back(current);
 				continue;
 			}
 
-			std::string value = current == "--open" ? CAMUS_OPEN_TARGET_PROJECT : "";
+			std::string value;
+			if (current == "--open") {
+				value = CAMUS_OPEN_TARGET_PROJECT;
+			} else if (current == "--update") {
+				value = camus::update_mode_install;
+			}
+
 			if (i + 1 < argc) {
 				if (const std::string next = argv[i + 1]; !next.empty() && next.front() != '-') {
 					value = next;
@@ -57,8 +65,14 @@ int main(const int argc, char **argv)
 	arg.set_program_name("Great writer Camus");
 	arg.add("help", 'h', "print this help and exit");
 	arg.add("version", 'v', "print version and exit");
-	arg.add("update", 0, "download and install the latest GitHub release");
-	arg.add("check-update", 0, "check the latest GitHub release and print download link");
+	arg.add<std::string>(
+		"update",
+		0,
+		"check the latest GitHub release; value 'check' only prints the download link, 'install' downloads and "
+		"installs",
+		false,
+		""
+	);
 	arg.add<std::string>("new", 0, "create a new site directory and install the example files", false, "");
 	arg.add("copy", 'c', "copy resources into assets (or .camus with --full) from data dir");
 	arg.add<std::string>(
@@ -137,11 +151,7 @@ int main(const int argc, char **argv)
 	}
 
 	if (arg.exist("update")) {
-		return camus::run_update();
-	}
-
-	if (arg.exist("check-update")) {
-		return camus::check_update();
+		return camus::run_update_command(arg.get<std::string>("update"));
 	}
 
 	if (arg.exist("build") || arg.exist("check")) {

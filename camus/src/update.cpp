@@ -434,6 +434,21 @@ namespace camus
 		return 0;
 	}
 
+	int run_update_command(const std::string &mode)
+	{
+		if (mode.empty() || mode == update_mode_install) {
+			return run_update();
+		}
+
+		if (mode == update_mode_check) {
+			return check_update();
+		}
+
+		std::cout << "option --update: unknown value '" << mode << "' (expected " << update_mode_check << " or "
+				  << update_mode_install << ")" << std::endl;
+		return 1;
+	}
+
 	void run_update_detached(const bool install)
 	{
 		if (background_update.worker.joinable()) {

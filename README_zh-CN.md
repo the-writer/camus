@@ -59,8 +59,8 @@ mkdir my-site && cd my-site
 | `camus -W` | 监听文件变化并启动本地服务（隐含构建） |
 | `camus -D --build` | 干跑：解析与渲染，但不写文件 |
 | `camus --check` | 校验配置、资源与 PDF 设置，并执行干跑构建 |
-| `camus --check-update` | 检测最新 GitHub release 并输出下载链接（不下载、不安装） |
-| `camus --update` | 下载并安装最新 GitHub release |
+| `camus --update` | 检测最新 GitHub release，并下载安装 |
+| `camus --update check` | 只检测最新 GitHub release 并输出下载链接（不下载、不安装） |
 | `camus --new <dir>` | 创建站点目录并安装示例文件（含 AI 技能） |
 | `camus --create <path>` | 在 `src/` 或 `posts/` 下创建带初始模板的文章 `.md`（自动创建缺失目录；最后一级为文件名） |
 | `camus --repo [url]` | 执行 `git init`；提供地址时设置 `origin` |
