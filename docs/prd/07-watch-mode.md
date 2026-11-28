@@ -109,7 +109,7 @@ flowchart TD
 
 ```json
 {
-  "version": "19.4.0",
+  "version": "v{PROJECT_VERSION}",
   "html": {
     "seq": 3,
     "time": "2026-11-26 12:17:23",
