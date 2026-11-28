@@ -185,7 +185,7 @@ int main(const int argc, char **argv)
 
 		const bool agents_requested = arg.exist("new") || arg.exist("copy");
 		if (agents_requested) {
-			// AI 技能安装到源目录（src 或 posts）根部；先做冲突预检，
+			// AI 技能整体安装到项目根 .agents/；先做冲突预检，
 			// 放在其它复制动作之前，保证冲突时不会留下半安装状态。
 			// --copy 下工作目录已有根 AGENTS.md 时跳过该文件并报错（不覆盖用户文件）。
 			if (camus::check_agents(cmd.workdir, arg.exist("force"), arg.exist("copy")) != 0) {

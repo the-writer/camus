@@ -29,7 +29,7 @@
 // 运行期记录的项目清单文件（位于数据目录）
 #define CAMUS_PROJECTS_FILE "projects.json"
 #define CAMUS_PRIVATE_DIR "private"
-// AI 技能安装到源目录后，构建时与 private 一样强制忽略。
+// AI 技能安装到项目根 .agents/ 后，构建时与 private 一样强制忽略。
 #define CAMUS_AGENTS_FILE "AGENTS.md"
 #define CAMUS_AGENTS_DIR ".agents"
 #define CAMUS_PDF_THEME_DIR "theme/pdf"

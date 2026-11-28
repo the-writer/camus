@@ -41,9 +41,9 @@ namespace camus
 	// 缺失的父目录会被递归创建；文件已存在时不覆盖。返回 0 表示成功，非 0 表示失败
 	int create_article(const std::filesystem::path &workdir, const std::string &path);
 
-	// 把 AI 技能安装到源目录根部（优先已有 src，其次已有 posts，否则默认 posts）：
-	// SKILLS/AGENTS.md → <source>/AGENTS.md，SKILLS/<类型>/… → <source>/.agents/<类型>/…；
-	// SKILLS/AGENTS.root.md → <workdir>/AGENTS.md（短入口，提示先读源目录 AGENTS.md）。
+	// 把 AI 技能整体安装到项目根的 .agents/：
+	// SKILLS/AGENTS.md → <workdir>/.agents/AGENTS.md，SKILLS/<类型>/… → <workdir>/.agents/<类型>/…；
+	// SKILLS/AGENTS.root.md → <workdir>/AGENTS.md（短入口，提示先读 .agents/AGENTS.md）。
 	// 同名且内容不同的文件视为冲突，提示冲突路径并终止复制（不写入任何文件）；
 	// force 为真时覆盖同名文件。skip_existing_root_agents 为真（--copy）时，工作目录根部
 	// 已存在 AGENTS.md 则跳过该文件并打印错误，不覆盖用户文件。report 非空时追加本次复制结果。

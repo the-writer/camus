@@ -39,13 +39,12 @@ namespace
 	constexpr const char *copy_skipped_installed = "skipped (already installed)";
 	constexpr const char *copy_skipped_missing = "skipped (missing in source)";
 
-	// AI 技能：数据目录 SKILLS/ 下的 AGENTS.md 与类型子目录安装到源目录
-	// （优先已有 src，其次已有 posts，否则默认为 posts）根部：
-	// <source>/AGENTS.md、<source>/.agents/<类型>/…。
+	// AI 技能：数据目录 SKILLS/ 下的 AGENTS.md 与类型子目录整体安装到
+	// 项目根的 .agents/ 下：<workdir>/.agents/AGENTS.md、<workdir>/.agents/<类型>/…。
 	constexpr const char *skills_dir_name = "SKILLS";
 
 	// 项目根短入口：SKILLS/AGENTS.root.md 安装为 <workdir>/AGENTS.md，
-	// 只提示 AI 先读源目录（src/ 或 posts/）的 AGENTS.md。
+	// 只提示 AI 先读项目根 .agents/ 下的技能总纲。
 	constexpr const char *root_agents_file_name = "AGENTS.root.md";
 
 	// 目录 / 文件显示名：含 '-' 且出现过数字时，取最后一个 '-' 之后的片段，去掉 01- 之类的排序前缀。
@@ -176,27 +175,10 @@ This directory is excluded from builds.
 		return config.empty() ? std::filesystem::path{} : config.parent_path();
 	}
 
-	// 源目录探测与构建保持一致：优先 src，其次 posts；两者都不存在时默认 posts，
-	// 因为 --new 安装的示例内容在 posts/ 下。
-	std::filesystem::path agents_target_dir(const std::filesystem::path &workdir)
-	{
-		if (std::filesystem::is_directory(workdir / "src")) {
-			return workdir / "src";
-		}
-
-		if (std::filesystem::is_directory(workdir / "posts")) {
-			return workdir / "posts";
-		}
-
-		return workdir / "posts";
-	}
-
 	// 收集技能文件与目标路径的对应关系：项目根 AGENTS.md 落到工作目录根部，
-	// 源目录 AGENTS.md 落到源目录根部，其余子目录落到 <source>/.agents/<子目录>/ 下。
-	std::vector<std::pair<std::filesystem::path, std::filesystem::path>> collect_agents_files(
-		const std::filesystem::path &source, const std::filesystem::path &target_root,
-		const std::filesystem::path &workdir
-	)
+	// 技能总纲 AGENTS.md 与其余子目录整体落到 <workdir>/.agents/ 下。
+	std::vector<std::pair<std::filesystem::path, std::filesystem::path>>
+	collect_agents_files(const std::filesystem::path &source, const std::filesystem::path &workdir)
 	{
 		std::vector<std::pair<std::filesystem::path, std::filesystem::path>> files;
 
@@ -205,9 +187,10 @@ This directory is excluded from builds.
 			files.emplace_back(root_agents, workdir / CAMUS_AGENTS_FILE);
 		}
 
+		const std::filesystem::path agents_dir = workdir / CAMUS_AGENTS_DIR;
 		const std::filesystem::path agents_md = source / CAMUS_AGENTS_FILE;
 		if (std::filesystem::is_regular_file(agents_md)) {
-			files.emplace_back(agents_md, target_root / CAMUS_AGENTS_FILE);
+			files.emplace_back(agents_md, agents_dir / CAMUS_AGENTS_FILE);
 		}
 
 		for (const auto &entry : std::filesystem::directory_iterator(source)) {
@@ -215,7 +198,7 @@ This directory is excluded from builds.
 				continue;
 			}
 
-			const std::filesystem::path base = target_root / CAMUS_AGENTS_DIR / entry.path().filename();
+			const std::filesystem::path base = agents_dir / entry.path().filename();
 			for (const auto &file : std::filesystem::recursive_directory_iterator(entry.path())) {
 				if (std::filesystem::is_regular_file(file.path())) {
 					files.emplace_back(file.path(), base / std::filesystem::relative(file.path(), entry.path()));
@@ -574,7 +557,7 @@ namespace camus
 		}
 
 		try {
-			auto files = collect_agents_files(source, agents_target_dir(workdir), workdir);
+			auto files = collect_agents_files(source, workdir);
 			if (skip_existing_root_agents && !force) {
 				remove_root_agents(files, workdir);
 			}
@@ -597,8 +580,8 @@ namespace camus
 		}
 
 		try {
-			const std::filesystem::path target_root = agents_target_dir(workdir);
-			auto files = collect_agents_files(source, target_root, workdir);
+			const std::filesystem::path target_root = workdir;
+			auto files = collect_agents_files(source, target_root);
 			if (files.empty()) {
 				logging::warn("ai skills are empty, skip agents installation");
 				return 0;
@@ -649,7 +632,8 @@ namespace camus
 
 				std::filesystem::path key = to;
 				const std::filesystem::path relative = to.lexically_relative(agents_root);
-				if (!relative.empty() && !relative.generic_string().starts_with("..")) {
+				if (!relative.empty() && !relative.generic_string().starts_with("..") &&
+					relative != std::filesystem::path(CAMUS_AGENTS_FILE)) {
 					key = to.parent_path();
 				}
 
@@ -679,7 +663,7 @@ namespace camus
 
 			logging::info(
 				"agents installed at '{}' and '{}'",
-				filesystem::path_abs(target_root / CAMUS_AGENTS_FILE),
+				filesystem::path_abs(target_root / CAMUS_AGENTS_DIR / CAMUS_AGENTS_FILE),
 				filesystem::path_abs(target_root / CAMUS_AGENTS_DIR)
 			);
 		} catch (const std::exception &e) {

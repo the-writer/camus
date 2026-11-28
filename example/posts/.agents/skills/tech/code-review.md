@@ -27,7 +27,7 @@ visibility: hidden
 | 改动意图 | 作者想解决什么问题 | 缺失时先问，不要猜 |
 | 关联上下文 | 相关模块、调用方、需求 | 缺失时读代码推断 |
 | 仓库状态（可选） | 项目根有 `.git/` 时的 `git status`、diff 与基线提交 | 无 `.git/` 或 git 不可用时跳过，并在输出中说明 |
-| 记忆（可选） | 源目录下的 `.agents/memories/` 中的项目目标、偏好、文风、结构与连续性约定 | 目录或文件不存在时跳过，不视为错误 |
+| 记忆（可选） | 项目根 `.agents/memories/` 中的项目目标、偏好、文风、结构与连续性约定 | 目录或文件不存在时跳过，不视为错误 |
 
 ## 执行步骤
 
@@ -50,7 +50,7 @@ visibility: hidden
 | 来源 | 读取内容 | 用途 |
 |---|---|---|
 | `.git/` | `git status --short`、`git diff --stat`、`git diff`、`git diff --cached`、`git log -1 --oneline` | 确认改动范围、暂存状态与基线 |
-| 源目录下的 `.agents/memories/` | `project.md`、`preferences.md`、`style.md`、`outline.md`、`continuity.md` 等 | 对照项目目标、偏好、结构与连续性约定 |
+| 项目根 `.agents/memories/` | `project.md`、`preferences.md`、`style.md`、`outline.md`、`continuity.md` 等 | 对照项目目标、偏好、结构与连续性约定 |
 
 ### 规则
 
@@ -62,7 +62,7 @@ visibility: hidden
 
 ### 输入与输出
 
-- 输入：git 状态与 diff、当前任务说明、源目录下的 `.agents/memories/` 中的相关条目。
+- 输入：git 状态与 diff、当前任务说明、项目根 `.agents/memories/` 中的相关条目。
 - 输出：改动概览、与记忆的一致性、风险项、验证情况、明确结论。
 
 ## 评审清单
@@ -164,7 +164,7 @@ visibility: hidden
 
 - [ ] 先复述了改动意图再开始评审；
 - [ ] 项目有 `.git/` 时读取了 status、未暂存与已暂存 diff，并说明基线；
-- [ ] 项目有 `.git/` 时结合源目录下的 `.agents/memories/` 评价了改动与项目目标 / 偏好的一致性；
+- [ ] 项目有 `.git/` 时结合项目根 `.agents/memories/` 评价了改动与项目目标 / 偏好的一致性；
 - [ ] 按固定顺序覆盖了全部维度；
 - [ ] 每条评论有级别、位置、问题、建议；
 - [ ] 阻塞项确实阻塞（风格偏好不应升级为阻塞）；
