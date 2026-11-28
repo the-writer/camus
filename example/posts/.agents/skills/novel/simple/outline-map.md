@@ -27,6 +27,7 @@ visibility: hidden
 | 输入 | 说明 | 缺失时 |
 |---|---|---|
 | 记忆 | `.agents/memories/` 中的 `outline.md`、`characters.md`、`world.md`、`continuity.md` | 缺失时从正文与 `.workshop` 重建，并标注「推断」 |
+| 用户记忆（可选） | `.agents/memories/user/<用户>.md` 中的创作偏好、节奏与审美参照 | 不存在时跳过，不视为错误 |
 | 正文 | `posts/`（不存在则 `src/`）下的篇 / 章文件 | 无正文时按「只有大纲」模式分析，明确说明覆盖范围 |
 | 主 SUMMARY.md | 站点元信息与目录结构 | 缺失时只按文件路径与标题分析 |
 | `.workshop/`（可选） | 设定卡、地名、关系、候选与图谱 | 不存在时跳过，不视为错误 |
