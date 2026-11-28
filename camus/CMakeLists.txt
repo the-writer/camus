@@ -23,6 +23,24 @@ set_tests_properties(build-test-site PROPERTIES TIMEOUT 10)
 
 file(COPY_FILE "${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_BINARY_DIR}/LICENSE.txt")
 file(COPY_FILE "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_BINARY_DIR}/README.txt")
+# AI 技能包：example/posts/.agents/skills 是技能内容的唯一来源。
+# 构建期把技能复制到 pkg/SKILLS，安装包把它安装到与 theme 同一目录（平台数据目录），
+# 供 --new / --copy 把 AGENTS.md 与 .agents/ 分发到项目根目录。
+set(CAMUS_SKILLS_SOURCE "${CMAKE_SOURCE_DIR}/example/posts/.agents/skills")
+if (NOT IS_DIRECTORY "${CAMUS_SKILLS_SOURCE}")
+    message(FATAL_ERROR "AI skills directory not found path=${CAMUS_SKILLS_SOURCE}")
+endif ()
+
+set(CAMUS_SKILLS_PKG_DIR "${CMAKE_BINARY_DIR}/pkg/SKILLS")
+file(COPY "${CAMUS_SKILLS_SOURCE}/" DESTINATION "${CAMUS_SKILLS_PKG_DIR}")
+
+# 重新构建时刷新 pkg/SKILLS，保证技能内容与源码同步（先清空，避免已删除/移动的文件残留）。
+add_custom_target(camus-skills ALL
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${CAMUS_SKILLS_PKG_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${CAMUS_SKILLS_SOURCE}" "${CAMUS_SKILLS_PKG_DIR}"
+        COMMENT "Staging AI skills into pkg/SKILLS"
+)
+
 set(CPACK_PACKAGE_NAME "${CMAKE_PROJECT_NAME}")
 set(CPACK_PACKAGE_VERSION "${CMAKE_PROJECT_VERSION}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${CMAKE_PROJECT_DESCRIPTION}")
@@ -54,6 +72,7 @@ if (APPLE)
         install(DIRECTORY "${CMAKE_SOURCE_DIR}/example/theme" "${CMAKE_SOURCE_DIR}/example/assets"
                 "${CMAKE_SOURCE_DIR}/example/posts"
                 DESTINATION "${CAMUS_RESOURCE_DIR}")
+        install(DIRECTORY "${CAMUS_SKILLS_PKG_DIR}" DESTINATION "${CAMUS_RESOURCE_DIR}")
         install(FILES "${CMAKE_SOURCE_DIR}/example/camus.yaml" "${CMAKE_SOURCE_DIR}/example/.gitignore" "${CMAKE_SOURCE_DIR}/example/Justfile"
                 DESTINATION "${CAMUS_RESOURCE_DIR}")
     elseif (CPACK_GENERATOR MATCHES "productbuild")
@@ -69,6 +88,7 @@ if (APPLE)
         install(DIRECTORY "${CMAKE_SOURCE_DIR}/example/theme" "${CMAKE_SOURCE_DIR}/example/assets"
                 "${CMAKE_SOURCE_DIR}/example/posts"
                 DESTINATION "${CAMUS_RESOURCE_DIR}" COMPONENT Resources)
+        install(DIRECTORY "${CAMUS_SKILLS_PKG_DIR}" DESTINATION "${CAMUS_RESOURCE_DIR}" COMPONENT Resources)
         install(FILES "${CMAKE_SOURCE_DIR}/example/camus.yaml" "${CMAKE_SOURCE_DIR}/example/.gitignore" "${CMAKE_SOURCE_DIR}/example/Justfile"
                 DESTINATION "${CAMUS_RESOURCE_DIR}" COMPONENT Resources)
 
@@ -93,6 +113,7 @@ elseif (UNIX)
     install(DIRECTORY "${CMAKE_SOURCE_DIR}/example/theme" "${CMAKE_SOURCE_DIR}/example/assets"
             "${CMAKE_SOURCE_DIR}/example/posts"
             DESTINATION "${CAMUS_RESOURCE_DIR}")
+    install(DIRECTORY "${CAMUS_SKILLS_PKG_DIR}" DESTINATION "${CAMUS_RESOURCE_DIR}")
     install(FILES "${CMAKE_SOURCE_DIR}/example/camus.yaml" "${CMAKE_SOURCE_DIR}/example/.gitignore" "${CMAKE_SOURCE_DIR}/example/Justfile"
                 DESTINATION "${CAMUS_RESOURCE_DIR}")
 

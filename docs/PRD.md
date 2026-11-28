@@ -25,7 +25,7 @@
 - **模板引擎**：HTML 使用 inja，Markdown 使用 cmark-gfm；主题由 `theme/{name}/{home,page,stats,friends}.html` 组成，PDF 模板与样式位于 `theme/pdf/{page.html,style.css,fonts.css}`，字体使用站点 `assets/fonts/`，本地 `theme/` 可覆盖数据目录中的默认主题与 PDF 资源（详见 §5）。
 - **安全清理**：构建前清空输出目录；当输出目录文件数超过 200 时拒绝自动删除并以致命错误退出，避免误删（详见 §6.1）。
 - **干跑模式**：`-D/--dryrun` 下所有写文件操作被跳过，用于检查配置与渲染流程（详见 §6.9）。
-- **AI 技能库**：一套按项目类型（`blog` / `novel` / `website` / `tech` / `book`）组织的 Markdown 工作规范，随安装包放到平台数据目录 `SKILLS/`（与 `theme/` 同级）；`--new` / `--copy` 会把 `AGENTS.md` 与 `.agents/` 安装到项目根目录，同名且内容不同的文件会提示并终止复制（详见 §11）。
+- **AI 技能库与记忆**：一套按项目类型（`blog` / `novel` / `website` / `tech` / `book`，小说再分 `online` / `western-illusion` / `simple` 三个子类型）组织的 Markdown 工作规范，随安装包放到平台数据目录 `SKILLS/`（与 `theme/` 同级）；`--new` / `--copy` 会把 `AGENTS.md` 与 `.agents/` 安装到项目根目录，同名且内容不同的文件会提示并终止复制。项目类型不写在配置里，由 AI 首次运行时推断，并把需要跨会话保留的上下文按类别写入 `.agents/memories/`（详见 §11）。
 
 ## 文档清单与阅读指南
 
@@ -41,7 +41,7 @@
 | `docs/prd/08-template-install.md` | 8. 资源安装与数据目录 | 改动资源安装位置、数据目录解析、主题/资源查找时 |
 | `docs/prd/09-build-release.md` | 9. 构建、测试与发布 | 改动 CMake、Makefile、CTest、CPack、CI 时 |
 | `docs/prd/10-common-utilities.md` | 10. 公共模块与工具 | 改动字符串、文件、日志、网络、解压等公共能力时 |
-| `docs/prd/11-ai-skills.md` | 11. AI 技能库 | 改动技能内容、项目类型判定、技能安装位置或冲突处理时 |
+| `docs/prd/11-ai-skills.md` | 11. AI 技能库 | 改动技能内容、项目类型与小说子类型判定、技能安装位置、记忆目录或冲突处理时 |
 
 ## 变更类型 → 需同步文件
 
@@ -54,7 +54,7 @@
 | 改动输出文件、目录清理、dryrun 行为 | `06-output.md` |
 | 改动监听/本地服务、控制面板 | `07-watch-mode.md`；涉及 PDF 产物时同步 `06-output.md` |
 | 改动资源安装、数据目录、主题/资源解析 | `08-template-install.md`；必要时同步 `05-rendering.md`、`06-output.md` |
-| 改动技能内容、项目类型判定、技能安装位置或冲突处理 | `11-ai-skills.md`；涉及 CLI 行为时同步 `02-command-line.md`，涉及资源安装时同步 `08-template-install.md`，涉及打包时同步 `09-build-release.md` |
+| 改动技能内容、项目类型与小说子类型判定、技能安装位置、记忆目录或冲突处理 | `11-ai-skills.md`；涉及 CLI 行为时同步 `02-command-line.md`，涉及资源安装时同步 `08-template-install.md`，涉及打包时同步 `09-build-release.md` |
 | 改动构建脚本、测试、打包、CI、产物命名 | `09-build-release.md`；版本变更时同步本索引项目表与 `CMakeLists.txt` |
 | 改动公共函数签名/行为 | `10-common-utilities.md`；被调用章节同步 |
 | 版本号变更 | 本索引「项目表」与 `CMakeLists.txt`；AGENTS 与其它章节不写入具体版本号 |

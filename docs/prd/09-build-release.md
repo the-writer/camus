@@ -31,7 +31,7 @@
 
 - 静态库 `camus`（`src/*`）+ 可执行文件 `Camus`，输出名为 `camus`，目录 `${CMAKE_BINARY_DIR}/bin`。
 - 安装 `example/` 的 `theme/`（含 `theme/pdf/`）、`assets/`、`posts/`（含各目录的 `SUMMARY.md`）、`camus.yaml`、`.gitignore` 与 `Justfile` 到平台数据目录（Linux `var/lib/camus`，macOS `~/Library/Application Support/Camus`，见 §8.4）；macOS 可执行文件也装到该目录的 `bin/` 下。
-- AI 技能库：`docs/SKILLS`（指向 `example/posts/agents/skills` 的符号链接）经 `file(REAL_PATH)` 解析后复制到 `<构建目录>/pkg/SKILLS`，再安装到与 `theme/` 同级的数据目录 `SKILLS/`；`camus-skills` 自定义目标（`ALL`）在每次构建时刷新该目录。详见 §11.3。
+- AI 技能库：`example/posts/.agents/skills`（技能内容的唯一来源，真实路径）复制到 `<构建目录>/pkg/SKILLS`，再安装到与 `theme/` 同级的数据目录 `SKILLS/`；`camus-skills` 自定义目标（`ALL`）在每次构建时刷新该目录。详见 §11.3。
 - 注册 CTest `build-test-site`：在源码根目录执行 `${CMAKE_BINARY_DIR}/bin/camus -d site`，超时 10 秒。
 - CPack 配置见 §9.5。
 
