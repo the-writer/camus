@@ -24,13 +24,11 @@ visibility: hidden
 
 ## 输入
 
+> 记忆、用户记忆、正文、主 `SUMMARY.md`、`.workshop/` 等通用输入见 `.agents/shared/novel-map.md` §1；本表只列本子类型的补充输入。
+
 | 输入 | 说明 | 缺失时 |
 |---|---|---|
-| 记忆 | `.agents/memories/` 中的 `outline.md`、`characters.md`、`world.md`、`continuity.md` | 缺失时从正文与 `.workshop` 重建，并标注「推断」 |
-| 用户记忆（可选） | `.agents/memories/user/<用户>.md` 中的创作偏好、节奏与审美参照 | 不存在时跳过，不视为错误 |
 | 正文 | `posts/`（不存在则 `src/`）下的卷 / 章文件 | 无正文时按「只有大纲」模式分析，明确说明覆盖范围 |
-| 主 SUMMARY.md | 站点元信息与目录结构 | 缺失时只按文件路径与标题分析 |
-| `.workshop/`（可选） | 设定卡、地名、关系、候选与图谱 | 不存在时跳过，不视为错误 |
 | 分析目标 | 复盘、开新卷、查断线、交接 | 未指定时按「全景复盘 + 下一步建议」执行 |
 
 ## 执行步骤
@@ -42,7 +40,7 @@ visibility: hidden
 5. **对人物弧线**：对照 `characters.md` 与正文，标出主要人物的起点、当前状态、下一节点与最近出场章。
 6. **查地标与行程**：核对每个地标是否至少用两次、是否有中间地带、状态是否随剧情变化。
 7. **查势力与 BOSS 阶梯**：对照 `plot-outline.md`，检查每个阶段的势力与 BOSS 是否匹配、奖励是否兑现。
-8. **交叉核对 `.workshop`**：按下面的规则把设定卡、地名、关系与候选同正文、记忆对照，列出差异。
+8. **交叉核对 `.workshop`**：按 `.agents/shared/workshop.md` 的契约读取，按 `.agents/shared/novel-map.md` 的「`.workshop` 交叉核对」输出差异。
 9. **找缺口**：缺失阶段、一次性地标、闲置势力、临时新增规则、断线伏笔、长期失踪人物。
 10. **给下一步并回写**：输出 1–3 个可执行动作，按优先级排序；把进度与伏笔状态写回 `outline.md`，必要时补 `world.md` / `continuity.md`。
 
@@ -58,26 +56,6 @@ visibility: hidden
 | BOSS 阶梯 | 阶段 BOSS 表 + 正文章节 | 每阶段 1–2 场，强度与奖励匹配 | BOSS 与阶段不匹配、越阶击杀无代价 |
 | 人物弧线 | 人物卡 + 出场章 | 每卷至少一次可追溯的变化 | 长期不出场、变化无事件支撑 |
 | 伏笔 | 伏笔表 + 正文 | 埋点、推进、回收齐全 | 只埋不收、回收无铺垫 |
-
-## `.workshop` 交叉核对
-
-> `.workshop/` 是创作资产库，不是事实来源；存在时按下表读取，不存在时整节跳过。
-
-| 文件 | 提供什么 | 怎么用 |
-|---|---|---|
-| `project.md` | 项目总览、设定、总纲 / 章节清单 | 对照总纲与分析范围；它可能是计划，不等于正文进度 |
-| `sheets.md` | 设定卡：人物名、族群、性别、职业、籍贯、关系、备注 | 建人物与关系底账；按 `##` 分卡、`- 字段: 值` 取字段 |
-| `places.md` | 地名、族群、备注、结构 | 建地点底账，对照正文地标 |
-| `relations.md` | 来源 / 目标 / 关系类型 | 校验人物关系、阵营与图谱连线 |
-| `candidates.md` | 名称候选：族群、类型、性别、稀有度、字数、来源、收藏 | 找尚未使用的命名资产 |
-| `graph.md` | 节点数 / 连线数与快照 | 快速核对数量、孤儿节点与孤立设定 |
-| `preferences.md` | 生成规则与候选库筛选条件（JSON） | 只作生成偏好，不作情节事实 |
-| `sheets.ini` | 人物 / 候选速查（INI） | 与 `sheets.md` 交叉核对，冲突以 `sheets.md` 为准 |
-| `overview.md` | 可为空 | 空文件直接跳过 |
-
-**冲突优先级**：正文 > 用户新指令 > `.agents/memories/` > `.workshop/`。冲突处必须标注「正文与卡片不一致」并给出处理建议，不能静默采信任何一方。
-
-AI **只读** `.workshop/`，不修改这些文件；核对结论写回 `.agents/memories/`（`outline.md`、`characters.md`、`world.md`、`continuity.md`）。
 
 ## 输出格式
 
@@ -107,46 +85,22 @@ flowchart LR
 | 规则 | 首次出现 | 最近使用 | 代价 / 限制 | 是否被临时突破 |
 |---|---|---|---|---|
 
-## 线索台账
-| 编号 | 类型 | 线索 | 起点 | 最近推进 | 计划回收 | 状态 |
-|---|---|---|---|---|---|---|
-
-## 人物弧线
-| 人物 | 起点 | 当前状态 | 下一节点 | 最近出场 | 风险 |
-|---|---|---|---|---|---|
-
-## `.workshop` 交叉核对
-| 项 | 正文 / 记忆 | `.workshop` | 差异 | 处理 |
-|---|---|---|---|---|
-
-## 缺口与风险
-- <缺失阶段 / 一次性地标 / 闲置势力 / 临时规则 / 断线伏笔 / 失踪人物>
-
-## 下一步（1–3 件）
-1. <动作 + 优先级>
-
-## 待补输入
-- <缺什么，向谁要>
+## 公共块
+按 `.agents/shared/novel-map.md` 输出：线索台账、人物弧线、`.workshop` 交叉核对、缺口与风险、下一步、待补输入。
 ~~~
 
 ## 质量检查清单
 
-- [ ] 进度数据都有来源，未知项标了「未记录」，没有估算冒充统计；
 - [ ] 六阶段顺序与功能正确，缺失阶段或跳过阶段已标出；
 - [ ] 主线能从世界级目标一路追到当前章，断点位置明确；
 - [ ] 每个地标至少用过两次，且有中间地带与状态变化；
 - [ ] 魔法规则在正文中前后一致，临时突破已标为风险；
 - [ ] 势力与阶段 BOSS 匹配，奖励与代价都有兑现；
-- [ ] 每条支线与伏笔都记录了埋点、最近推进与回收状态；
-- [ ] `.workshop` 存在时已完成交叉核对，不存在时没有编造卡片内容；
-- [ ] 冲突按「正文 > 用户指令 > 记忆 > `.workshop`」处理并标注；
-- [ ] 「下一步」不超过 3 件，且按优先级排序。
+- [ ] 已按 `.agents/shared/novel-map.md` 的通用检查清单逐条自检。
 
 ## 参考资料
 
-- [Wikipedia：Narrative structure](https://en.wikipedia.org/wiki/Narrative_structure) —— 叙事结构的通用分层与术语
-- [Wikipedia：Plot (narrative)](https://en.wikipedia.org/wiki/Plot_(narrative)) —— 主线、支线与情节推进的定义
+通用参考见 `.agents/shared/novel-map.md` §4。
+
 - [Wikipedia：Story arc](https://en.wikipedia.org/wiki/Story_arc) —— 跨章节弧线与卷级结构
-- [Wikipedia：Character arc](https://en.wikipedia.org/wiki/Character_arc) —— 人物弧线的阶段与转折
-- [Wikipedia：Chekhov's gun](https://en.wikipedia.org/wiki/Chekhov%27s_gun) —— 伏笔埋设与回收的原则
 - [Wikipedia：Worldbuilding](https://en.wikipedia.org/wiki/Worldbuilding) —— 世界观设定与叙事一致性

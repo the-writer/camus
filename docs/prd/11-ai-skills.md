@@ -1,6 +1,6 @@
 # 11. AI 技能库
 
-> 实现：`example/posts/.agents/skills/`（技能内容唯一来源）、`camus/CMakeLists.txt`（打包）、`camus/src/install.h`、`camus/src/install.cpp`（`install_agents`）、`camus/main.cpp`（流程编排）。
+> 实现：`example/posts/.agents/skills/`（技能内容唯一来源）、`shared/`（公共片段）、`camus/CMakeLists.txt`（打包）、`camus/src/install.h`、`camus/src/install.cpp`（`install_agents`）、`camus/main.cpp`（流程编排）。
 
 ## 11.1 技能库构成
 
@@ -10,6 +10,7 @@
 example/posts/.agents/skills/         # 唯一来源（随示例内容分发，不参与构建）
 ├── AGENTS.root.md                    # 项目根短入口：提示先读 .agents/AGENTS.md
 ├── AGENTS.md                         # 总纲：强制工作流 + 类型判定 + 技能索引 + 通用规范
+├── shared/                           # 公共片段（通用规则 / 记忆 / .workshop / git 评审 / 小说公共块）
 ├── blog/                             # 6 个技能
 ├── website/                          # 6 个技能
 ├── tech/                             # 6 个技能
@@ -49,6 +50,7 @@ example/posts/.agents/skills/         # 唯一来源（随示例内容分发，�
 ### 11.1.2 内容来源唯一性
 
 - `example/posts/.agents/skills/` 是技能内容的**唯一来源**，直接由构建期复制到安装包，不使用符号链接。
+- `shared/` 是跨技能公共片段层：通用规则、记忆与用户画像、`.workshop` 契约、git 评审、小说脉络 / 人物 / 连续性公共块。技能文件只写自身特有内容，通用规则变化只改 `shared/`。
 - 技能文件（`AGENTS.md` 与各类型目录下的 `*.md`）带 Front Matter `visibility: hidden`；项目根短入口 `AGENTS.root.md` 不含 Front Matter（它只安装为项目根 `AGENTS.md`，不进入 `.agents/`）。此外构建会强制忽略任意 `.agents/` 目录与 `AGENTS.md` 文件（见 §4.1），因此技能内容不会出现在构建产物与目录页中。
 - 修改技能内容只需改 `example/posts/.agents/skills/` 下的文件，构建后自动同步到安装包。
 
@@ -128,6 +130,7 @@ flowchart TD
 |---|---|
 | `AGENTS.root.md` | `<workdir>/AGENTS.md`（短入口，提示先读 `.agents/AGENTS.md`） |
 | `AGENTS.md` | `<workdir>/.agents/AGENTS.md`（技能总纲） |
+| `shared/` 下的全部文件 | `<workdir>/.agents/shared/<文件>`（公共片段） |
 | `blog/`、`website/`、`tech/`、`book/` 下的全部文件 | `<workdir>/.agents/<类型>/<文件>` |
 | `novel/<子类型>/` 下的全部文件 | `<workdir>/.agents/novel/<子类型>/<文件>` |
 
@@ -173,14 +176,17 @@ flowchart TD
 1. 文件名 kebab-case，扩展名 `.md`，放在对应类型目录下；小说技能放在 `novel/<子类型>/` 下，子类型目录名固定为 `online` / `western-illusion` / `simple`。
 2. Front Matter 只写 `title` 与 `visibility: hidden`。
 3. 正文固定七段：用途 / 何时使用 / 输入 / 执行步骤 / 输出格式 / 质量检查清单 / 参考资料；**小说技能不再单独写 `## 创作进度` 一节**，进度回顾统一由总纲 `AGENTS.md` 的强制工作流规定（见 §11.7）。
-4. 「输入」表缺失项必须给出「缺失时」的处理方式（向用户索取）。
+4. 「输入」表只列本技能特有输入；记忆、用户记忆、正文、`SUMMARY.md`、`.workshop/` 等通用输入见 `shared/common.md` 与 `shared/novel-map.md`。缺失项必须给出「缺失时」的处理方式（向用户索取或标注假设）。
 5. 「输出格式」给出模板骨架，不写成成品文案。
-6. 「参考资料」只放已核验可达的链接，并写明链接提供什么。
-7. 涉及事实断言（数据、引文、版本、行为）不得编造；无法核实处标注「待核实」。
-8. 小说任务的进度回顾必须注明数据来源，取不到就写「未记录」；`.workshop/` 存在时按 §11.8 交叉核对，不存在时不视为错误。
-9. 评审 / 评价类技能在项目根存在 `.git/` 时，按 §11.9 读取当前改动并结合记忆做综合评价；git 只读，不自动提交。
+6. 「参考资料」只放已核验可达的链接，并写明链接提供什么；通用链接放 `shared/` 对应文件，技能只列特有链接。
+7. 涉及事实断言（数据、引文、版本、行为）不得编造；无法核实处标注「待核实」（见 `shared/common.md`）。
+8. 小说任务的进度回顾必须注明数据来源，取不到就写「未记录」；`.workshop/` 存在时按 `shared/workshop.md` 交叉核对，不存在时不视为错误。
+9. 评审 / 评价类技能在项目根存在 `.git/` 时，按 `shared/git-review.md` 读取当前改动并结合记忆做综合评价；git 只读，不自动提交。
+10. **通用规则不重复**：记忆与用户画像、`.workshop`、git 评审、小说脉络 / 人物 / 连续性公共块分别写入 `shared/` 对应文件；技能文件只写自身特有内容，引用相对路径。
 
 ## 11.6 记忆（项目根 `.agents/memories/`）
+
+> 实现：`example/posts/.agents/skills/shared/memory.md`（唯一细则来源）；本节描述行为，技能文件只引用该公共文件。
 
 AI 需要跨会话保留的信息，按类别写成独立文件放在**项目根**的 `.agents/memories/` 下；用户画像单独放在 `.agents/memories/user/`。总纲 `.agents/AGENTS.md` 规定首次运行先读、缺失时初始化、结束后按需写回。
 
@@ -321,7 +327,7 @@ AI 需要跨会话保留的信息，按类别写成独立文件放在**项目根
 
 ## 11.8 创作脉络与 `.workshop` 交叉分析
 
-> 实现：`example/posts/.agents/skills/novel/{online,western-illusion,simple}/outline-map.md`；`.workshop` 由外部「创作工坊 / Creation Workshop」维护，AI 只读。
+> 实现：`example/posts/.agents/skills/shared/workshop.md`（`.workshop` 契约）、`shared/novel-map.md`（公共输出）；`novel/{online,western-illusion,simple}/outline-map.md` 只写各自的结构与专项。`.workshop` 由外部「创作工坊 / Creation Workshop」维护，AI 只读。
 
 `outline-map` 是每个小说子类型的第 7 个技能：把「大纲 + 正文 + 记忆 + `.workshop`」合成一张可核对的创作地图，输出分卷 / 阶段推进、主线与支线台账、人物弧线、伏笔状态、设定资产使用情况与下一步建议。
 
@@ -358,7 +364,7 @@ AI 需要跨会话保留的信息，按类别写成独立文件放在**项目根
 
 ## 11.9 评价类技能的 git 综合评价
 
-> 实现：技能总纲 `AGENTS.md` §5.6；示例见 `tech/code-review.md` 与 `tech/architecture-review.md`。
+> 实现：`example/posts/.agents/skills/shared/git-review.md`（唯一细则来源）；`tech/code-review.md` 与 `tech/architecture-review.md` 只引用。
 
 评审 / 评价类技能（`code-review`、`architecture-review`、`*-audit`、`*-score`、`continuity-audit`、`readability-score` 等）在**项目根存在 `.git/`** 时，不能只评价用户贴出的片段，必须把「当前改动 + 仓库基线 + 记忆」合起来看。
 
