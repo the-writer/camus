@@ -7,7 +7,7 @@
 `build_catalog_tree(path, relative_path)`（`catalog.cpp:8`）从源目录 `source_dir` 递归扫描（源目录固定按 `src` → `posts` 探测，见 §3.2）：
 
 - 根节点 `path` 归一为 `/`；子节点 `path` 为相对源目录的路径。
-- **`private` 目录跳过**：任意层级中名为 `private` 的目录（常量 `CAMUS_PRIVATE_DIR`，定义于 `config.h.in`）不读取、不生成，也不进入目录树；用于存放不参与构建的本地私有内容。
+- **`private` 目录跳过**：任意层级中名为 `private` 的目录（常量 `CAMUS_PRIVATE_DIR`，定义于 `config.h.in`）不读取、不生成，也不进入目录树；用于存放不参与构建的本地私有内容。AI 读取与分析同样默认跳过（见 §11.2.5）。
 - **AI 技能目录与文件跳过**：任意层级中名为 `.agents` 的目录（`CAMUS_AGENTS_DIR`）与名为 `AGENTS.md` 的文件（`CAMUS_AGENTS_FILE`）同样强制忽略，不读取、不进入目录树、不渲染；因此安装在项目根的 `.agents/`（本就不在源目录扫描范围）与源目录内可能残留的同名目录都不会参与构建。
 - 普通文件：读入全部内容并按 `\n` 拆分为 `contents`（`read_file(..., true)`，整体两端空白会被裁剪）。源目录中的 `SUMMARY.md`（`CAMUS_SUMMARY_NAME`）是目录元信息文件，扫描时直接跳过，不进入目录树。
 - 目录：仅当「有子节点」或「目录非空」时加入（空目录被忽略）；加入的目录节点 `directory = true`。
