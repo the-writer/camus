@@ -31,6 +31,7 @@
 
 - 静态库 `camus`（`src/*`）+ 可执行文件 `Camus`，输出名为 `camus`，目录 `${CMAKE_BINARY_DIR}/bin`。
 - 安装 `example/` 的 `theme/`（含 `theme/pdf/`）、`assets/`、`posts/`（含各目录的 `SUMMARY.md`）、`camus.yaml`、`.gitignore` 与 `Justfile` 到平台数据目录（Linux `var/lib/camus`，macOS `~/Library/Application Support/Camus`，见 §8.4）；macOS 可执行文件也装到该目录的 `bin/` 下。
+- AI 技能库：`docs/SKILLS`（指向 `example/posts/agents/skills` 的符号链接）经 `file(REAL_PATH)` 解析后复制到 `<构建目录>/pkg/SKILLS`，再安装到与 `theme/` 同级的数据目录 `SKILLS/`；`camus-skills` 自定义目标（`ALL`）在每次构建时刷新该目录。详见 §11.3。
 - 注册 CTest `build-test-site`：在源码根目录执行 `${CMAKE_BINARY_DIR}/bin/camus -d site`，超时 10 秒。
 - CPack 配置见 §9.5。
 
@@ -83,8 +84,8 @@
 | Job | Runner | 主要步骤 | 产物 |
 |---|---|---|---|
 | `check-main` | `ubuntu-24.04` | 全量 checkout → `safe.directory` → `git fetch origin main` → 用 `merge-base --is-ancestor` 判断 tag 提交是否在 `main` 上，输出 `build` | `build=true/false` |
-| `build-ubuntu` | `ubuntu-24.04` 容器 | 仅当 `check-main` 判定 `build=true`：安装依赖（含 `mold`、`libssl-dev`、`zlib1g-dev`）→ submodule → `make package` → `dpkg -i` + `camus -v` + `camus --build -dw "$GITHUB_WORKSPACE/example"` + `camus -iw /tmp/site` + `camus -cw /tmp/site-copy` | `build/release/packages` |
-| `build-macos` | `macos-15` | 仅当 `check-main` 判定 `build=true`：brew 安装依赖（含 `openssl@3`，并设置 `PKG_CONFIG_PATH`）→ submodule → `make package` → `installer -pkg *.pkg -target CurrentUserHomeDirectory` + `sudo ln -sf "$HOME/Library/Application Support/Camus/bin/camus" /usr/local/bin/camus` + `camus -v` + `camus --build -dw "$GITHUB_WORKSPACE/example"` + `camus -iw /tmp/site` | `build/release/packages` |
+| `build-ubuntu` | `ubuntu-24.04` 容器 | 仅当 `check-main` 判定 `build=true`：安装依赖（含 `mold`、`libssl-dev`、`zlib1g-dev`）→ submodule → `make package` → `dpkg -i` + `camus -v` + `camus --build -dw "$GITHUB_WORKSPACE/example"` + `camus --new /tmp/site` + `camus -cw /tmp/site-copy` | `build/release/packages` |
+| `build-macos` | `macos-15` | 仅当 `check-main` 判定 `build=true`：brew 安装依赖（含 `openssl@3`，并设置 `PKG_CONFIG_PATH`）→ submodule → `make package` → `installer -pkg *.pkg -target CurrentUserHomeDirectory` + `sudo ln -sf "$HOME/Library/Application Support/Camus/bin/camus" /usr/local/bin/camus` + `camus -v` + `camus --build -dw "$GITHUB_WORKSPACE/example"` + `camus --new /tmp/site` | `build/release/packages` |
 | `release` | `ubuntu-24.04` | 仅在 tag 上运行：下载并合并产物 → 生成 `latest.json`（`version` / `tag` / `published_at` / `assets`）→ `softprops/action-gh-release` 发布（含 `latest.json` 与 `*.dmg/*.pkg/*.rpm/*.deb/*.exe`） | GitHub Release |
 | `pages` | `ubuntu-24.04` 容器 | 仅在 tag 上运行且 tag 提交位于 `main` 历史时部署：安装 git → 全量 checkout → `safe.directory` 后校验 tag 在 `main` → `actions/configure-pages` 取得 `base_url` 并经 `CAMUS_PUBLIC_URL` 注入 → 安装 deb → `camus --build -dw example`（`CAMUS_AUTO_CHECK_UPDATE=false`）→ 上传并部署 GitHub Pages | `example/dist/html` |
 

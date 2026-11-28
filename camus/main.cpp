@@ -59,9 +59,8 @@ int main(const int argc, char **argv)
 	arg.add("version", 'v', "print version and exit");
 	arg.add("update", 0, "download and install the latest GitHub release");
 	arg.add("check-update", 0, "check the latest GitHub release and print download link");
-	arg.add("install", 'i', "install camus.yaml, posts and .gitignore from data dir");
 	arg.add<std::string>("new", 0, "create a new site directory and install the example files", false, "");
-	arg.add("copy", 'c', "copy resources into .camus from data dir");
+	arg.add("copy", 'c', "copy resources into assets (or .camus with --full) from data dir");
 	arg.add<std::string>(
 		"theme",
 		0,
@@ -70,7 +69,7 @@ int main(const int argc, char **argv)
 		""
 	);
 	arg.add("full", 0, "copy the complete resource tree with --copy");
-	arg.add("force", 'f', "overwrite existing .camus when copying");
+	arg.add("force", 'f', "overwrite existing .camus or AGENTS.md/.agents when copying");
 	arg.add<std::string>(
 		"create",
 		0,
@@ -164,6 +163,7 @@ int main(const int argc, char **argv)
 			.watch = arg.exist("watch"),
 			.fix = arg.exist("fix"),
 		};
+		camus::copy_report copy_rows;
 
 		// 项目管理：打印已记录项目；--delete 先删除对应记录
 		if (arg.exist("project")) {
@@ -173,7 +173,15 @@ int main(const int argc, char **argv)
 			}
 		}
 
-		if (arg.exist("install") || arg.exist("new")) {
+		if (arg.exist("new") || arg.exist("copy")) {
+			// AI 技能安装到工作目录根部：存在同名且内容不同的文件时终止复制，
+			// 放在其它复制动作之前，保证冲突时不会留下半安装状态。
+			if (const int agents = camus::install_agents(cmd.workdir, arg.exist("force"), &copy_rows); agents != 0) {
+				return agents;
+			}
+		}
+
+		if (arg.exist("new")) {
 			if (const int installed = camus::install_templates(cmd.workdir); installed != 0) {
 				return installed;
 			}
@@ -185,12 +193,15 @@ int main(const int argc, char **argv)
 		}
 
 		if (arg.exist("copy")) {
-			const int copied = arg.exist("theme")
-								   ? camus::copy_theme(cmd.workdir, arg.get<std::string>("theme"), arg.exist("force"))
-								   : camus::copy_resources(cmd.workdir, arg.exist("force"), arg.exist("full"));
+			const int copied =
+				arg.exist("theme")
+					? camus::copy_theme(cmd.workdir, arg.get<std::string>("theme"), arg.exist("force"), &copy_rows)
+					: camus::copy_resources(cmd.workdir, arg.exist("force"), arg.exist("full"), &copy_rows);
 			if (copied != 0) {
 				return copied;
 			}
+
+			camus::print_copy_report(copy_rows);
 		}
 
 		if (arg.exist("repo")) {
@@ -214,8 +225,8 @@ int main(const int argc, char **argv)
 				return camus::open_target(arg.get<std::string>("open"), cmd.workdir);
 			}
 
-			const bool acted = arg.exist("install") || arg.exist("new") || arg.exist("copy") || arg.exist("repo") ||
-							   arg.exist("create") || arg.exist("project");
+			const bool acted = arg.exist("new") || arg.exist("copy") || arg.exist("repo") || arg.exist("create") ||
+							   arg.exist("project");
 			if (!acted) {
 				std::cout << arg.usage() << std::endl;
 			}

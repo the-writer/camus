@@ -43,7 +43,7 @@ Or create a new site in an empty directory:
 
 ```bash
 mkdir my-site && cd my-site
-/path/to/camus -i      # install example camus.yaml, posts (with SUMMARY.md, plus posts/private/), .gitignore and Justfile
+/path/to/camus --new .  # install example camus.yaml, posts (with SUMMARY.md, plus posts/private/), .gitignore and Justfile
 /path/to/camus --build # build
 ```
 
@@ -61,12 +61,11 @@ mkdir my-site && cd my-site
 | `camus --check` | Validate configuration, assets, PDF settings and run a dry build |
 | `camus --check-update` | Check the latest GitHub release and print the download link (no download/install) |
 | `camus --update` | Download and install the latest GitHub release |
-| `camus -i` | Install example `camus.yaml`, `posts` (with `SUMMARY.md`, plus `posts/private/`), `.gitignore` and `Justfile` |
-| `camus --new <dir>` | Create a site directory and install example files |
+| `camus --new <dir>` | Create a site directory and install example files (including AI skills) |
 | `camus --create <path>` | Create an article `.md` under `src/` or `posts/` with a starter template (missing directories are created; last segment is the file name) |
 | `camus --repo [url]` | Run `git init`; set `origin` when a URL is provided |
 | `camus --new <dir> --repo <url>` | Create, install and initialize git |
-| `camus -c` | Copy minimal editable resources (`assets/css/style.css`, `assets/js/camus.js`, empty `assets/fonts/`) into `./assets` |
+| `camus -c` | Copy minimal editable resources (`assets/css/style.css`, `assets/js/camus.js`, empty `assets/fonts/`) into `./assets`; skips example `posts/` when `src/` or `posts/` exists, then prints a result table |
 | `camus -c --full` | Copy the complete bundled resource tree into `./.camus` |
 | `camus -c --theme` | Copy the whole `theme/` directory into `./theme`, plus minimal `assets/` |
 | `camus -c --theme <name>` | Copy only `theme/<name>/` into `./theme/<name>`, plus minimal `assets/` |

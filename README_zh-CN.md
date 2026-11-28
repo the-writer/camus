@@ -43,7 +43,7 @@ cd example
 
 ```bash
 mkdir my-site && cd my-site
-/path/to/camus -i      # 安装示例 camus.yaml、posts（含 SUMMARY.md 与 posts/private/）、.gitignore 与 Justfile
+/path/to/camus --new .  # 安装示例 camus.yaml、posts（含 SUMMARY.md 与 posts/private/）、.gitignore 与 Justfile
 /path/to/camus --build # 构建
 ```
 
@@ -61,12 +61,11 @@ mkdir my-site && cd my-site
 | `camus --check` | 校验配置、资源与 PDF 设置，并执行干跑构建 |
 | `camus --check-update` | 检测最新 GitHub release 并输出下载链接（不下载、不安装） |
 | `camus --update` | 下载并安装最新 GitHub release |
-| `camus -i` | 安装示例 `camus.yaml`、`posts`（含 `SUMMARY.md` 与 `posts/private/`）、`.gitignore` 与 `Justfile` |
-| `camus --new <dir>` | 创建站点目录并安装示例文件 |
+| `camus --new <dir>` | 创建站点目录并安装示例文件（含 AI 技能） |
 | `camus --create <path>` | 在 `src/` 或 `posts/` 下创建带初始模板的文章 `.md`（自动创建缺失目录；最后一级为文件名） |
 | `camus --repo [url]` | 执行 `git init`；提供地址时设置 `origin` |
 | `camus --new <dir> --repo <url>` | 创建、安装并初始化 git |
-| `camus -c` | 把最小可编辑资源（`assets/css/style.css`、`assets/js/camus.js`，并创建空 `assets/fonts/`）复制到 `./assets` |
+| `camus -c` | 把最小可编辑资源（`assets/css/style.css`、`assets/js/camus.js`，并创建空 `assets/fonts/`）复制到 `./assets`；已有 `src/` 或 `posts/` 时跳过示例 `posts/`，完成后打印复制结果表格 |
 | `camus -c --full` | 把完整内置资源树复制到 `./.camus` |
 | `camus -c --theme` | 把整个 `theme/` 复制到 `./theme`，并创建最小 `assets/` |
 | `camus -c --theme <name>` | 把 `theme/<name>/` 复制到 `./theme/<name>`，并创建最小 `assets/` |

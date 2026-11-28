@@ -2,7 +2,7 @@
 
 实现：`camus/src/install.h`、`camus/src/install.cpp`、`common/common/paths/paths.h`、`common/common/paths/paths.cpp`、`camus/src/yaml_config.cpp`、`camus/src/writer.cpp`、`camus/CMakeLists.txt`。
 
-> 旧版的「单文件自包含」已移除：可执行文件不再追加示例压缩包。`-i/--install` 只把示例配置与文章安装到工作目录根部；`-c/--copy` 默认把最小资源骨架复制到工作目录 `assets/`，`-c --full` 才把完整资源复制到 `.camus`，`-c --theme [name]` 把整个或单个主题复制到 `theme/` 并补齐最小资源。
+> 旧版的「单文件自包含」已移除：可执行文件不再追加示例压缩包。`--new` 把示例配置与文章安装到工作目录根部；`-c/--copy` 默认把最小资源骨架复制到工作目录 `assets/`，`-c --full` 才把完整资源复制到 `.camus`，`-c --theme [name]` 把整个或单个主题复制到 `theme/` 并补齐最小资源。`--install` 已移除，示例文件安装仅由 `--new` 触发。
 
 ## 8.1 数据目录
 
@@ -17,7 +17,7 @@
 - `data_dirs()` 返回按优先级排列的候选目录；`find(relative)` 返回第一个存在的候选路径。
 - `source_data_dir()` 返回第一个同时包含 `theme/` 与 `assets/` 的数据目录，供 `-c` 使用。
 - `runtime_dir()` 返回**运行期目录**：候选数据目录中第一个包含 `theme/` 的目录（安装包写入主题的位置；macOS 安装包只装到当前用户域 `~/Library/Application Support/Camus`，旧版系统域安装为 `/Library/Application Support/Camus`）；没有候选目录包含 `theme/` 时回退到平台默认数据目录。`--open runtime` 打开的就是它，`projects.json` 也优先存放在它（不可写时回退到平台默认数据目录，见 §2.8）。
-- `paths::find(CAMUS_CONF_NAME)` 定位包含 `camus.yaml` 的数据目录，供 `-i` 使用。
+- `paths::find(CAMUS_CONF_NAME)` 定位包含 `camus.yaml` 的数据目录，供 `--new` 安装示例文件使用。
 - 构建过程不会向数据目录写入；只有运行期状态 `projects.json`（已记录项目清单，见 §2.8）由 `--open` / `--project` 写入，存放目录不存在时自动创建（`--open runtime` 本身不会创建目录）。
 
 目录内容（由安装包写入）：
@@ -27,6 +27,9 @@
 ├── theme/{default,document,pixel,terminal,tomato}/{home,page,stats,friends}.html
 ├── theme/{tomato,pixel}/search.html
 ├── theme/pdf/{page.html,style.css,fonts.css}   # PDF 模板、打印样式与字体样式
+├── SKILLS/                   # AI 技能库（与 theme 同级，见 §11.3）
+│   ├── AGENTS.md             # 技能总纲：项目类型判定流程与技能索引
+│   └── {blog,novel,website,tech,book}/*.md    # 30 个技能文件
 ├── assets/                    # 默认静态资源（css/js/fonts/imgs/robots.txt 等）
 │   ├── css/style.css          # 公共样式入口，默认空文件
 │   ├── js/camus.js           # 公共脚本入口，默认空文件
@@ -34,6 +37,7 @@
 │   └── fonts/                 # 站点与 PDF 共用的字体文件
 ├── posts/                     # 示例文章
 │   ├── SUMMARY.md              # 示例站点与目录元信息（可配置 PDF cover 与 HTML logo）
+│   ├── agents/skills/          # AI 技能在内容目录中的同源镜像（visibility: hidden，不参与构建）
 │   └── private/                # 不参与构建的私有内容目录（安装时自动创建，含 README.md）
 ├── camus.yaml                 # 示例配置
 ├── .gitignore                 # 示例忽略规则
@@ -46,9 +50,9 @@
 
 ## 8.2 安装与复制
 
-### 8.2.1 `-i/--install`（示例文件）
+### 8.2.1 `--new`（示例文件安装）
 
-`install_templates()` 从 `paths::find("camus.yaml")` 所在的数据目录，把以下内容复制到工作目录根部（已存在的同名路径跳过）：
+`install_templates()` 只由 `--new` 调用，从 `paths::find("camus.yaml")` 所在的数据目录，把以下内容复制到工作目录根部（已存在的同名路径跳过）：
 
 - `posts/`（含各目录的 `SUMMARY.md`）
 - `posts/private/`（不存在时也会自动创建，并写入说明用途的 `README.md`）
@@ -69,9 +73,10 @@ flowchart TD
 ```
 
 - 不会创建或修改 `.camus`。
-- 无论 `posts/` 是否已存在，都会确保 `<工作目录>/posts/private/` 存在，并在缺失时写入 `README.md`（`CAMUS_PRIVATE_DIR`）。
-- 工作目录不存在时自动创建（`create_directories`），因此 `-iw /tmp/site` 可直接用于全新目录。
+- 无论 `posts/` 是否已存在，都会确保 `<工作目录>/posts/private/` 存在，并在缺失时写入 `README.md`（`CAMUS_PRIVATE_DIR`）；这与 `--copy` 的「已有 `src/` / `posts/` 时跳过 posts」规则不同。
+- 工作目录不存在时自动创建（`create_directories`），因此 `--new /tmp/site` 可直接用于全新目录。
 - 成功后不退出；是否构建由 `--build`（或 `-W` / `--check` / `--open`）决定（见 §2.4）。
+- 执行前会先安装 AI 技能到工作目录根部（见 §8.2.4）；不打印复制结果表格。
 
 ### 8.2.2 `-c/--copy`（最小资源到 `assets/` / `--full` 完整资源到 `.camus`）
 
@@ -79,13 +84,14 @@ flowchart TD
 
 - 默认（最小）：只创建 `<workdir>/assets/css`、`assets/js` 与 `assets/fonts`，并从数据目录复制 `css/style.css`、`js/camus.js`；`fonts/` 只创建空目录（资源目录合并查找，无需复制内置字体）；目标文件已存在且未指定 `-f` 时跳过。
 - `--full`：把 `source_data_dir()` 的全部内容复制到 `<workdir>/.camus`。
+- 两种模式随后都会调用 `scaffold_workdir()` 补齐工作目录根部的示例文件；但 `--copy` 下若工作目录已存在 `src/` 或 `posts/`，则跳过 `posts`（也不创建 `posts/private/`），避免给已有源目录的项目注入示例文章。
 
 ```mermaid
 flowchart TD
     A[解析 source_data_dir] -->|无资源| X[报错, 返回 1]
     A -->|找到| F{--full?}
     F -->|否| M[创建 <workdir>/assets/css、js、fonts<br/>复制 style.css、camus.js；fonts 为空目录]
-    M --> S[补齐工作目录 posts/camus.yaml/.gitignore/Justfile<br/>确保 posts/private]
+    M --> S{工作目录已有 src/ 或 posts/?}
     F -->|是| B{.camus 已存在且非空?}
     B -->|否| D[创建 .camus 并复制全部文件]
     B -->|是且无 -f| W[WARN 已复制, 跳过复制]
@@ -93,15 +99,19 @@ flowchart TD
     D --> S
     C --> S
     W --> S
-    S --> OK[返回 0；构建由 --build 决定]
+    S -->|是| SK[跳过 posts 与 posts/private<br/>补齐 camus.yaml/.gitignore/Justfile]
+    S -->|否| SC[补齐 posts/camus.yaml/.gitignore/Justfile<br/>确保 posts/private]
+    SK --> OK[返回 0；构建由 --build 决定]
+    SC --> OK
 ```
 
 - 最小复制可重复执行：`-f` 覆盖已有的 `style.css` / `camus.js`，未指定时保留现有文件；`fonts/` 只确保存在，不写入内置字体，已有内容保留。
 - `--full` 下 `.camus` 已存在且非空、未指定 `-f`：打印 WARN，仅补齐工作目录根部示例文件，不覆盖 `.camus`。
 - `--full -f`：先删除 `.camus`（受 §6.1 的 >200 文件保护），再复制。
-- 复制完成后，对 `posts`、`camus.yaml`、`.gitignore`、`Justfile`：仅当工作目录根部不存在同名路径时才补齐；`posts/private/` 始终确保存在。
+- 复制完成后，对 `posts`、`camus.yaml`、`.gitignore`、`Justfile`：仅当工作目录根部不存在同名路径时才补齐；工作目录已有 `src/` 或 `posts/` 时跳过 `posts`，此时也不再创建 `posts/private/`；其余情况下 `posts/private/` 始终确保存在。
 - 工作目录不存在时由 `<workdir>/assets` 或 `<workdir>/.camus` 的 `create_directories` 一并创建。
 - 复制结果持久于磁盘；`-c` 成功后不会退出，是否构建由 `--build` 决定（见 §2.4）。
+- 执行前会先安装 AI 技能到工作目录根部（见 §8.2.4），完成后打印复制结果表格（见 §8.2.5）。
 
 ### 8.2.3 `-c --theme [name]`（复制主题与最小资源）
 
@@ -112,6 +122,7 @@ flowchart TD
 - 同时复制最小资源：`assets/css/style.css`、`assets/js/camus.js`，并创建空 `assets/fonts/`；不复制其他 assets，不补齐工作目录根部的 `posts` / `camus.yaml` / `.gitignore` / `Justfile`，也不受 `--full` 影响。
 - 不加 `-f` 时跳过目标中已存在的文件（可重复执行补齐缺失主题）；加 `-f` 时覆盖同名文件。
 - `--theme` 未搭配 `-c` 时打印错误并返回 1；主题名非法（绝对路径或含 `.` / `..`）时返回 1。
+- 完成后同样打印复制结果表格（见 §8.2.5），主题本身记为 `theme` 或 `theme/<name>` 一行。
 
 ```mermaid
 flowchart TD
@@ -127,6 +138,46 @@ flowchart TD
     W --> OK[返回 0；构建由 --build 决定]
     K --> OK
 ```
+
+### 8.2.4 AI 技能安装到工作目录根部（`-c` / `--new`）
+
+`install_agents()`（`camus/src/install.cpp`）把这套技能安装到**项目根目录**，供 AI 协作者直接读取：
+
+| 来源（数据目录 `SKILLS/`） | 目标（工作目录） |
+|---|---|
+| `AGENTS.md` | `<workdir>/AGENTS.md` |
+| `blog/`、`novel/`、`website/`、`tech/`、`book/` 下的全部文件 | `<workdir>/.agents/<类型>/<文件>` |
+
+- **触发时机**：`-c` 或 `--new` 存在时执行，且在其它复制动作之前；冲突时不会留下半安装状态。
+- **来源查找**：`paths::find_resource("SKILLS")` —— 先工作目录 `.camus/SKILLS`，再平台数据目录 `SKILLS`；两者都不存在时打印 WARN 并跳过（不影响其它安装动作）。
+- **冲突处理**：目标文件已存在且内容与来源一致 → 覆盖写入同内容（重复执行幂等）；内容不同且未指定 `-f/--force` → 打印冲突路径并终止复制，返回 1；指定 `-f/--force` → 覆盖写入。
+- **持久性**：`<workdir>/AGENTS.md` 与 `<workdir>/.agents/` 持久于磁盘；删除后可重新安装，被用户修改后需改名或使用 `--force`。
+- 技能内容、类型判定与总纲约定详见 §11。
+
+### 8.2.5 复制结果表格（`-c`）
+
+`-c`（含 `--full`、`--theme`）成功后由 `print_copy_report()` 在标准输出打印一张表格；`--new` 不打印。
+
+| 列 | 内容 |
+|---|---|
+| `Item` | 复制项的相对位置：`AGENTS.md`、`.agents/<类型>/<文件>`、`assets/css`、`assets/css/style.css`、`assets/js`、`assets/js/camus.js`、`assets/fonts`、`posts`、`posts/private`、`posts/private/README.md`、`camus.yaml`、`.gitignore`、`Justfile`、`.camus/<顶层条目>`、`theme`、`theme/<name>` |
+| `Result` | `copied` / `overwritten` / `created` / `kept` / `merged` / `skipped (exists)` / `skipped (source exists)` / `skipped (already installed)` / `skipped (missing in source)` |
+| `Target` | 目标绝对路径 |
+
+- 表格按 `Item` 与 `Result` 的显示宽度对齐；`Target` 贴左显示。示例：
+
+```text
+Copy result:
+Item                  Result                   Target
+-----------------------------------------------------
+assets/css            created                  /path/to/site/assets/css
+assets/css/style.css  copied                   /path/to/site/assets/css/style.css
+posts                 skipped (source exists)  /path/to/site/posts
+camus.yaml            copied                   /path/to/site/camus.yaml
+```
+
+- `skipped (source exists)` 仅用于 `-c` 且工作目录已有 `src/` 或 `posts/` 时的 `posts` 行；此时不创建 `posts/private/`。
+- 表格只反映本次命令的复制动作，不会因为资源已存在而改变函数返回码（仍返回 0）。
 
 ## 8.3 资源查找顺序
 
@@ -155,7 +206,7 @@ PDF 模板、样式与字体（`writer.cpp` 的 `read_pdf_theme_file()` / `copy_
 
 ## 8.4 安装位置（CPack）
 
-`camus/CMakeLists.txt` 安装 `example/` 下的 `theme/`、`assets/`、`posts/`（含各目录的 `SUMMARY.md`）、`camus.yaml`、`.gitignore` 与 `Justfile`，以及可执行文件：
+`camus/CMakeLists.txt` 安装 `example/` 下的 `theme/`、`assets/`、`posts/`（含各目录的 `SUMMARY.md`）、`camus.yaml`、`.gitignore` 与 `Justfile`，AI 技能库 `SKILLS/`（构建期从 `docs/SKILLS` 复制到 `<构建目录>/pkg/SKILLS`），以及可执行文件：
 
 | 平台 / 生成器 | 安装目标 |
 |---|---|
@@ -163,12 +214,15 @@ PDF 模板、样式与字体（`writer.cpp` 的 `read_pdf_theme_file()` / `copy_
 | macOS（productbuild） | 仅当前用户域：资源 → `Library/Application Support/Camus` → `~/Library/Application Support/Camus`；可执行文件 → `~/Library/Application Support/Camus/bin/camus`，由安装脚本建立 `/usr/local/bin/camus` 软链 |
 
 - 安装 `example/theme` 的整个目录，因此包含 `theme/pdf/{page.html,style.css,fonts.css}` 与 `example/assets`（含 `fonts/`）。
+- 安装 `example/posts` 的整个目录，因此包含 `posts/agents/skills/`（技能在内容目录中的同源镜像，不参与构建）。
+- `SKILLS/` 与 `theme/`、`assets/` 安装到同一目录（macOS productbuild 归入 `Resources` 组件），供 §8.2.4 分发到项目根目录；构建期通过 `file(REAL_PATH)` 解析 `docs/SKILLS` 符号链接，安装包内为真实文件。
 - macOS 通过 `CPACK_PRODUCTBUILD_DOMAINS` **只启用当前用户域**（`CPACK_PRODUCTBUILD_DOMAINS_USER=ON`，`..._ROOT` / `..._ANYWHERE=OFF`），因此 `installer -pkg <file> -target CurrentUserHomeDirectory` 会把整个包释放到当前用户目录；不再提供系统域安装。旧版系统域安装（`/Library/Application Support/Camus`）仍作为只读回退被 §8.1 的 `data_dirs()` 找到。
 - 安装完成后由 `scripts/install.sh` / `make install` / CI 执行 `sudo ln -sf "$HOME/Library/Application Support/Camus/bin/camus" /usr/local/bin/camus`，使 `camus` 在 PATH 中可用。
 - 卸载：`rm -f /usr/local/bin/camus`，删除 `~/Library/Application Support/Camus`，再 `pkgutil --forget io.github.the-writer.Camus.Runtime` / `...Resources`。
 
 ## 8.5 持久性
 
-- `-i` 安装的根部示例文件与 `posts/private/` 持久于工作目录；`-c` 最小复制持久于工作目录 `assets/`，`-c --theme` 持久于 `theme/`，`-c --full` 持久于 `.camus`；`-f` 可覆盖已有资源。
+- `--new` 安装的根部示例文件与 `posts/private/` 持久于工作目录；`-c` 最小复制持久于工作目录 `assets/`，`-c --theme` 持久于 `theme/`，`-c --full` 持久于 `.camus`；`-f` 可覆盖已有资源。
+- AI 技能安装的 `<workdir>/AGENTS.md` 与 `<workdir>/.agents/` 持久于工作目录；内容被修改后再次安装需 `--force` 覆盖，否则提示冲突并终止复制。
 - 数据目录中的资源由安装包持久化；升级安装包会覆盖同名文件。
 - 工作目录的 `theme/` 与 `./assets` 始终拥有最高优先级。

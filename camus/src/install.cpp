@@ -1,9 +1,12 @@
 #include "install.h"
 
+#include <algorithm>
 #include <ctime>
 #include <exception>
 #include <filesystem>
+#include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <build/build.h>
@@ -16,10 +19,30 @@
 
 namespace
 {
+	using camus::copy_report;
+	using camus::copy_row;
+
 	const std::vector<std::string> template_entries{"posts", "camus.yaml", ".gitignore", "Justfile"};
 	const std::vector<std::filesystem::path> minimal_asset_entries{
 		std::filesystem::path("css") / "style.css", std::filesystem::path("js") / "camus.js"
 	};
+
+	// 复制结果表格中的状态文案
+	constexpr const char *copy_copied = "copied";
+	constexpr const char *copy_overwritten = "overwritten";
+	constexpr const char *copy_created = "created";
+	constexpr const char *copy_kept = "kept";
+	constexpr const char *copy_merged = "merged";
+	constexpr const char *copy_skipped_exists = "skipped (exists)";
+	constexpr const char *copy_skipped_source = "skipped (source exists)";
+	constexpr const char *copy_skipped_installed = "skipped (already installed)";
+	constexpr const char *copy_skipped_missing = "skipped (missing in source)";
+
+	// AI 技能：数据目录 SKILLS/ 下的 AGENTS.md 安装到工作目录根部，
+	// 其余子目录（按项目类型划分）安装到工作目录下的 .agents/。
+	constexpr const char *skills_dir_name = "SKILLS";
+	constexpr const char *agents_dir_name = ".agents";
+	constexpr const char *agents_entry_name = "AGENTS.md";
 
 	// 目录 / 文件显示名：含 '-' 且出现过数字时，取最后一个 '-' 之后的片段，去掉 01- 之类的排序前缀。
 	std::string strip_order_prefix(std::string name)
@@ -40,59 +63,109 @@ This directory is excluded from builds.
 - Use it for local drafts, notes, and private assets.
 )";
 
-	void ensure_private_dir(const std::filesystem::path &workdir)
+	void add_copy_row(copy_report &report, std::string item, const char *result, const std::filesystem::path &target)
+	{
+		report.push_back(copy_row{std::move(item), result, target});
+	}
+
+	void ensure_private_dir(const std::filesystem::path &workdir, copy_report &report)
 	{
 		const std::filesystem::path dir = workdir / "posts" / CAMUS_PRIVATE_DIR;
+		const bool existed = std::filesystem::is_directory(dir);
 		std::filesystem::create_directories(dir);
+		add_copy_row(report, "posts/private", existed ? copy_kept : copy_created, dir);
 
 		const std::filesystem::path readme = dir / "README.md";
 		if (!std::filesystem::exists(readme)) {
 			filesystem::write_file(readme, private_readme);
+			add_copy_row(report, "posts/private/README.md", copy_created, readme);
+		} else {
+			add_copy_row(report, "posts/private/README.md", copy_kept, readme);
 		}
 	}
 
-	void scaffold_workdir(const std::filesystem::path &workdir, const std::filesystem::path &source_dir)
+	// preserve_source 为真（--copy）时，工作目录已存在 src/ 或 posts/ 就不再注入示例 posts。
+	void scaffold_workdir(
+		const std::filesystem::path &workdir, const std::filesystem::path &source_dir, const bool preserve_source,
+		copy_report &report
+	)
 	{
 		if (!workdir.empty()) {
 			std::filesystem::create_directories(workdir);
 		}
 
+		const bool has_source =
+			std::filesystem::is_directory(workdir / "src") || std::filesystem::is_directory(workdir / "posts");
+		const bool skip_posts = preserve_source && has_source;
+
 		for (const auto &name : template_entries) {
 			const std::filesystem::path source = source_dir / name;
 			const std::filesystem::path target = workdir / name;
 
-			if (!std::filesystem::exists(source) || std::filesystem::exists(target)) {
+			if (skip_posts && name == "posts") {
+				add_copy_row(report, name, copy_skipped_source, target);
+				continue;
+			}
+
+			if (!std::filesystem::exists(source)) {
+				add_copy_row(report, name, copy_skipped_missing, target);
+				continue;
+			}
+
+			if (std::filesystem::exists(target)) {
+				add_copy_row(report, name, copy_skipped_exists, target);
 				continue;
 			}
 
 			std::filesystem::copy(source, target, std::filesystem::copy_options::recursive);
+			add_copy_row(report, name, copy_copied, target);
 		}
 
-		ensure_private_dir(workdir);
+		if (!skip_posts) {
+			ensure_private_dir(workdir, report);
+		}
 	}
 
-	void
-	copy_minimal_assets(const std::filesystem::path &source, const std::filesystem::path &local_dir, const bool force)
+	void copy_minimal_assets(
+		const std::filesystem::path &source, const std::filesystem::path &local_dir, const bool force,
+		copy_report &report
+	)
 	{
 		const std::filesystem::path source_assets = source / "assets";
 		const std::filesystem::path target_assets = local_dir / "assets";
 
-		std::filesystem::create_directories(target_assets / "css");
-		std::filesystem::create_directories(target_assets / "js");
+		for (const std::string name : {"css", "js"}) {
+			const std::filesystem::path dir = target_assets / name;
+			const bool existed = std::filesystem::is_directory(dir);
+			std::filesystem::create_directories(dir);
+			add_copy_row(report, "assets/" + name, existed ? copy_kept : copy_created, dir);
+		}
 
 		for (const auto &relative : minimal_asset_entries) {
 			const std::filesystem::path from = source_assets / relative;
 			const std::filesystem::path to = target_assets / relative;
+			const std::string item = "assets/" + relative.generic_string();
 
-			if (!std::filesystem::exists(from) || (std::filesystem::exists(to) && !force)) {
+			if (!std::filesystem::exists(from)) {
+				add_copy_row(report, item, copy_skipped_missing, to);
+				continue;
+			}
+
+			const bool existed = std::filesystem::exists(to);
+			if (existed && !force) {
+				add_copy_row(report, item, copy_skipped_exists, to);
 				continue;
 			}
 
 			std::filesystem::copy_file(from, to, std::filesystem::copy_options::overwrite_existing);
+			add_copy_row(report, item, existed ? copy_overwritten : copy_copied, to);
 		}
 
 		// 字体目录采用合并查找，只需创建空目录让用户放入自己的字体，无需复制内置文件。
-		std::filesystem::create_directories(target_assets / "fonts");
+		const std::filesystem::path fonts = target_assets / "fonts";
+		const bool fonts_existed = std::filesystem::is_directory(fonts);
+		std::filesystem::create_directories(fonts);
+		add_copy_row(report, "assets/fonts", fonts_existed ? copy_kept : copy_created, fonts);
 	}
 
 	std::filesystem::path template_source_dir()
@@ -100,10 +173,65 @@ This directory is excluded from builds.
 		const std::filesystem::path config = camus::paths::find(CAMUS_CONF_NAME);
 		return config.empty() ? std::filesystem::path{} : config.parent_path();
 	}
+
+	// 收集技能文件与目标路径的对应关系：AGENTS.md 落到工作目录根部，
+	// 其余子目录落到 <workdir>/.agents/<子目录>/ 下。
+	std::vector<std::pair<std::filesystem::path, std::filesystem::path>>
+	collect_agents_files(const std::filesystem::path &source, const std::filesystem::path &workdir)
+	{
+		std::vector<std::pair<std::filesystem::path, std::filesystem::path>> files;
+
+		const std::filesystem::path agents_md = source / agents_entry_name;
+		if (std::filesystem::is_regular_file(agents_md)) {
+			files.emplace_back(agents_md, workdir / agents_entry_name);
+		}
+
+		for (const auto &entry : std::filesystem::directory_iterator(source)) {
+			if (!std::filesystem::is_directory(entry.path())) {
+				continue;
+			}
+
+			const std::filesystem::path base = workdir / agents_dir_name / entry.path().filename();
+			for (const auto &file : std::filesystem::recursive_directory_iterator(entry.path())) {
+				if (std::filesystem::is_regular_file(file.path())) {
+					files.emplace_back(file.path(), base / std::filesystem::relative(file.path(), entry.path()));
+				}
+			}
+		}
+
+		return files;
+	}
 } // namespace
 
 namespace camus
 {
+	void print_copy_report(const copy_report &report)
+	{
+		if (report.empty()) {
+			return;
+		}
+
+		size_t item_width = strings::get_display_width("Item");
+		size_t result_width = strings::get_display_width("Result");
+		for (const auto &row : report) {
+			item_width = std::max(item_width, strings::get_display_width(row.item));
+			result_width = std::max(result_width, strings::get_display_width(row.result));
+		}
+
+		const std::string header = strings::padding_left("Item", item_width) + "  " +
+								   strings::padding_left("Result", result_width) + "  Target";
+
+		std::cout << strings::coloring_bright_yellow("Copy result:") << std::endl;
+		std::cout << header << std::endl;
+		std::cout << std::string(strings::get_display_width(header), '-') << std::endl;
+
+		for (const auto &row : report) {
+			std::cout << strings::padding_left(row.item, item_width) << "  "
+					  << strings::padding_left(row.result, result_width) << "  " << filesystem::path_abs(row.target)
+					  << std::endl;
+		}
+	}
+
 	int install_templates(const std::filesystem::path &workdir)
 	{
 		const std::filesystem::path source = template_source_dir();
@@ -113,7 +241,8 @@ namespace camus
 		}
 
 		try {
-			scaffold_workdir(workdir, source);
+			copy_report ignored;
+			scaffold_workdir(workdir, source, false, ignored);
 			logging::info("templates installed at '{}'", filesystem::path_abs(workdir));
 		} catch (const std::exception &e) {
 			logging::error("install failed error={}", e.what());
@@ -123,7 +252,7 @@ namespace camus
 		return 0;
 	}
 
-	int copy_resources(const std::filesystem::path &workdir, const bool force, const bool full)
+	int copy_resources(const std::filesystem::path &workdir, const bool force, const bool full, copy_report *report)
 	{
 		const std::filesystem::path source = paths::source_data_dir();
 		if (source.empty()) {
@@ -131,14 +260,15 @@ namespace camus
 			return 1;
 		}
 
+		copy_report collected;
+		copy_report &rows = report ? *report : collected;
 		const std::filesystem::path local_dir = workdir / paths::local_data_dir();
 
 		try {
 			if (!full) {
 				// 最小资源复制到工作目录根部（assets/），作为本地覆盖层；仅 --full 使用 .camus。
-				copy_minimal_assets(source, workdir, force);
-				logging::info("minimal resources installed at '{}'", filesystem::path_abs(workdir / "assets"));
-				scaffold_workdir(workdir, source);
+				copy_minimal_assets(source, workdir, force, rows);
+				scaffold_workdir(workdir, source, true, rows);
 				return 0;
 			}
 
@@ -149,7 +279,8 @@ namespace camus
 					"resources already installed at '{}', use --force to overwrite",
 					filesystem::path_abs(local_dir)
 				);
-				scaffold_workdir(workdir, local_dir);
+				add_copy_row(rows, ".camus", copy_skipped_installed, local_dir);
+				scaffold_workdir(workdir, local_dir, true, rows);
 				return 0;
 			}
 
@@ -159,15 +290,22 @@ namespace camus
 
 			std::filesystem::create_directories(local_dir);
 			for (const auto &entry : std::filesystem::directory_iterator(source)) {
+				const std::filesystem::path target = local_dir / entry.path().filename();
+				const bool existed = std::filesystem::exists(target);
 				std::filesystem::copy(
 					entry.path(),
-					local_dir / entry.path().filename(),
+					target,
 					std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing
+				);
+				add_copy_row(
+					rows,
+					".camus/" + entry.path().filename().generic_string(),
+					existed ? copy_overwritten : copy_copied,
+					target
 				);
 			}
 
-			logging::info("resources installed at '{}'", filesystem::path_abs(local_dir));
-			scaffold_workdir(workdir, local_dir);
+			scaffold_workdir(workdir, local_dir, true, rows);
 		} catch (const std::exception &e) {
 			logging::error("install failed error={}", e.what());
 			return 1;
@@ -176,7 +314,7 @@ namespace camus
 		return 0;
 	}
 
-	int copy_theme(const std::filesystem::path &workdir, const std::string &name, const bool force)
+	int copy_theme(const std::filesystem::path &workdir, const std::string &name, const bool force, copy_report *report)
 	{
 		const std::filesystem::path source_root = paths::source_data_dir();
 		if (source_root.empty()) {
@@ -214,22 +352,28 @@ namespace camus
 
 		const std::filesystem::path target = workdir / "theme" / relative;
 
+		copy_report collected;
+		copy_report &rows = report ? *report : collected;
+
 		try {
 			std::filesystem::create_directories(target.parent_path());
+			const bool existed = std::filesystem::exists(target);
 
 			std::filesystem::copy_options options = std::filesystem::copy_options::recursive;
 			options |= force ? std::filesystem::copy_options::overwrite_existing
 							 : std::filesystem::copy_options::skip_existing;
 			std::filesystem::copy(source, target, options);
 
+			const std::string item = relative.empty() ? "theme" : "theme/" + relative.generic_string();
+			add_copy_row(rows, item, existed ? (force ? copy_overwritten : copy_merged) : copy_copied, target);
+
 			// --theme 同时复制最小资源骨架（css/style.css、js/camus.js、空 fonts/）到工作目录根部。
-			copy_minimal_assets(source_root, workdir, force);
+			copy_minimal_assets(source_root, workdir, force, rows);
 		} catch (const std::exception &e) {
 			logging::error("theme copy failed error={}", e.what());
 			return 1;
 		}
 
-		logging::info("theme copied from '{}' to '{}'", filesystem::path_abs(source), filesystem::path_abs(target));
 		return 0;
 	}
 
@@ -306,6 +450,79 @@ namespace camus
 			logging::info("article created at '{}'", filesystem::path_abs(target));
 		} catch (const std::exception &e) {
 			logging::error("create failed error={}", e.what());
+			return 1;
+		}
+
+		return 0;
+	}
+
+	int install_agents(const std::filesystem::path &workdir, const bool force, copy_report *report)
+	{
+		const std::filesystem::path source = paths::find_resource(skills_dir_name);
+		if (source.empty() || !std::filesystem::is_directory(source)) {
+			logging::warn("ai skills not found, skip agents installation");
+			return 0;
+		}
+
+		try {
+			const auto files = collect_agents_files(source, workdir);
+			if (files.empty()) {
+				logging::warn("ai skills are empty, skip agents installation");
+				return 0;
+			}
+
+			// 预检冲突：目标已存在且内容不同视为冲突，先全部检查完再决定是否复制，
+			// 避免出现「一半新文件 + 一半旧文件」的中间状态。
+			std::vector<std::filesystem::path> conflicts;
+			for (const auto &[from, to] : files) {
+				if (!std::filesystem::exists(to)) {
+					continue;
+				}
+
+				if (force || filesystem::read_file(from.string(), true) == filesystem::read_file(to.string(), true)) {
+					continue;
+				}
+
+				conflicts.push_back(to);
+			}
+
+			if (!conflicts.empty()) {
+				for (const auto &path : conflicts) {
+					logging::error("agents file already exists path={}", filesystem::path_abs(path));
+				}
+
+				logging::error(
+					"agents installation aborted: {} conflicting file(s), remove or rename them, "
+					"or run with --force to overwrite",
+					conflicts.size()
+				);
+				return 1;
+			}
+
+			for (const auto &[from, to] : files) {
+				const bool existed = std::filesystem::exists(to);
+				std::filesystem::create_directories(to.parent_path());
+				std::filesystem::copy_file(from, to, std::filesystem::copy_options::overwrite_existing);
+
+				if (!report) {
+					continue;
+				}
+
+				std::filesystem::path item = to.lexically_relative(workdir);
+				if (item.empty()) {
+					item = to.filename();
+				}
+
+				add_copy_row(*report, item.generic_string(), existed ? copy_overwritten : copy_copied, to);
+			}
+
+			logging::info(
+				"agents installed at '{}' and '{}'",
+				filesystem::path_abs(workdir / agents_entry_name),
+				filesystem::path_abs(workdir / agents_dir_name)
+			);
+		} catch (const std::exception &e) {
+			logging::error("agents installation failed error={}", e.what());
 			return 1;
 		}
 

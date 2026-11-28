@@ -17,7 +17,7 @@
 
 ## 核心设计
 
-- **外部资源安装**：主题、默认静态资源与示例模板由安装包放到平台数据目录（macOS 只装到当前用户域 `~/Library/Application Support/Camus`，可执行文件同目录 `bin/` 并软链到 `/usr/local/bin/camus`；Linux `/var/lib/camus`）；`-i` 安装示例文件与 `posts/private/`，`-c` 默认把最小资源骨架复制到工作目录 `assets/`，`-c --full` 把完整资源复制到 `.camus`，`-c --theme [name]` 把整个或单个主题复制到工作目录 `theme/`；静态资源按数据目录 → `.camus` → 本地 `./assets` 叠加（详见 §8）。
+- **外部资源安装**：主题、默认静态资源与示例模板由安装包放到平台数据目录（macOS 只装到当前用户域 `~/Library/Application Support/Camus`，可执行文件同目录 `bin/` 并软链到 `/usr/local/bin/camus`；Linux `/var/lib/camus`）；`--new` 安装示例文件与 `posts/private/`，`-c` 默认把最小资源骨架复制到工作目录 `assets/`，`-c --full` 把完整资源复制到 `.camus`，`-c --theme [name]` 把整个或单个主题复制到工作目录 `theme/`；静态资源按数据目录 → `.camus` → 本地 `./assets` 叠加（详见 §8）。
 - **流水线式构建**：`writer::build()` 依次执行 `emit_article → emit_toc → emit_friends → emit_sitemap → emit_assets → flush_writes`，所有文件写入先进入内存队列统一落盘；随后在**后台线程**按需调用 Chrome/Edge 生成 PDF（`build_pdf()`，使用构建前的状态快照），封面取自根 `SUMMARY.md` 的 `cover`（兼容旧键 `cover_image`），并注入可交互书签大纲。非监听模式等待 PDF 完成后才退出；监听模式只在首次构建时自动生成一次，之后由控制面板手动触发（详见 §1.4、§6、§7）。
 - **配置驱动**：`camus.yaml` 提供站点、输出、渲染、公开地址、友链与目录搬运配置，各目录下的 `SUMMARY.md` 提供目录页元信息（标题/副标题/描述）；配置每次构建重新加载（详见 §3）。源目录固定按 `src` → `posts` 探测，资源目录固定 `./assets`，输出固定 `./dist/html` 与 `./dist/pdf`。
 - **编辑/运行目录直达**：`--open` 在构建成功后用 VS Code 打开工作目录（要求工作目录是合法 camus 项目），`--open runtime` 用系统文件管理器打开**运行期目录**（安装包写入主题与资源的目录，不存在时不会自动创建）；打开成功的项目会记录到 `<运行期目录>/projects.json`（该目录不可写时回退到平台默认数据目录），`--project` 列出记录、`--open <ID|项目名>` 直接打开（详见 §2）。
@@ -25,6 +25,7 @@
 - **模板引擎**：HTML 使用 inja，Markdown 使用 cmark-gfm；主题由 `theme/{name}/{home,page,stats,friends}.html` 组成，PDF 模板与样式位于 `theme/pdf/{page.html,style.css,fonts.css}`，字体使用站点 `assets/fonts/`，本地 `theme/` 可覆盖数据目录中的默认主题与 PDF 资源（详见 §5）。
 - **安全清理**：构建前清空输出目录；当输出目录文件数超过 200 时拒绝自动删除并以致命错误退出，避免误删（详见 §6.1）。
 - **干跑模式**：`-D/--dryrun` 下所有写文件操作被跳过，用于检查配置与渲染流程（详见 §6.9）。
+- **AI 技能库**：一套按项目类型（`blog` / `novel` / `website` / `tech` / `book`）组织的 Markdown 工作规范，随安装包放到平台数据目录 `SKILLS/`（与 `theme/` 同级）；`--new` / `--copy` 会把 `AGENTS.md` 与 `.agents/` 安装到项目根目录，同名且内容不同的文件会提示并终止复制（详见 §11）。
 
 ## 文档清单与阅读指南
 
@@ -40,6 +41,7 @@
 | `docs/prd/08-template-install.md` | 8. 资源安装与数据目录 | 改动资源安装位置、数据目录解析、主题/资源查找时 |
 | `docs/prd/09-build-release.md` | 9. 构建、测试与发布 | 改动 CMake、Makefile、CTest、CPack、CI 时 |
 | `docs/prd/10-common-utilities.md` | 10. 公共模块与工具 | 改动字符串、文件、日志、网络、解压等公共能力时 |
+| `docs/prd/11-ai-skills.md` | 11. AI 技能库 | 改动技能内容、项目类型判定、技能安装位置或冲突处理时 |
 
 ## 变更类型 → 需同步文件
 
@@ -52,6 +54,7 @@
 | 改动输出文件、目录清理、dryrun 行为 | `06-output.md` |
 | 改动监听/本地服务、控制面板 | `07-watch-mode.md`；涉及 PDF 产物时同步 `06-output.md` |
 | 改动资源安装、数据目录、主题/资源解析 | `08-template-install.md`；必要时同步 `05-rendering.md`、`06-output.md` |
+| 改动技能内容、项目类型判定、技能安装位置或冲突处理 | `11-ai-skills.md`；涉及 CLI 行为时同步 `02-command-line.md`，涉及资源安装时同步 `08-template-install.md`，涉及打包时同步 `09-build-release.md` |
 | 改动构建脚本、测试、打包、CI、产物命名 | `09-build-release.md`；版本变更时同步本索引项目表与 `CMakeLists.txt` |
 | 改动公共函数签名/行为 | `10-common-utilities.md`；被调用章节同步 |
 | 版本号变更 | 本索引「项目表」与 `CMakeLists.txt`；AGENTS 与其它章节不写入具体版本号 |

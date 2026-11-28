@@ -68,7 +68,7 @@ jobs:
                     dpkg -i *.deb
                     camus -v
                     camus --build -dw "$GITHUB_WORKSPACE/example"
-                    camus -iw /tmp/site
+                    camus --new /tmp/site
                     camus -cw /tmp/site-copy
 
             -   name: Upload
@@ -114,7 +114,7 @@ jobs:
                     sudo ln -sf "$HOME/Library/Application Support/Camus/bin/camus" /usr/local/bin/camus
                     camus -v
                     camus --build -dw "$GITHUB_WORKSPACE/example"
-                    camus -iw /tmp/site
+                    camus --new /tmp/site
                     camus -cw /tmp/site-copy
 
             -   name: Upload artifact
