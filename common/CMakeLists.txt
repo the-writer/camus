@@ -14,6 +14,8 @@ file(GLOB SOURCES
         common/filesystem/*.cpp
         common/str/*.h
         common/str/*.cpp
+        common/table/*.h
+        common/table/*.cpp
         common/paths/*.h
         common/paths/*.cpp
         common/net/*.h

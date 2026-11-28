@@ -37,6 +37,7 @@
 #include "common/paths/paths.h"
 #include "common/render/render.h"
 #include "common/str/str.h"
+#include "common/table/table.h"
 #include "inja/inja.hpp"
 #include "pdf.h"
 #include "update.h"
@@ -1172,7 +1173,7 @@ namespace camus
 
 	void writer::add_write(const std::filesystem::path &path, std::string_view content)
 	{
-		if (cmd_.dryrun) {
+		if (cmd_.dryrun && !capture_writes_) {
 			return;
 		}
 
@@ -1189,6 +1190,15 @@ namespace camus
 
 	void writer::flush_writes()
 	{
+		if (cmd_.dryrun) {
+			// 干跑不落盘；--check 需要保留待写内容用于产物清单，其余场景直接丢弃。
+			if (!capture_writes_) {
+				pending_writes_.clear();
+			}
+
+			return;
+		}
+
 		for (const auto &[path, content] : pending_writes_) {
 			std::filesystem::create_directories(path.parent_path());
 
@@ -2188,7 +2198,7 @@ namespace camus
 
 	void writer::emit_toc()
 	{
-		if (cmd_.dryrun) {
+		if (cmd_.dryrun && !capture_writes_) {
 			return;
 		}
 
@@ -2466,32 +2476,10 @@ namespace camus
 
 		// manifest 由 emit_pwa() 统一生成；清理旧版静态 manifest 与按主题的图标。
 		std::error_code ec;
-		for (const char *name : {
-				 "manifest-tomato.webmanifest",
-				 "manifest-pixel.webmanifest",
-				 "manifest-document.webmanifest",
-				 "manifest-terminal.webmanifest",
-			 }) {
+		for (const auto &name : removed_asset_names()) {
 			std::filesystem::remove(dest_dir / name, ec);
 		}
-		for (const char *name : {
-				 "icon-tomato-192.png",
-				 "icon-tomato-512.png",
-				 "icon-pixel-192.png",
-				 "icon-pixel-512.png",
-				 "icon-document-192.png",
-				 "icon-document-512.png",
-				 "icon-terminal-192.png",
-				 "icon-terminal-512.png",
-			 }) {
-			std::filesystem::remove(dest_dir / "imgs" / name, ec);
-		}
 
-		// html.pwa=false：不生成 Service Worker 与 PWA 图标。
-		if (!conf_.camus().html.pwa) {
-			std::filesystem::remove(dest_dir / "sw.js", ec);
-			std::filesystem::remove(dest_dir / "imgs" / "pwa-icon.png", ec);
-		}
 		std::filesystem::remove(dest_dir / "imgs", ec); // 为空时才会删除
 
 		// 替换资源文件中的模板
@@ -2532,9 +2520,43 @@ namespace camus
 		);
 	}
 
+	std::vector<std::string> writer::removed_asset_names() const
+	{
+		std::vector<std::string> names{
+			"manifest-tomato.webmanifest",
+			"manifest-pixel.webmanifest",
+			"manifest-document.webmanifest",
+			"manifest-terminal.webmanifest",
+			"imgs/icon-tomato-192.png",
+			"imgs/icon-tomato-512.png",
+			"imgs/icon-pixel-192.png",
+			"imgs/icon-pixel-512.png",
+			"imgs/icon-document-192.png",
+			"imgs/icon-document-512.png",
+			"imgs/icon-terminal-192.png",
+			"imgs/icon-terminal-512.png",
+		};
+
+		// html.pwa=false：不生成 Service Worker 与 PWA 图标。
+		if (!conf_.camus().html.pwa) {
+			names.emplace_back("sw.js");
+			names.emplace_back("imgs/pwa-icon.png");
+		}
+
+		return names;
+	}
+
 	void writer::prepare_remote_cover()
 	{
 		if (cmd_.dryrun) {
+			// --check 需要与真实构建一致的渲染结果：只设置本地图片展示路径，不下载文件。
+			if (capture_writes_ && conf_.camus().html.download_logo) {
+				const std::string logo = strings::trim_space(conf_.camus().site.html_image());
+				if (is_remote_url(logo)) {
+					conf_.set_logo_display_path("logo" + remote_image_extension(logo));
+				}
+			}
+
 			return;
 		}
 
@@ -3657,6 +3679,95 @@ namespace camus
 		wait_pdf_build();
 	}
 
+	namespace
+	{
+		// 产物类型：按输出文件名与扩展名区分，便于在表格里快速识别渲染结果。
+		std::string output_type(const std::filesystem::path &relative)
+		{
+			const std::string name = relative.filename().string();
+			if (relative.extension() == ".html") {
+				if (name == "index.html") {
+					return relative.parent_path().empty() ? "home" : "toc";
+				}
+
+				if (name == "stats.html") {
+					return "stats";
+				}
+
+				if (name == "friends.html") {
+					return "friends";
+				}
+
+				if (name == "search.html") {
+					return "search";
+				}
+
+				return "page";
+			}
+
+			if (name == "sitemap.xml") {
+				return "sitemap";
+			}
+
+			if (name == "feed.xml") {
+				return "feed";
+			}
+
+			if (relative.extension() == ".webmanifest") {
+				return "manifest";
+			}
+
+			if (relative.extension() == ".bin") {
+				return "index";
+			}
+
+			if (!relative.empty() && *relative.begin() == "assets") {
+				return "asset";
+			}
+
+			return "file";
+		}
+
+		// 与磁盘上的文件比较渲染内容：文件不存在为 new，内容一致为 same，否则为 changed。
+		std::string compare_with_content(const std::filesystem::path &file, const std::string &content)
+		{
+			std::error_code ec;
+			if (!std::filesystem::is_regular_file(file, ec) || ec) {
+				return "new";
+			}
+
+			std::ifstream stream(file, std::ios::binary);
+			if (!stream.is_open()) {
+				return "changed";
+			}
+
+			const std::string existing((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+			return existing == content ? "same" : "changed";
+		}
+
+		std::string file_size_text(const uintmax_t bytes)
+		{
+			constexpr double unit = 1024.0;
+			if (static_cast<double>(bytes) >= unit * unit) {
+				return std::format("{:.1f} MB", static_cast<double>(bytes) / (unit * unit));
+			}
+
+			if (static_cast<double>(bytes) >= unit) {
+				return std::format("{:.1f} KB", static_cast<double>(bytes) / unit);
+			}
+
+			return std::format("{} B", bytes);
+		}
+
+		std::string file_time_text(const std::filesystem::file_time_type &time)
+		{
+			const std::chrono::system_clock::time_point sys_point =
+				std::chrono::time_point_cast<std::chrono::system_clock::duration>(std::chrono::file_clock::to_sys(time)
+				);
+			return functions::format_time_t(std::chrono::system_clock::to_time_t(sys_point), "%Y-%m-%d %H:%M:%S");
+		}
+	} // namespace
+
 	int writer::check()
 	{
 		cmd_.dryrun = true;
@@ -3673,6 +3784,8 @@ namespace camus
 		};
 
 		const logging::logging_level previous_level = logging::set_level(logging::ERROR_LEVEL);
+		// 干跑构建记录待写文件（不落盘），用于输出最终渲染产物清单
+		capture_writes_ = true;
 		const int build_code = build();
 		logging::set_level(previous_level);
 
@@ -3926,90 +4039,204 @@ namespace camus
 
 		const auto count_text = [](const int value) { return value < 0 ? std::string("-") : std::to_string(value); };
 
-		const auto row = [](const std::string &name, const std::string &value) {
-			std::cout << "  " << std::format("{:<10}", name) << value << '\n';
+		// ── 汇总表 ──────────────────────────────────────────────
+		table::print(
+			"Check:",
+			{"Item", "Value"},
+			{
+				{"workdir", cmd_.workdir.string()},
+				{"source", camus.source_dir.string()},
+				{"theme", camus.render.theme_name},
+				{"public", camus.public_url.url.empty() ? "(none)" : camus.public_url.url},
+				{"output", camus.dest_dir().string()},
+				{"assets",
+				 std::format(
+					 "local={} .camus={} data={}",
+					 count_text(user_assets),
+					 count_text(local_assets),
+					 count_text(data_assets)
+				 )},
+				{"pdf", pdf_state},
+				{"catalog",
+				 std::format(
+					 "dirs={} articles={} hidden={} hidden_in_toc={} words={}",
+					 directories,
+					 articles,
+					 hidden,
+					 hidden_in_toc,
+					 words
+				 )},
+				{"build", build_code == 0 ? "ok (dry-run)" : std::format("failed code={}", build_code)},
+			}
+		);
+
+		// ── 最终渲染产物 ────────────────────────────────────────
+		const std::filesystem::path dest_dir = std::filesystem::absolute(camus.dest_dir());
+
+		struct output_row {
+			std::string type;
+			std::string status;
+			std::string size;
 		};
 
-		std::cout << '\n' << strings::coloring_bright_yellow("Check:") << '\n';
-		row("workdir", cmd_.workdir.string());
-		row("config", (cmd_.workdir / CAMUS_CONF_NAME).string());
-		row("source", camus.source_dir.string());
-		row("theme", camus.render.theme_name);
-		row("site", camus.site.title);
-		row("public", camus.public_url.url.empty() ? "(none)" : camus.public_url.url);
-		row("output", camus.dest_dir().string());
-		row("assets",
-			std::format(
-				"local={} .camus={} data={}",
-				count_text(user_assets),
-				count_text(local_assets),
-				count_text(data_assets)
-			));
-		row("pdf", pdf_state);
-		row("catalog",
-			std::format(
-				"dirs={} articles={} hidden={} hidden_in_toc={} words={}",
-				directories,
-				articles,
-				hidden,
-				hidden_in_toc,
-				words
-			));
-		row("build", build_code == 0 ? "ok (dry-run)" : std::format("failed code={}", build_code));
+		std::map<std::string, output_row> outputs;
 
-		size_t max_width = 0;
-		catalog::traverse_catalog_tree(catalog_, [&](const catalog::catalog_node &node, int) {
-			max_width = std::max(max_width, strings::get_display_width(node.path.generic_string()));
-		});
-
-		std::cout << '\n' << strings::coloring_bright_yellow("Catalog:") << '\n';
-		catalog::traverse_catalog_tree(catalog_, [&](const catalog::catalog_node &node, const int depth) {
-			std::string tag = "[page]";
-			if (node.is_directory()) {
-				tag = "[dir ]";
-			} else if (node.property.visibility == catalog::hidden) {
-				tag = "[hide]";
-			} else if (node.property.visibility == catalog::hidden_in_toc) {
-				tag = "[toc-]";
+		for (const auto &[path, content] : pending_writes_) {
+			const std::filesystem::path relative = path.lexically_relative(dest_dir);
+			const std::string relative_path = relative.generic_string();
+			if (relative_path.empty() || relative_path.starts_with("..")) {
+				continue;
 			}
 
-			const std::string indent(depth == 0 ? 0 : (depth - 1) * 2, ' ');
-			const std::string path =
-				strings::padding_left(node.path.empty() ? "/" : node.path.generic_string(), max_width);
-			std::cout << "  " << tag << " " << indent << path << " -> " << node.link_url().string() << '\n';
+			outputs[relative_path] = {
+				output_type(relative),
+				compare_with_content(dest_dir / relative, content),
+				file_size_text(content.size())
+			};
+		}
+
+		// 资源文件按「数据目录 → .camus/assets → 本地 assets」叠加后提升到输出根目录。
+		// 构建在扫描/渲染阶段失败时不会执行到资源输出，故仅在构建成功时列出。
+		std::map<std::string, std::filesystem::path> asset_sources;
+		const std::vector<std::filesystem::path> asset_dirs{
+			paths::resource_assets_dir(),
+			paths::local_data_dir() / "assets",
+			camus.assets_dir
+		};
+
+		for (const auto &dir : asset_dirs) {
+			if (build_code != 0 || dir.empty()) {
+				continue;
+			}
+
+			std::error_code ec;
+			if (!std::filesystem::is_directory(dir, ec) || ec) {
+				continue;
+			}
+
+			for (const auto &entry : std::filesystem::recursive_directory_iterator(dir)) {
+				std::error_code file_ec;
+				if (!std::filesystem::is_regular_file(entry.path(), file_ec) || file_ec) {
+					continue;
+				}
+
+				asset_sources[entry.path().lexically_relative(dir).generic_string()] = entry.path();
+			}
+		}
+
+		const std::vector<std::string> removed_assets = removed_asset_names();
+		for (const auto &[relative, source] : asset_sources) {
+			if (std::ranges::find(removed_assets, relative) != removed_assets.end()) {
+				continue;
+			}
+
+			const std::filesystem::path target = dest_dir / relative;
+			std::error_code ec;
+			std::error_code size_ec;
+			const uintmax_t size = std::filesystem::file_size(source, size_ec);
+			const std::string extension = source.extension().string();
+			const bool templated =
+				extension == ".css" || extension == ".js" || extension == ".txt" || extension == ".json";
+
+			std::string status = "new";
+			if (std::filesystem::is_regular_file(target, ec) && !ec) {
+				if (templated) {
+					// 模板资源在构建时会被 inja 渲染，按渲染结果比较。
+					const std::string expected =
+						render::inja_render(inja_, filesystem::read_file(source.string()), conf_.json());
+					status = compare_with_content(target, expected);
+				} else {
+					const uintmax_t target_size = std::filesystem::file_size(target, ec);
+					status = (ec || target_size != size) ? "changed" : "same";
+				}
+			}
+
+			outputs[relative] = {"asset", status, file_size_text(size_ec ? 0 : size)};
+		}
+
+		// 远程 logo 在真实构建时下载并复制到输出根目录，干跑不下载，内容未知。
+		const std::string logo = strings::trim_space(camus.site.html_image());
+		if (build_code == 0 && camus.html.download_logo && is_remote_url(logo)) {
+			const std::string name = "logo" + remote_image_extension(logo);
+			std::error_code logo_ec;
+			const bool exists = std::filesystem::is_regular_file(dest_dir / name, logo_ec) && !logo_ec;
+			outputs[name] = {"logo", exists ? "updated" : "new", "-"};
+		}
+
+		if (!outputs.empty()) {
+			std::vector<std::vector<std::string>> rows;
+			rows.reserve(outputs.size());
+			for (const auto &[path, row] : outputs) {
+				rows.push_back({path, row.type, row.status, row.size});
+			}
+
+			table::print("Output:", {"Path", "Type", "Status", "Size"}, rows);
+		}
+
+		// ── 输出目录当前内容 ────────────────────────────────────
+		std::vector<std::vector<std::string>> current_rows;
+		std::error_code dir_ec;
+		if (std::filesystem::is_directory(dest_dir, dir_ec) && !dir_ec) {
+			for (const auto &entry : std::filesystem::recursive_directory_iterator(dest_dir)) {
+				std::error_code file_ec;
+				if (!std::filesystem::is_regular_file(entry.path(), file_ec) || file_ec) {
+					continue;
+				}
+
+				const std::string relative_path = entry.path().lexically_relative(dest_dir).generic_string();
+				std::string status = "extra";
+				if (const auto found = outputs.find(relative_path); found != outputs.end()) {
+					status = found->second.status == "same" ? "current" : "updated";
+				}
+
+				std::error_code size_ec;
+				const uintmax_t size = std::filesystem::file_size(entry.path(), size_ec);
+				current_rows.push_back(
+					{relative_path,
+					 file_size_text(size_ec ? 0 : size),
+					 file_time_text(std::filesystem::last_write_time(entry.path(), file_ec)),
+					 status}
+				);
+			}
+		}
+
+		std::ranges::sort(current_rows, [](const auto &left, const auto &right) {
+			return left.front() < right.front();
 		});
 
+		if (!current_rows.empty()) {
+			table::print("Current:", {"Path", "Size", "Modified", "Status"}, current_rows);
+		}
+
+		// ── 问题与修复 ──────────────────────────────────────────
 		if (!frontmatter_issues.empty()) {
-			size_t frontmatter_width = 0;
-			for (const auto &[file, _] : frontmatter_issues) {
-				frontmatter_width = std::max(frontmatter_width, strings::get_display_width(file));
+			std::vector<std::vector<std::string>> rows;
+			rows.reserve(frontmatter_issues.size());
+			for (const auto &[file, missing] : frontmatter_issues) {
+				rows.push_back({file, missing});
 			}
 
-			std::cout << '\n' << strings::coloring_bright_yellow("Front Matter:") << '\n';
-			for (const auto &[file, missing] : frontmatter_issues) {
-				std::cout << "  " << strings::padding_left(file, frontmatter_width) << " -> " << missing << '\n';
-			}
+			table::print("Front Matter:", {"File", "Problem"}, rows);
 		}
 
 		if (!fixes.empty()) {
-			size_t fix_width = 0;
-			for (const auto &[file, _] : fixes) {
-				fix_width = std::max(fix_width, strings::get_display_width(file));
+			std::vector<std::vector<std::string>> rows;
+			rows.reserve(fixes.size());
+			for (const auto &[file, action] : fixes) {
+				rows.push_back({file, action});
 			}
 
-			std::cout << '\n' << strings::coloring_bright_yellow("Fixes:") << '\n';
-			for (const auto &[file, action] : fixes) {
-				std::cout << "  " << strings::padding_left(file, fix_width) << " -> " << action << '\n';
-			}
+			table::print("Fixes:", {"File", "Action"}, rows);
 		}
 
 		if (!issues.empty()) {
-			std::cout << '\n' << strings::coloring_bright_yellow("Issues:") << '\n';
+			std::vector<std::vector<std::string>> rows;
+			rows.reserve(issues.size());
 			for (const auto &issue : issues) {
-				std::cout << "  "
-						  << (issue.error ? strings::coloring_red("[error]") : strings::coloring_yellow("[warn ]"))
-						  << " " << issue.text << '\n';
+				rows.push_back({issue.error ? "error" : "warn", issue.text});
 			}
+
+			table::print("Issues:", {"Level", "Message"}, rows);
 		}
 
 		bool failed = build_code != 0;

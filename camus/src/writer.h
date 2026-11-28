@@ -118,6 +118,8 @@ namespace camus
 		inja::Environment inja_;
 		// 待写入文件缓存
 		std::map<std::filesystem::path, std::string> pending_writes_;
+		// 干跑模式下记录待写文件（不落盘），供 --check 输出渲染产物清单
+		bool capture_writes_ = false;
 		// 启动时自动检测更新只执行一次（watch 重建时不重复）
 		bool auto_update_checked_ = false;
 		// 远程 PDF 封面下载到本地的临时路径（构建结束后清理）
@@ -199,6 +201,8 @@ namespace camus
 		// html.pwa=true 时生成各主题的 PWA manifest（name/icon 取自站点配置）。
 		void emit_pwa();
 		void prepare_remote_cover();
+		// 需要从资源目录中移除的文件（manifest 由 emit_pwa 生成；PWA 关闭时移除 sw.js 与图标）
+		std::vector<std::string> removed_asset_names() const;
 
 	  public:
 		explicit writer(const cmdline &cmd);

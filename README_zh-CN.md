@@ -58,7 +58,7 @@ mkdir my-site && cd my-site
 | `camus -w <dir> --build` | 构建指定工作目录中的站点 |
 | `camus -W` | 监听文件变化并启动本地服务（隐含构建） |
 | `camus -D --build` | 干跑：解析与渲染，但不写文件 |
-| `camus --check` | 校验配置、资源与 PDF 设置，并执行干跑构建 |
+| `camus --check` | 校验配置、资源与 PDF 设置，执行干跑构建，并以表格输出渲染产物与输出目录当前内容 |
 | `camus --update` | 检测最新 GitHub release，并下载安装 |
 | `camus --update check` | 只检测最新 GitHub release 并输出下载链接（不下载、不安装） |
 | `camus --new <dir>` | 创建站点目录并安装示例文件（含 AI 技能） |

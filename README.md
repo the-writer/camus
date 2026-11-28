@@ -58,7 +58,7 @@ mkdir my-site && cd my-site
 | `camus -w <dir> --build` | Build a site in another workdir |
 | `camus -W` | Watch for changes and serve locally (implies build) |
 | `camus -D --build` | Dry run: parse and render without writing files |
-| `camus --check` | Validate configuration, assets, PDF settings and run a dry build |
+| `camus --check` | Validate configuration, assets, PDF settings and run a dry build, then print tables of the rendered output and the current output directory |
 | `camus --update` | Check the latest GitHub release and download and install it |
 | `camus --update check` | Only check the latest GitHub release and print the download link (no download/install) |
 | `camus --new <dir>` | Create a site directory and install example files (including AI skills) |
