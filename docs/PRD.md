@@ -17,7 +17,7 @@
 
 ## 核心设计
 
-- **外部资源安装**：主题、默认静态资源与示例模板由安装包放到平台数据目录（macOS 只装到当前用户域 `~/Library/Application Support/Camus`，可执行文件同目录 `bin/` 并软链到 `/usr/local/bin/camus`；Linux `/var/lib/camus`）；`--new` 安装示例文件与 `posts/private/`，`-c` 默认把最小资源骨架复制到工作目录 `assets/`，`-c --full` 把完整资源复制到 `.camus`，`-c --theme [name]` 把整个或单个主题复制到工作目录 `theme/`；静态资源按数据目录 → `.camus` → 本地 `./assets` 叠加（详见 §8）。
+- **外部资源安装**：主题、默认静态资源与示例模板由安装包放到平台数据目录（macOS 只装到当前用户域 `~/Library/Application Support/Camus`，可执行文件同目录 `bin/` 并软链到 `/usr/local/bin/camus`；Linux `/var/lib/camus`）；`--new` 安装示例文件与 `posts/private/`（并自动执行 `git init`），`-c` 默认把最小资源骨架复制到工作目录 `assets/`，`-c --full` 把完整资源复制到 `.camus`，`-c --theme [name]` 把整个或单个主题复制到工作目录 `theme/`；静态资源按数据目录 → `.camus` → 本地 `./assets` 叠加（详见 §8）。
 - **流水线式构建**：`writer::build()` 依次执行 `emit_article → emit_toc → emit_friends → emit_sitemap → emit_assets → flush_writes`，所有文件写入先进入内存队列统一落盘；随后在**后台线程**按需调用 Chrome/Edge 生成 PDF（`build_pdf()`，使用构建前的状态快照），封面取自根 `SUMMARY.md` 的 `cover`（兼容旧键 `cover_image`），并注入可交互书签大纲。非监听模式等待 PDF 完成后才退出；监听模式只在首次构建时自动生成一次，之后由控制面板手动触发（详见 §1.4、§6、§7）。
 - **配置驱动**：`camus.yaml` 提供站点、输出、渲染、公开地址、友链与目录搬运配置，各目录下的 `SUMMARY.md` 提供目录页元信息（标题/副标题/描述）；配置每次构建重新加载（详见 §3）。源目录固定按 `src` → `posts` 探测，资源目录固定 `./assets`，输出固定 `./dist/html` 与 `./dist/pdf`。
 - **编辑/运行目录直达**：`--open` 在构建成功后用 VS Code 打开工作目录（要求工作目录是合法 camus 项目），`--open runtime` 用系统文件管理器打开**运行期目录**（安装包写入主题与资源的目录，不存在时不会自动创建）；打开成功的项目会记录到 `<运行期目录>/projects.json`（该目录不可写时回退到平台默认数据目录），`--project` 列出记录、`--open <ID|项目名>` 直接打开（详见 §2）。
@@ -25,7 +25,7 @@
 - **模板引擎**：HTML 使用 inja，Markdown 使用 cmark-gfm；主题由 `theme/{name}/{home,page,stats,friends}.html` 组成，PDF 模板与样式位于 `theme/pdf/{page.html,style.css,fonts.css}`，字体使用站点 `assets/fonts/`，本地 `theme/` 可覆盖数据目录中的默认主题与 PDF 资源（详见 §5）。
 - **安全清理**：构建前清空输出目录；当输出目录文件数超过 200 时拒绝自动删除并以致命错误退出，避免误删（详见 §6.1）。
 - **干跑模式**：`-D/--dryrun` 下所有写文件操作被跳过，用于检查配置与渲染流程（详见 §6.9）。
-- **AI 技能库与记忆**：一套按项目类型（`blog` / `novel` / `website` / `tech` / `book`，小说再分 `online` / `western-illusion` / `simple` 三个子类型）组织的 Markdown 工作规范，随安装包放到平台数据目录 `SKILLS/`（与 `theme/` 同级）；`--new` / `--copy` 会把 `AGENTS.md` 与 `.agents/` 安装到源目录（`src/` 或 `posts/`）根部，同名且内容不同的文件会提示并终止复制；构建时强制忽略源目录内的 `AGENTS.md` 与 `.agents/`（与 `private` 同级）。项目类型不写在配置里，由 AI 首次运行时推断，并把需要跨会话保留的上下文按类别写入源目录的 `.agents/memories/`；小说技能统一带「创作进度」回顾，并提供 `outline-map` 脉络分析（可读取项目根的 `.workshop/` 设定资产库）；评审 / 评价类技能在项目存在 `.git/` 时结合当前改动与记忆做综合评价（详见 §11）。
+- **AI 技能库与记忆**：一套按项目类型（`blog` / `novel` / `website` / `tech` / `book`，小说再分 `online` / `western-illusion` / `simple` 三个子类型）组织的 Markdown 工作规范，随安装包放到平台数据目录 `SKILLS/`（与 `theme/` 同级）；`--new` / `--copy` 会把短入口 `AGENTS.md` 安装到项目根、把技能总纲 `AGENTS.md` 与 `.agents/` 安装到源目录（`src/` 或 `posts/`）根部；源目录同名且内容不同的文件会提示并终止复制，`--copy` 下项目根已存在 `AGENTS.md` 时跳过该文件并打印错误（不覆盖用户文件，`--force` 才覆盖）；构建时强制忽略源目录内的 `AGENTS.md` 与 `.agents/`（与 `private` 同级）。项目类型不写在配置里，由 AI 首次运行时推断，并把需要跨会话保留的上下文按类别写入源目录的 `.agents/memories/`；小说任务的「创作进度回顾」统一由技能总纲的强制工作流规定（技能文件不再逐份重复），并提供 `outline-map` 脉络分析（可读取项目根的 `.workshop/` 设定资产库）；评审 / 评价类技能在项目存在 `.git/` 时结合当前改动与记忆做综合评价（详见 §11）。
 
 ## 文档清单与阅读指南
 

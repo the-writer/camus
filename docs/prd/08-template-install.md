@@ -28,7 +28,8 @@
 ├── theme/{tomato,pixel}/search.html
 ├── theme/pdf/{page.html,style.css,fonts.css}   # PDF 模板、打印样式与字体样式
 ├── SKILLS/                   # AI 技能库（与 theme 同级，见 §11.3）
-│   ├── AGENTS.md             # 技能总纲：项目类型判定流程与技能索引
+│   ├── AGENTS.root.md        # 项目根短入口：只提示先读源目录 AGENTS.md
+│   ├── AGENTS.md             # 技能总纲：强制工作流、类型判定与技能索引
 │   ├── {blog,website,tech,book}/*.md    # 24 个技能文件
 │   └── novel/{online,western-illusion,simple}/*.md    # 21 个小说技能文件
 ├── assets/                    # 默认静态资源（css/js/fonts/imgs/robots.txt 等）
@@ -76,8 +77,9 @@ flowchart TD
 - 不会创建或修改 `.camus`。
 - 无论 `posts/` 是否已存在，都会确保 `<工作目录>/posts/private/` 存在，并在缺失时写入 `README.md`（`CAMUS_PRIVATE_DIR`）；这与 `--copy` 的「已有 `src/` / `posts/` 时跳过 posts」规则不同。
 - 工作目录不存在时自动创建（`create_directories`），因此 `--new /tmp/site` 可直接用于全新目录。
+- `--new` 在模板与 AI 技能安装完成后自动执行 `git init`（相当于 `--repo`；显式给出 `--repo` 时按其值初始化并设置 `origin`），详见 §2.4。
 - 成功后不退出；是否构建由 `--build`（或 `-W` / `--check` / `--open`）决定（见 §2.4）。
-- 执行前会先做 AI 技能冲突预检，复制完成后再安装到源目录根部（见 §8.2.4）；不打印复制结果表格。
+- 执行前会先做 AI 技能冲突预检，复制完成后再安装到项目根与源目录根部（见 §8.2.4）；不打印复制结果表格。
 
 ### 8.2.2 `-c/--copy`（最小资源到 `assets/` / `--full` 完整资源到 `.camus`）
 
@@ -140,12 +142,13 @@ flowchart TD
     K --> OK
 ```
 
-### 8.2.4 AI 技能安装到源目录根部（`-c` / `--new`）
+### 8.2.4 AI 技能安装到项目根与源目录根部（`-c` / `--new`）
 
-`install_agents()`（`camus/src/install.cpp`）把这套技能安装到**源目录根部**（`src/` 或 `posts/`，下文记为 `<source>`），供 AI 协作者直接读取：
+`install_agents()`（`camus/src/install.cpp`）把短入口安装到**项目根**，把技能总纲与技能库安装到**源目录根部**（`src/` 或 `posts/`，下文记为 `<source>`），供 AI 协作者直接读取：
 
-| 来源（数据目录 `SKILLS/`） | 目标（源目录） |
+| 来源（数据目录 `SKILLS/`） | 目标 |
 |---|---|
+| `AGENTS.root.md` | `<workdir>/AGENTS.md`（短入口，只提示先读源目录 `AGENTS.md`） |
 | `AGENTS.md` | `<source>/AGENTS.md` |
 | `blog/`、`website/`、`tech/`、`book/` 下的全部文件 | `<source>/.agents/<类型>/<文件>` |
 | `novel/<子类型>/` 下的全部文件 | `<source>/.agents/novel/<子类型>/<文件>` |
@@ -153,9 +156,9 @@ flowchart TD
 - **源目录选择**：优先已存在的 `src/`，其次已存在的 `posts/`；两者都不存在时默认 `posts/`（与 `--new` 安装的示例内容一致；单独 `--theme` 时也会为技能创建 `posts/`）。
 - **执行时机**：`check_agents()` 在其它复制动作**之前**做冲突预检；实际的 `install_agents()` 在模板 / 资源复制**之后**执行，避免提前创建 `posts/` 导致 `--new` 跳过示例内容。冲突时不会写入任何技能文件。
 - **来源查找**：`paths::find_resource("SKILLS")` —— 先工作目录 `.camus/SKILLS`，再平台数据目录 `SKILLS`；两者都不存在时打印 WARN 并跳过（不影响其它安装动作）。
-- **冲突处理**：目标文件已存在且内容与来源一致 → 覆盖写入同内容（重复执行幂等）；内容不同且未指定 `-f/--force` → 打印冲突路径并终止复制，返回 1；指定 `-f/--force` → 覆盖写入。
-- **持久性**：`<source>/AGENTS.md` 与 `<source>/.agents/` 持久于磁盘；删除后可重新安装，被用户修改后需改名或使用 `--force`。
-- **构建忽略**：源目录内的 `AGENTS.md` 与任意 `.agents/` 目录在构建时强制忽略（与 `private` 同级，见 §4.1），不进入目录树、页面或 PDF。
+- **冲突处理**：目标文件已存在且内容与来源一致 → 覆盖写入同内容（重复执行幂等）；源目录目标内容不同且未指定 `-f/--force` → 打印冲突路径并终止复制，返回 1；指定 `-f/--force` → 覆盖写入。`--copy` 下若 `<workdir>/AGENTS.md` 已存在，则**跳过该文件并打印 ERROR**（不覆盖用户文件，继续其余复制）；只有 `-f/--force` 才覆盖。`--new` 下项目根 `AGENTS.md` 内容不同仍按冲突终止。
+- **持久性**：`<workdir>/AGENTS.md`、`<source>/AGENTS.md` 与 `<source>/.agents/` 持久于磁盘；删除后可重新安装，被用户修改后需改名或使用 `--force`。
+- **构建忽略**：源目录内的 `AGENTS.md` 与任意 `.agents/` 目录在构建时强制忽略（与 `private` 同级，见 §4.1），不进入目录树、页面或 PDF；项目根 `AGENTS.md` 不在源目录内，构建本来就不会扫描。
 - **记忆目录**：安装动作不创建 `<source>/.agents/memories/`；该目录由 AI 首次运行时按需建立，不参与构建，也不会被安装或 `--force` 覆盖（见 §11.6）。
 - 技能内容、类型判定与总纲约定详见 §11。
 
@@ -165,7 +168,7 @@ flowchart TD
 
 | 列 | 内容 |
 |---|---|
-| `Item` | 复制项的相对位置：`<source>/AGENTS.md`、`<source>/.agents/<类型>/<文件>`、`assets/css`、`assets/css/style.css`、`assets/js`、`assets/js/camus.js`、`assets/fonts`、`posts`、`posts/private`、`posts/private/README.md`、`camus.yaml`、`.gitignore`、`Justfile`、`.camus/<顶层条目>`、`theme`、`theme/<name>` |
+| `Item` | 复制项的相对位置：`AGENTS.md`（项目根短入口）、`<source>/AGENTS.md`、`<source>/.agents/<类型>/<文件>`、`assets/css`、`assets/css/style.css`、`assets/js`、`assets/js/camus.js`、`assets/fonts`、`posts`、`posts/private`、`posts/private/README.md`、`camus.yaml`、`.gitignore`、`Justfile`、`.camus/<顶层条目>`、`theme`、`theme/<name>` |
 | `Result` | `copied` / `overwritten` / `created` / `kept` / `merged` / `skipped (exists)` / `skipped (source exists)` / `skipped (already installed)` / `skipped (missing in source)` |
 | `Target` | 目标绝对路径 |
 
@@ -228,7 +231,7 @@ PDF 模板、样式与字体（`writer.cpp` 的 `read_pdf_theme_file()` / `copy_
 ## 8.5 持久性
 
 - `--new` 安装的根部示例文件与 `posts/private/` 持久于工作目录；`-c` 最小复制持久于工作目录 `assets/`，`-c --theme` 持久于 `theme/`，`-c --full` 持久于 `.camus`；`-f` 可覆盖已有资源。
-- AI 技能安装的 `<source>/AGENTS.md` 与 `<source>/.agents/` 持久于源目录；内容被修改后再次安装需 `--force` 覆盖，否则提示冲突并终止复制。
+- AI 技能安装的项目根 `AGENTS.md`、`<source>/AGENTS.md` 与 `<source>/.agents/` 持久于源目录；内容被修改后再次安装需 `--force` 覆盖，否则提示冲突并终止复制（`--copy` 下项目根 `AGENTS.md` 已存在时跳过并报错，不终止其余复制）。
 - AI 运行时创建的 `<source>/.agents/memories/` 同样持久于源目录，不参与构建，也不会被安装动作覆盖（见 §11.6）。
 - 数据目录中的资源由安装包持久化；升级安装包会覆盖同名文件。
 - 工作目录的 `theme/` 与 `./assets` 始终拥有最高优先级。

@@ -43,6 +43,10 @@ namespace
 	// <source>/AGENTS.md、<source>/.agents/<类型>/…。
 	constexpr const char *skills_dir_name = "SKILLS";
 
+	// 项目根短入口：SKILLS/AGENTS.root.md 安装为 <workdir>/AGENTS.md，
+	// 只提示 AI 先读源目录（src/ 或 posts/）的 AGENTS.md。
+	constexpr const char *root_agents_file_name = "AGENTS.root.md";
+
 	// 目录 / 文件显示名：含 '-' 且出现过数字时，取最后一个 '-' 之后的片段，去掉 01- 之类的排序前缀。
 	std::string strip_order_prefix(std::string name)
 	{
@@ -188,12 +192,19 @@ This directory is excluded from builds.
 		return workdir / "posts";
 	}
 
-	// 收集技能文件与目标路径的对应关系：AGENTS.md 落到源目录根部，
-	// 其余子目录落到 <source>/.agents/<子目录>/ 下。
-	std::vector<std::pair<std::filesystem::path, std::filesystem::path>>
-	collect_agents_files(const std::filesystem::path &source, const std::filesystem::path &target_root)
+	// 收集技能文件与目标路径的对应关系：项目根 AGENTS.md 落到工作目录根部，
+	// 源目录 AGENTS.md 落到源目录根部，其余子目录落到 <source>/.agents/<子目录>/ 下。
+	std::vector<std::pair<std::filesystem::path, std::filesystem::path>> collect_agents_files(
+		const std::filesystem::path &source, const std::filesystem::path &target_root,
+		const std::filesystem::path &workdir
+	)
 	{
 		std::vector<std::pair<std::filesystem::path, std::filesystem::path>> files;
+
+		const std::filesystem::path root_agents = source / root_agents_file_name;
+		if (std::filesystem::is_regular_file(root_agents)) {
+			files.emplace_back(root_agents, workdir / CAMUS_AGENTS_FILE);
+		}
 
 		const std::filesystem::path agents_md = source / CAMUS_AGENTS_FILE;
 		if (std::filesystem::is_regular_file(agents_md)) {
@@ -214,6 +225,18 @@ This directory is excluded from builds.
 		}
 
 		return files;
+	}
+
+	// 从待复制清单中移除项目根 AGENTS.md；返回是否确实移除了条目。
+	bool remove_root_agents(
+		std::vector<std::pair<std::filesystem::path, std::filesystem::path>> &files,
+		const std::filesystem::path &workdir
+	)
+	{
+		const std::filesystem::path root_agents = workdir / CAMUS_AGENTS_FILE;
+		const size_t before = files.size();
+		std::erase_if(files, [&root_agents](const auto &entry) { return entry.second == root_agents; });
+		return files.size() != before;
 	}
 
 	std::vector<std::filesystem::path> find_agents_conflicts(
@@ -508,7 +531,7 @@ namespace camus
 		return 0;
 	}
 
-	int check_agents(const std::filesystem::path &workdir, const bool force)
+	int check_agents(const std::filesystem::path &workdir, const bool force, const bool skip_existing_root_agents)
 	{
 		const std::filesystem::path source = paths::find_resource(skills_dir_name);
 		if (source.empty() || !std::filesystem::is_directory(source)) {
@@ -516,7 +539,10 @@ namespace camus
 		}
 
 		try {
-			const auto files = collect_agents_files(source, agents_target_dir(workdir));
+			auto files = collect_agents_files(source, agents_target_dir(workdir), workdir);
+			if (skip_existing_root_agents && !force) {
+				remove_root_agents(files, workdir);
+			}
 			return report_agents_conflicts(find_agents_conflicts(files, force));
 		} catch (const std::exception &e) {
 			logging::error("agents precheck failed error={}", e.what());
@@ -524,7 +550,10 @@ namespace camus
 		}
 	}
 
-	int install_agents(const std::filesystem::path &workdir, const bool force, copy_report *report)
+	int install_agents(
+		const std::filesystem::path &workdir, const bool force, copy_report *report,
+		const bool skip_existing_root_agents
+	)
 	{
 		const std::filesystem::path source = paths::find_resource(skills_dir_name);
 		if (source.empty() || !std::filesystem::is_directory(source)) {
@@ -534,10 +563,24 @@ namespace camus
 
 		try {
 			const std::filesystem::path target_root = agents_target_dir(workdir);
-			const auto files = collect_agents_files(source, target_root);
+			auto files = collect_agents_files(source, target_root, workdir);
 			if (files.empty()) {
 				logging::warn("ai skills are empty, skip agents installation");
 				return 0;
+			}
+
+			// --copy 用于已有项目：根 AGENTS.md 已存在时不覆盖用户文件，跳过并报错。
+			if (skip_existing_root_agents && !force) {
+				const std::filesystem::path root_agents = workdir / CAMUS_AGENTS_FILE;
+				if (std::filesystem::exists(root_agents) && remove_root_agents(files, workdir)) {
+					logging::error(
+						"agents file already exists, skip copying path={}",
+						filesystem::path_abs(root_agents)
+					);
+					if (report) {
+						add_copy_row(*report, CAMUS_AGENTS_FILE, copy_skipped_exists, root_agents);
+					}
+				}
 			}
 
 			// 预检冲突：目标已存在且内容不同视为冲突，先全部检查完再决定是否复制，

@@ -187,7 +187,8 @@ int main(const int argc, char **argv)
 		if (agents_requested) {
 			// AI 技能安装到源目录（src 或 posts）根部；先做冲突预检，
 			// 放在其它复制动作之前，保证冲突时不会留下半安装状态。
-			if (camus::check_agents(cmd.workdir, arg.exist("force")) != 0) {
+			// --copy 下工作目录已有根 AGENTS.md 时跳过该文件并报错（不覆盖用户文件）。
+			if (camus::check_agents(cmd.workdir, arg.exist("force"), arg.exist("copy")) != 0) {
 				return 1;
 			}
 		}
@@ -214,13 +215,22 @@ int main(const int argc, char **argv)
 		}
 
 		if (agents_requested) {
-			if (const int agents = camus::install_agents(cmd.workdir, arg.exist("force"), &copy_rows); agents != 0) {
+			if (const int agents =
+					camus::install_agents(cmd.workdir, arg.exist("force"), &copy_rows, arg.exist("copy"));
+				agents != 0) {
 				return agents;
 			}
 		}
 
 		if (arg.exist("copy")) {
 			camus::print_copy_report(copy_rows);
+		}
+
+		// --new 自动执行 --repo：未显式指定 --repo 时只做 git init。
+		if (arg.exist("new") && !arg.exist("repo")) {
+			if (const int initialized = camus::init_repository(cmd.workdir, ""); initialized != 0) {
+				return initialized;
+			}
 		}
 
 		if (arg.exist("repo")) {
