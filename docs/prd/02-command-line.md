@@ -25,7 +25,7 @@ camus [选项] [--workdir <目录>]
 | `-d` | `--debug` | 无 | 开启调试日志 | `main.cpp:11` |
 | `-W` | `--watch` | 无 | 监听文件变化并自动重建，同时启动本地服务与控制面板（隐含 `--build`） | `main.cpp:11` |
 | `-D` | `--dryrun` | 无 | 干跑：不写任何输出文件 | `main.cpp:12` |
-| `-C` | `--check` | 无 | 校验配置、资源与 PDF 设置，并执行一次干跑构建后以表格输出检查报告（汇总 / 最终渲染产物树 / 输出目录当前内容 / Front Matter / Fixes / Issues）；不写文件 | `main.cpp` |
+| `-C` | `--check` | 无 | 校验配置、资源与 PDF 设置，并执行一次干跑构建后以表格输出检查报告（汇总 / 渲染后的目录结构与文章（含相对 URL）/ Front Matter / Fixes / Issues）；不写文件 | `main.cpp` |
 |  | `--fix` | 无 | 仅配合 `--check`：自动补全文章缺失的 `title` / `create-time`（时间取文件创建时间，macOS 为 birth time，其它平台回退修改时间），并创建缺失的 `SUMMARY.md`；不改动格式错误（`(invalid)`）的文件；在 `Fixes:` 区块打印修复记录。`--fix` 未搭配 `--check` 时报错返回 1 | `main.cpp`、`writer.cpp` |
 |  | `--new` | 目录字符串 | 创建目录（相对 `--workdir` 或绝对路径），从平台数据目录安装示例文件（`camus.yaml`、`posts`、`.gitignore`、`Justfile`，含 AI 技能安装到项目根与源目录根部），并自动执行 `--repo`（未显式指定 `--repo` 时只做 `git init`）；不触发构建，除非同时指定 `--build` | `main.cpp` |
 | `--create` | 路径字符串 | 在源目录（`src/` 优先，其次 `posts/`）下创建文章：最后一级视为文件名（自动补 `.md`），缺失目录递归创建，并写入模板（`title`（文件名含 `-` 且出现过数字时取最后一个 `-` 之后的片段，否则用文件名）、当前 UTC 时间的 `create-time`，不再自动写入正文标题）；每个新建目录同时生成 `SUMMARY.md`（Front Matter 仅 `title: <目录名>`，目录名同样去除 `01-` 之类的排序前缀，已存在则不覆盖）；文件已存在时不覆盖。不触发构建 | `main.cpp` |
@@ -132,9 +132,9 @@ flowchart TD
 - `-c --full` 复制完整资源（`theme/`、`assets/`、`posts/`（含各目录的 `SUMMARY.md` 与 `posts/private/`）、`camus.yaml`、`.gitignore`、`Justfile`）到 `.camus`，并按上一条规则补齐工作目录根部缺失的示例文件。
 - `-c --theme` 只复制 `theme/` 到 `<workdir>/theme`；`-c --theme pixel` 只复制 `theme/pixel/`；同时复制最小 assets（`style.css`、`camus.js`）并创建空 `fonts/`，不补齐示例文件，且优先于 `--full`。`--theme` 未搭配 `-c` 时打印错误并返回 1。
 - `-f` 仅在 `-c` 时生效：最小复制时覆盖已存在的 `style.css` / `camus.js`；完整复制时先清空 `<workdir>/.camus`（受 §6.1 文件数保护）再重新复制，工作目录已有文件不会被覆盖；`--theme` 时覆盖工作目录 `theme/` 与 `assets/` 中已存在的同名文件，否则跳过。
-- `-c` 成功后按 `Item / Result / Target` 三列打印复制结果表格，覆盖 AI 技能、assets、示例文件与主题的每个条目；`--new` 不打印该表格。列与状态取值见 §8.2.5。
+- `-c` 成功后按 `Item / Result / Target` 三列打印复制结果表格；`Item` 只到目录级别（技能按 `<source>/.agents/<类型>` 聚合，不列出其中的文件），`Result` 按状态着色，`Target` 显示相对 `<workdir>` 的目录；覆盖 AI 技能、assets、示例文件与主题的每个条目；`--new` 不打印该表格。列与状态取值见 §8.2.5。
 - `--repo` 在 `--workdir` 执行 `git -C <workdir> init -q`；提供远程地址时进一步执行 `git remote get-url origin`，已存在则 `remote set-url origin`，否则 `remote add origin`。无远程地址时只初始化。失败返回 1。
-- `--check` 在构建前执行：内部把 dryrun 置为 true，重新加载配置并执行一次干跑构建，然后输出表格报告（`Check:` 汇总、`Output:` 最终渲染产物树、`Current:` 输出目录当前内容，以及 `Front Matter:` / `Fixes:` / `Issues:` 问题表）；不写文件，结果以退出码 0（OK）/1（FAILED）表示（详见 §3.9）。
+- `--check` 在构建前执行：内部把 dryrun 置为 true，重新加载配置并执行一次干跑构建，然后输出表格报告（`Check:` 汇总、`Output:` 渲染后的目录结构与文章（含相对 URL）、`Front Matter:` / `Fixes:` / `Issues:` 问题表）；不写文件，结果以退出码 0（OK）/1（FAILED）表示（详见 §3.9）。
 - `-W` 时即使首次 `build()` 返回非 0，也会进入 `watch()` 循环继续等待变化。
 - `-W` 会在页面右下角注入闪电悬浮控制面板（查看构建状态、立即构建、立即重建 PDF、查看 PDF）；PDF 只在首次构建时自动生成，之后只能由控制面板手动触发（详见 §7）。
 - `--open` 单独使用时直接打开目标目录并返回，不构建；与 `--build` 同用时仅在 `build()` 返回 0 后执行，且只执行一次：非 watch 模式在打开后按结果退出，watch 模式先打开再进入监听循环。

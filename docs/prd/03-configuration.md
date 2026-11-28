@@ -332,13 +332,14 @@ PDF 模板在上述配置 JSON 之外额外接收 `pdf` 对象（封面、目录
 1. 将 `cmd_.dryrun` 置为 true，切到 `--workdir` 并 `reload()` 配置。
 2. 在日志抑制为 ERROR 的情况下执行一次干跑构建，验证完整渲染流水线且不写文件；干跑期间记录所有待写文件（含目录索引页），用于生成产物清单。
 3. 统计目录/文章/隐藏文章/字数，并校验资源目录、output/pdf 目录文件数保护、PDF 引擎、PDF 模板/样式/字体与 `cover`。
-4. 检查 Front Matter 与目录元信息：`Front Matter:` 表格（列 `File / Problem`）按完整相对路径（相对 workdir，如 `posts/xxx.md`）列出问题，不计入 `Issues`，不影响 `Result` 与正常构建。
+4. 检查 Front Matter 与目录元信息：`Front Matter:` 表格（列 `File / Problem`）按完整相对路径（相对 workdir，如 `posts/xxx.md`）列出问题，不计入 `Issues`，不影响 `Result` 与正常构建；没有问题时仍输出 `Front Matter:` 标题与一行绿色 OK 提示（说明文章 `title` / `create-time` 与目录 `SUMMARY.md` 均正常）。
    - 文章：缺少整块或缺少 `title` / `create-time`；值存在但格式非法时同样列出并标注 `(invalid)`：`create-time` 仅接受 `YYYY-MM-DD` 或 `YYYY-MM-DD HH:MM:SS`（允许行尾 `#` 注释），`visibility` 仅接受 `open` / `hidden` / `hidden_in_toc`。
    - 目录：缺少 `SUMMARY.md` 时 `Problem` 为 `missing`；存在但缺少 `title` 时为 `title`。
 5. 以表格输出报告（单元格按显示宽度对齐，中文按 2 列计算）：
    - `Check:`（`Item / Value`）：`workdir`、`source`、`theme`、`public`、`output`、`assets`、`pdf`、`catalog`、`build`。
-   - `Output:`（`Path / Type / Status / Size`）：**最终渲染产物树**，`Path` 相对输出目录。`Type` 为 `home` / `toc` / `page` / `stats` / `friends` / `search` / `sitemap` / `feed` / `manifest` / `index` / `asset` / `logo` / `file`；`Status` 为 `new`（磁盘上不存在）/ `changed`（内容不同）/ `same`（内容一致）。资源文件按「数据目录 → `.camus/assets` → 本地 `assets`」合并后提升到输出根目录列出；搜索索引分片使用随机文件名，每次构建都会显示为 `new` / `changed`。
-   - `Current:`（`Path / Size / Modified / Status`）：输出目录当前已有文件。`Status` 为 `current`（与渲染结果一致）/ `updated`（内容不同，将被重写）/ `extra`（不在本次渲染结果中，下一次真实构建会随输出目录清理删除）；输出目录不存在时省略该表。
+   - `Output:`（`Path / Title / URL / Status`）：**渲染后的目录结构与文章**，而不是逐条罗列输出文件。`Path` 相对输出目录：目录索引页显示为目录（如 `posts/`，根目录为 `/`），文章显示为输出文件路径；`Title` 为目录 / 文章的显示名（站点根取站点标题；`stats` / `friends` / `search` 固定为 `Stats` / `Friends` / `Search`；非页面产物为 `-`）；`URL` 为带 `public_url.path_prefix` 的相对 URL（非页面产物为 `-`）；`Status` 为 `new`（磁盘上不存在）/ `changed`（内容不同）/ `same`（内容一致）/ `extra`（输出目录中存在但不在本次渲染结果里，下一次真实构建会随输出目录清理删除）。
+     - 配置短路径（`short_path`）时同一篇文章会写入真实 URL 与短路径两份，只展示规范（短路径）一份。
+     - 资源文件按「数据目录 → `.camus/assets` → 本地 `assets`」合并后提升到输出根目录，按顶层目录聚合为一行（如 `css/`、`js/`，`Title` 为文件数）；搜索索引分片整体记为 `search-index` 一行。
    - `Fixes:`（`File / Action`）：仅 `--fix` 实际修复时输出。
    - `Issues:`（`Level / Message`）：`Level` 为 `error` / `warn`。
 6. 最后输出 `Result: OK` 或 `Result: FAILED`，并返回 0/1。

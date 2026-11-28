@@ -5,6 +5,7 @@
 #include <exception>
 #include <filesystem>
 #include <iostream>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -74,17 +75,17 @@ This directory is excluded from builds.
 	void ensure_private_dir(const std::filesystem::path &workdir, copy_report &report)
 	{
 		const std::filesystem::path dir = workdir / "posts" / CAMUS_PRIVATE_DIR;
-		const bool existed = std::filesystem::is_directory(dir);
-		std::filesystem::create_directories(dir);
-		add_copy_row(report, "posts/private", existed ? copy_kept : copy_created, dir);
-
 		const std::filesystem::path readme = dir / "README.md";
-		if (!std::filesystem::exists(readme)) {
+		const bool existed = std::filesystem::is_directory(dir);
+		const bool readme_existed = std::filesystem::exists(readme);
+
+		std::filesystem::create_directories(dir);
+		if (!readme_existed) {
 			filesystem::write_file(readme, private_readme);
-			add_copy_row(report, "posts/private/README.md", copy_created, readme);
-		} else {
-			add_copy_row(report, "posts/private/README.md", copy_kept, readme);
 		}
+
+		// 目录与 README 合并为一行，Item 只到目录级别。
+		add_copy_row(report, "posts/private", (existed && readme_existed) ? copy_kept : copy_created, dir);
 	}
 
 	// preserve_source 为真（--copy）时，工作目录已存在 src/ 或 posts/ 就不再注入示例 posts。
@@ -137,31 +138,29 @@ This directory is excluded from builds.
 		const std::filesystem::path source_assets = source / "assets";
 		const std::filesystem::path target_assets = local_dir / "assets";
 
-		for (const std::string name : {"css", "js"}) {
-			const std::filesystem::path dir = target_assets / name;
-			const bool existed = std::filesystem::is_directory(dir);
-			std::filesystem::create_directories(dir);
-			add_copy_row(report, "assets/" + name, existed ? copy_kept : copy_created, dir);
-		}
-
+		// 每个文件与其所在目录合并为一行：Item 只到目录级别（assets/css、assets/js）。
 		for (const auto &relative : minimal_asset_entries) {
 			const std::filesystem::path from = source_assets / relative;
 			const std::filesystem::path to = target_assets / relative;
-			const std::string item = "assets/" + relative.generic_string();
+			const std::filesystem::path dir = to.parent_path();
+			const std::string item = "assets/" + relative.parent_path().generic_string();
+			const bool dir_existed = std::filesystem::is_directory(dir);
+
+			std::filesystem::create_directories(dir);
 
 			if (!std::filesystem::exists(from)) {
-				add_copy_row(report, item, copy_skipped_missing, to);
+				add_copy_row(report, item, copy_skipped_missing, dir);
 				continue;
 			}
 
 			const bool existed = std::filesystem::exists(to);
 			if (existed && !force) {
-				add_copy_row(report, item, copy_skipped_exists, to);
+				add_copy_row(report, item, copy_kept, dir);
 				continue;
 			}
 
 			std::filesystem::copy_file(from, to, std::filesystem::copy_options::overwrite_existing);
-			add_copy_row(report, item, existed ? copy_overwritten : copy_copied, to);
+			add_copy_row(report, item, !dir_existed ? copy_created : (existed ? copy_overwritten : copy_copied), dir);
 		}
 
 		// 字体目录采用合并查找，只需创建空目录让用户放入自己的字体，无需复制内置文件。
@@ -280,11 +279,46 @@ This directory is excluded from builds.
 
 namespace camus
 {
-	void print_copy_report(const copy_report &report)
+	void print_copy_report(const copy_report &report, const std::filesystem::path &base)
 	{
 		if (report.empty()) {
 			return;
 		}
+
+		const auto display_target = [&base](const std::filesystem::path &target) -> std::string {
+			if (base.empty()) {
+				return filesystem::path_abs(target);
+			}
+
+			std::error_code ec;
+			const std::filesystem::path relative = std::filesystem::relative(target, base, ec);
+			if (ec) {
+				return filesystem::path_abs(target);
+			}
+
+			return relative.empty() ? std::string(".") : relative.generic_string();
+		};
+
+		// 不同状态使用不同颜色：成功为绿、覆盖为黄、保持为灰、跳过为红。
+		const auto color_result = [](const std::string &result) {
+			if (result == copy_copied || result == copy_created) {
+				return strings::coloring_green(result);
+			}
+
+			if (result == copy_overwritten || result == copy_merged) {
+				return strings::coloring_yellow(result);
+			}
+
+			if (result == copy_kept) {
+				return strings::coloring_bright_black(result);
+			}
+
+			if (result.starts_with("skipped")) {
+				return strings::coloring_red(result);
+			}
+
+			return result;
+		};
 
 		size_t item_width = strings::get_display_width("Item");
 		size_t result_width = strings::get_display_width("Result");
@@ -302,8 +336,8 @@ namespace camus
 
 		for (const auto &row : report) {
 			std::cout << strings::padding_left(row.item, item_width) << "  "
-					  << strings::padding_left(row.result, result_width) << "  " << filesystem::path_abs(row.target)
-					  << std::endl;
+					  << color_result(strings::padding_left(row.result, result_width)) << "  "
+					  << display_target(row.target) << std::endl;
 		}
 	}
 
@@ -425,7 +459,8 @@ namespace camus
 			return 1;
 		}
 
-		const std::filesystem::path target = workdir / "theme" / relative;
+		const std::filesystem::path target =
+			relative.empty() ? std::filesystem::path(workdir / "theme") : workdir / "theme" / relative;
 
 		copy_report collected;
 		copy_report &rows = report ? *report : collected;
@@ -589,8 +624,22 @@ namespace camus
 				return 1;
 			}
 
+			// 同一技能子目录下的多个文件合并为一行：Item 只到子目录级别。
+			const std::filesystem::path agents_root = target_root / CAMUS_AGENTS_DIR;
+
+			struct agent_group {
+				size_t added = 0;
+				size_t updated = 0;
+				size_t kept = 0;
+			};
+
+			std::map<std::filesystem::path, agent_group> groups;
+
 			for (const auto &[from, to] : files) {
 				const bool existed = std::filesystem::exists(to);
+				const bool same =
+					report != nullptr && existed &&
+					filesystem::read_file(from.string(), true) == filesystem::read_file(to.string(), true);
 				std::filesystem::create_directories(to.parent_path());
 				std::filesystem::copy_file(from, to, std::filesystem::copy_options::overwrite_existing);
 
@@ -598,12 +647,34 @@ namespace camus
 					continue;
 				}
 
-				std::filesystem::path item = to.lexically_relative(workdir);
-				if (item.empty()) {
-					item = to.filename();
+				std::filesystem::path key = to;
+				const std::filesystem::path relative = to.lexically_relative(agents_root);
+				if (!relative.empty() && !relative.generic_string().starts_with("..")) {
+					key = to.parent_path();
 				}
 
-				add_copy_row(*report, item.generic_string(), existed ? copy_overwritten : copy_copied, to);
+				auto &group = groups[key];
+				if (!existed) {
+					++group.added;
+				} else if (same) {
+					++group.kept;
+				} else {
+					++group.updated;
+				}
+			}
+
+			if (report) {
+				for (const auto &[target, group] : groups) {
+					std::filesystem::path item = target.lexically_relative(workdir);
+					if (item.empty()) {
+						item = target.filename();
+					}
+
+					const char *result = group.added > 0	 ? copy_copied
+										 : group.updated > 0 ? copy_overwritten
+															 : copy_kept;
+					add_copy_row(*report, item.generic_string(), result, target);
+				}
 			}
 
 			logging::info(

@@ -168,20 +168,22 @@ flowchart TD
 
 | 列 | 内容 |
 |---|---|
-| `Item` | 复制项的相对位置：`AGENTS.md`（项目根短入口）、`<source>/AGENTS.md`、`<source>/.agents/<类型>/<文件>`、`assets/css`、`assets/css/style.css`、`assets/js`、`assets/js/camus.js`、`assets/fonts`、`posts`、`posts/private`、`posts/private/README.md`、`camus.yaml`、`.gitignore`、`Justfile`、`.camus/<顶层条目>`、`theme`、`theme/<name>` |
-| `Result` | `copied` / `overwritten` / `created` / `kept` / `merged` / `skipped (exists)` / `skipped (source exists)` / `skipped (already installed)` / `skipped (missing in source)` |
-| `Target` | 目标绝对路径 |
+| `Item` | 复制项的相对位置，**只到目录级别**：`AGENTS.md`（项目根短入口）、`<source>/AGENTS.md`、`<source>/.agents/<类型>`（同一技能目录下的文件合并为一行，不列出文件）、`assets/css`、`assets/js`、`assets/fonts`、`posts`、`posts/private`、`camus.yaml`、`.gitignore`、`Justfile`、`.camus/<顶层条目>`、`theme`、`theme/<name>` |
+| `Result` | 按状态着色：`copied` / `created` 绿色，`overwritten` / `merged` 黄色，`kept` 灰色，`skipped …` 红色。取值为 `copied` / `overwritten` / `created` / `kept` / `merged` / `skipped (exists)` / `skipped (source exists)` / `skipped (already installed)` / `skipped (missing in source)`；同一目录下多个文件的聚合结果按「有新增 → `copied`；仅内容变化 → `overwritten`；全部一致 → `kept`」计算 |
+| `Target` | 目标目录相对 `<workdir>` 的路径（由 `print_copy_report(report, workdir)` 传入基准目录） |
 
-- 表格按 `Item` 与 `Result` 的显示宽度对齐；`Target` 贴左显示。示例：
+- 表格按 `Item` 与 `Result` 的显示宽度对齐；颜色在补齐宽度后套用，不影响对齐。示例：
 
 ```text
 Copy result:
-Item                  Result                   Target
------------------------------------------------------
-assets/css            created                  /path/to/site/assets/css
-assets/css/style.css  copied                   /path/to/site/assets/css/style.css
-posts                 skipped (source exists)  /path/to/site/posts
-camus.yaml            copied                   /path/to/site/camus.yaml
+Item                    Result   Target
+---------------------------------------------
+assets/css              created  assets/css
+assets/fonts            kept     assets/fonts
+posts                   copied   posts
+posts/private           kept     posts/private
+camus.yaml              copied   camus.yaml
+posts/.agents/website   copied   posts/.agents/website
 ```
 
 - `skipped (source exists)` 仅用于 `-c` 且工作目录已有 `src/` 或 `posts/` 时的 `posts` 行；此时不创建 `posts/private/`。

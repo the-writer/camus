@@ -223,7 +223,7 @@ int main(const int argc, char **argv)
 		}
 
 		if (arg.exist("copy")) {
-			camus::print_copy_report(copy_rows);
+			camus::print_copy_report(copy_rows, cmd.workdir);
 		}
 
 		// --new 自动执行 --repo：未显式指定 --repo 时只做 git init。

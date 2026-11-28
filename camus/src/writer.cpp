@@ -3745,27 +3745,6 @@ namespace camus
 			return existing == content ? "same" : "changed";
 		}
 
-		std::string file_size_text(const uintmax_t bytes)
-		{
-			constexpr double unit = 1024.0;
-			if (static_cast<double>(bytes) >= unit * unit) {
-				return std::format("{:.1f} MB", static_cast<double>(bytes) / (unit * unit));
-			}
-
-			if (static_cast<double>(bytes) >= unit) {
-				return std::format("{:.1f} KB", static_cast<double>(bytes) / unit);
-			}
-
-			return std::format("{} B", bytes);
-		}
-
-		std::string file_time_text(const std::filesystem::file_time_type &time)
-		{
-			const std::chrono::system_clock::time_point sys_point =
-				std::chrono::time_point_cast<std::chrono::system_clock::duration>(std::chrono::file_clock::to_sys(time)
-				);
-			return functions::format_time_t(std::chrono::system_clock::to_time_t(sys_point), "%Y-%m-%d %H:%M:%S");
-		}
 	} // namespace
 
 	int writer::check()
@@ -4072,14 +4051,70 @@ namespace camus
 
 		// ── 最终渲染产物 ────────────────────────────────────────
 		const std::filesystem::path dest_dir = std::filesystem::absolute(camus.dest_dir());
+		const std::string path_prefix = camus.public_url.path_prefix;
 
 		struct output_row {
 			std::string type;
+			std::string title;
+			std::string url;
 			std::string status;
-			std::string size;
 		};
 
 		std::map<std::string, output_row> outputs;
+
+		// 从目录树取页面标题与相对 URL：目录索引页（toc）与文章页（page）。
+		struct page_info {
+			std::string title;
+			std::string url;
+		};
+
+		std::map<std::string, page_info> pages;
+
+		const auto url_path = [&path_prefix](const std::filesystem::path &path) {
+			return filesystem::clean_path(path.string(), path_prefix);
+		};
+
+		catalog::traverse_catalog_tree(catalog_, [&](const catalog::catalog_node &node, const int depth) {
+			if (node.is_directory()) {
+				const std::filesystem::path dir_page =
+					node.property.output_path.empty()
+						? std::filesystem::path(std::format("{}/index.html", node.real_url().string()))
+						: node.property.output_path;
+				const std::string absolute = filesystem::clean_path(dir_page.string(), dest_dir.string());
+				const std::string relative =
+					std::filesystem::path(absolute).lexically_relative(dest_dir).generic_string();
+				if (relative.empty() || relative.starts_with("..")) {
+					return;
+				}
+
+				std::string url = url_path(node.real_url());
+				if (url.empty()) {
+					url = "/";
+				}
+				if (!url.ends_with('/')) {
+					url += '/';
+				}
+
+				std::string title = node.property.display_name;
+				if (depth == 0) {
+					title = camus.site.title.empty() ? "Home" : camus.site.title;
+				}
+				pages[relative] = {title, url};
+				return;
+			}
+
+			// 隐藏文章不参与渲染，不进入产物清单。
+			if (node.path.extension() != ".md" || node.property.visibility == catalog::hidden) {
+				return;
+			}
+
+			const std::string url = url_path(node.link_url());
+			const std::string relative =
+				std::filesystem::path(filesystem::clean_path(node.link_url().string(), "./")).generic_string();
+			if (!relative.empty()) {
+				pages[relative] = {node.property.display_name, url};
+			}
+		});
 
 		for (const auto &[path, content] : pending_writes_) {
 			const std::filesystem::path relative = path.lexically_relative(dest_dir);
@@ -4088,11 +4123,31 @@ namespace camus
 				continue;
 			}
 
-			outputs[relative_path] = {
-				output_type(relative),
-				compare_with_content(dest_dir / relative, content),
-				file_size_text(content.size())
-			};
+			output_row row;
+			row.type = output_type(relative);
+			row.status = compare_with_content(dest_dir / relative, content);
+
+			if (row.type == "page" && !pages.contains(relative_path)) {
+				// 配置短路径时同一篇文章会同时写入真实 URL 与短路径，只展示规范 URL 一份。
+				continue;
+			}
+
+			if (const auto found = pages.find(relative_path); found != pages.end()) {
+				row.title = found->second.title;
+				row.url = found->second.url;
+			} else {
+				row.url = url_path(std::filesystem::path("/" + relative_path));
+
+				if (row.type == "stats") {
+					row.title = "Stats";
+				} else if (row.type == "friends") {
+					row.title = "Friends";
+				} else if (row.type == "search") {
+					row.title = "Search";
+				}
+			}
+
+			outputs[relative_path] = std::move(row);
 		}
 
 		// 资源文件按「数据目录 → .camus/assets → 本地 assets」叠加后提升到输出根目录。
@@ -4132,8 +4187,6 @@ namespace camus
 
 			const std::filesystem::path target = dest_dir / relative;
 			std::error_code ec;
-			std::error_code size_ec;
-			const uintmax_t size = std::filesystem::file_size(source, size_ec);
 			const std::string extension = source.extension().string();
 			const bool templated =
 				extension == ".css" || extension == ".js" || extension == ".txt" || extension == ".json";
@@ -4146,12 +4199,14 @@ namespace camus
 						render::inja_render(inja_, filesystem::read_file(source.string()), conf_.json());
 					status = compare_with_content(target, expected);
 				} else {
+					std::error_code size_ec;
+					const uintmax_t size = std::filesystem::file_size(source, size_ec);
 					const uintmax_t target_size = std::filesystem::file_size(target, ec);
-					status = (ec || target_size != size) ? "changed" : "same";
+					status = (ec || size_ec || target_size != size) ? "changed" : "same";
 				}
 			}
 
-			outputs[relative] = {"asset", status, file_size_text(size_ec ? 0 : size)};
+			outputs[relative] = {.type = "asset", .status = status};
 		}
 
 		// 远程 logo 在真实构建时下载并复制到输出根目录，干跑不下载，内容未知。
@@ -4160,21 +4215,84 @@ namespace camus
 			const std::string name = "logo" + remote_image_extension(logo);
 			std::error_code logo_ec;
 			const bool exists = std::filesystem::is_regular_file(dest_dir / name, logo_ec) && !logo_ec;
-			outputs[name] = {"logo", exists ? "updated" : "new", "-"};
+			outputs[name] = {
+				.type = "logo",
+				.url = filesystem::clean_path("/" + name, path_prefix),
+				.status = exists ? "changed" : "new",
+			};
 		}
 
-		if (!outputs.empty()) {
-			std::vector<std::vector<std::string>> rows;
-			rows.reserve(outputs.size());
-			for (const auto &[path, row] : outputs) {
-				rows.push_back({path, row.type, row.status, row.size});
+		// 表格只表达渲染后的目录结构与文章，不逐条罗列资源文件：
+		// 资源按顶层目录聚合（如 `css/`、`js/`），搜索索引分片整体记为一行。
+		std::vector<std::vector<std::string>> rows;
+
+		struct aggregate_row {
+			size_t count = 0;
+			std::string status = "same";
+		};
+
+		std::map<std::string, aggregate_row> asset_groups;
+		aggregate_row search_index;
+
+		const auto merge_status = [](std::string &accumulated, const std::string &status) {
+			if (status == "changed" || accumulated == "changed") {
+				accumulated = "changed";
+			} else if (status == "new" || accumulated == "new") {
+				accumulated = "new";
+			} else {
+				accumulated = "same";
+			}
+		};
+
+		for (const auto &[path, row] : outputs) {
+			const std::filesystem::path relative(path);
+
+			if (row.type == "asset") {
+				if (relative.has_parent_path()) {
+					const std::string group = relative.begin()->string() + "/";
+					auto &aggregated = asset_groups[group];
+					++aggregated.count;
+					merge_status(aggregated.status, row.status);
+				} else {
+					rows.push_back({path, "-", "-", row.status});
+				}
+				continue;
 			}
 
-			table::print("Output:", {"Path", "Type", "Status", "Size"}, rows);
+			if (row.type == "index") {
+				++search_index.count;
+				merge_status(search_index.status, row.status);
+				continue;
+			}
+
+			std::string display = path;
+			if (row.type == "home" || row.type == "toc") {
+				display = relative.parent_path().empty() ? "/" : relative.parent_path().generic_string() + "/";
+			}
+
+			rows.push_back({display, row.title.empty() ? "-" : row.title, row.url.empty() ? "-" : row.url, row.status});
 		}
 
-		// ── 输出目录当前内容 ────────────────────────────────────
-		std::vector<std::vector<std::string>> current_rows;
+		for (const auto &[group, aggregated] : asset_groups) {
+			rows.push_back(
+				{group,
+				 std::format("{} file{}", aggregated.count, aggregated.count == 1 ? "" : "s"),
+				 "-",
+				 aggregated.status}
+			);
+		}
+
+		if (search_index.count > 0) {
+			rows.push_back(
+				{"search-index",
+				 std::format("{} part{}", search_index.count, search_index.count == 1 ? "" : "s"),
+				 "-",
+				 search_index.status}
+			);
+		}
+
+		// 输出目录中不在本次渲染结果里的文件（下一次真实构建会被清理）追加为 extra 行。
+		std::vector<std::vector<std::string>> extra_rows;
 		std::error_code dir_ec;
 		if (std::filesystem::is_directory(dest_dir, dir_ec) && !dir_ec) {
 			for (const auto &entry : std::filesystem::recursive_directory_iterator(dest_dir)) {
@@ -4184,28 +4302,28 @@ namespace camus
 				}
 
 				const std::string relative_path = entry.path().lexically_relative(dest_dir).generic_string();
-				std::string status = "extra";
-				if (const auto found = outputs.find(relative_path); found != outputs.end()) {
-					status = found->second.status == "same" ? "current" : "updated";
+				if (outputs.contains(relative_path)) {
+					continue;
 				}
 
-				std::error_code size_ec;
-				const uintmax_t size = std::filesystem::file_size(entry.path(), size_ec);
-				current_rows.push_back(
-					{relative_path,
-					 file_size_text(size_ec ? 0 : size),
-					 file_time_text(std::filesystem::last_write_time(entry.path(), file_ec)),
-					 status}
-				);
+				extra_rows.push_back({relative_path, "-", "-", "extra"});
 			}
 		}
 
-		std::ranges::sort(current_rows, [](const auto &left, const auto &right) {
+		rows.insert(rows.end(), extra_rows.begin(), extra_rows.end());
+
+		std::ranges::sort(rows, [](const auto &left, const auto &right) {
+			const bool left_root = left.front() == "/";
+			const bool right_root = right.front() == "/";
+			if (left_root != right_root) {
+				return left_root;
+			}
+
 			return left.front() < right.front();
 		});
 
-		if (!current_rows.empty()) {
-			table::print("Current:", {"Path", "Size", "Modified", "Status"}, current_rows);
+		if (!rows.empty()) {
+			table::print("Output:", {"Path", "Title", "URL", "Status"}, rows);
 		}
 
 		// ── 问题与修复 ──────────────────────────────────────────
@@ -4217,6 +4335,14 @@ namespace camus
 			}
 
 			table::print("Front Matter:", {"File", "Problem"}, rows);
+		} else {
+			// 没有问题时也输出标题与结论，避免用户误以为检查被跳过。
+			std::cout << '\n' << strings::coloring_bright_yellow("Front Matter:") << '\n';
+			std::cout
+				<< strings::coloring_green(
+					   "OK: title / create-time present for all articles, SUMMARY.md with title for all directories"
+				   )
+				<< '\n';
 		}
 
 		if (!fixes.empty()) {

@@ -15,8 +15,9 @@ namespace camus
 
 	using copy_report = std::vector<copy_row>;
 
-	// 以表格打印复制结果；report 为空时不输出
-	void print_copy_report(const copy_report &report);
+	// 以表格打印复制结果；report 为空时不输出。
+	// base 非空时 Target 列显示相对 base 的路径（如 workdir），为空时显示绝对路径。
+	void print_copy_report(const copy_report &report, const std::filesystem::path &base = {});
 
 	// 从平台数据目录安装 camus.yaml、posts 与 .gitignore 到工作目录；
 	// 已存在的同名路径不会被覆盖。返回 0 表示成功，非 0 表示失败
