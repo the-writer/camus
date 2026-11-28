@@ -5,9 +5,9 @@ visibility: hidden
 
 # Camus 创作助手 · 技能总纲
 
-> 本文件是 AI 协作者在 Camus 站点项目中的**唯一总入口**。
-> 技能文件按项目类型分目录存放于 `.agents/<type>/`，小说类型再按子类型分目录存放于 `.agents/novel/<subtype>/`；
-> 每次任务都必须先读 `.agents/memories/` 记忆、完成「项目类型判定」，再加载对应技能。
+> 本文件安装在**源目录根部**（`src/AGENTS.md` 或 `posts/AGENTS.md`）；下文用 `<source>` 指它所在的源目录，技能与记忆统一位于 `<source>/.agents/`。
+> 技能文件按项目类型分目录存放于 `<source>/.agents/<type>/`，小说类型再按子类型分目录存放于 `<source>/.agents/novel/<subtype>/`；
+> 每次任务都必须先读 `<source>/.agents/memories/` 记忆、完成「项目类型判定」，再加载对应技能。
 
 ---
 
@@ -17,7 +17,7 @@ visibility: hidden
 
 ### 步骤 0 · 读取记忆
 
-项目根的 `.agents/memories/` 存放跨会话记忆（上次推断出的项目类型、用户偏好、人物与设定、大纲进度等）。
+源目录中的 `<source>/.agents/memories/` 存放跨会话记忆（上次推断出的项目类型、用户偏好、人物与设定、大纲进度等）。
 
 1. 目录存在时，先读其中的 `project.md`（若存在），把它当作上次已确认的项目上下文。
 2. 本次任务相关的类别文件（如 `characters.md`、`world.md`、`outline.md`）在进入对应工作前再读；**类型为 `novel` 时先读 `outline.md` 回顾进度与伏笔（见 §5.4）**，不必一次读全。
@@ -35,7 +35,7 @@ visibility: hidden
 3. **正文样本**：读首篇文章 / 首章的标题与开头，确认体裁与读者预期。
 4. **兜底询问**：线索不足或证据冲突 → 进入步骤 3（询问用户）。
 
-> 推断完成后，把结果与依据写入 `.agents/memories/project.md`（见 §5），后续运行直接复用。
+> 推断完成后，把结果与依据写入 `<source>/.agents/memories/project.md`（见 §5），后续运行直接复用。
 
 ### 步骤 1b · 判定小说子类型（仅 `novel`）
 
@@ -43,16 +43,16 @@ visibility: hidden
 
 | 子类型 | 目录 | 适用作品 | 判定线索 |
 |---|---|---|---|
-| `online` | `.agents/novel/online/` | 中文网络小说、连载爽文 | 「网文 / 连载 / 日更 / 爽文 / 系统流 / 升级流」；长篇连载体量；按等级 / 境界划分战力；按「家族→宗门→大陆」推进 |
-| `western-illusion` | `.agents/novel/western-illusion/` | 西方奇幻、史诗奇幻 | 「西幻 / 魔法 / 剑与魔法 / 龙 / 教会 / 公会 / 地下城 / 领主」；有魔法体系、种族与势力设定；冒险旅程式结构 |
-| `simple` | `.agents/novel/simple/` | 现实向、人物驱动的普通小说 | 「短篇 / 中篇 / 家庭 / 职场 / 成长 / 日常」；不依赖类型套路；冲突来自人物处境与选择 |
+| `online` | `<source>/.agents/novel/online/` | 中文网络小说、连载爽文 | 「网文 / 连载 / 日更 / 爽文 / 系统流 / 升级流」；长篇连载体量；按等级 / 境界划分战力；按「家族→宗门→大陆」推进 |
+| `western-illusion` | `<source>/.agents/novel/western-illusion/` | 西方奇幻、史诗奇幻 | 「西幻 / 魔法 / 剑与魔法 / 龙 / 教会 / 公会 / 地下城 / 领主」；有魔法体系、种族与势力设定；冒险旅程式结构 |
+| `simple` | `<source>/.agents/novel/simple/` | 现实向、人物驱动的普通小说 | 「短篇 / 中篇 / 家庭 / 职场 / 成长 / 日常」；不依赖类型套路；冲突来自人物处境与选择 |
 
 判定规则：
 
 1. **文本推断**：读正文样本（首章 + 若干章），按上表线索判定。类型与子类型都**不写入** `SUMMARY.md`，不要期待 `type` / `novel-type` 字段。
 2. **兜底询问**：证据不足或两种子类型都成立（既要连载爽感又要西幻世界观）→ 进入步骤 3 询问用户。
 
-> 子类型判定结果与项目类型一并写入 `.agents/memories/project.md`。
+> 子类型判定结果与项目类型一并写入 `<source>/.agents/memories/project.md`。
 
 ### 步骤 2 · 输出类型声明（必做）
 
@@ -107,15 +107,16 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 
 ### 步骤 4 · 加载技能并执行
 
-1. 读取 `.agents/<type>/` 下与本次任务相关的技能文件（每个 `.md` 是一个独立技能）；类型为 `novel` 时读取 `.agents/novel/<subtype>/`。
+1. 读取 `<source>/.agents/<type>/` 下与本次任务相关的技能文件（每个 `.md` 是一个独立技能）；类型为 `novel` 时读取 `<source>/.agents/novel/<subtype>/`。
 2. 按技能文件的「执行步骤」执行，用「输出格式」交付，用「质量检查清单」自检。**小说技能都带「创作进度」一节：先输出进度回顾，再执行后续步骤。**
 3. 引用外部结论时附上参考资料链接。
+4. 评审 / 评价类技能若项目根存在 `.git/`，先按 §5.6 读取当前改动并结合记忆做综合评价；git 只读，不提交。
 
 > 技能文件是**工作规范**，不是灵感库。执行前必须真正读取对应文件，不要凭印象套模板。
 
 ### 步骤 5 · 按需更新记忆
 
-任务结束时，把**下次运行还需要**的信息写回 `.agents/memories/`：
+任务结束时，把**下次运行还需要**的信息写回 `<source>/.agents/memories/`：
 
 - 类型 / 子类型判定结果 → `project.md`
 - 用户新增的偏好或纠正 → `preferences.md`
@@ -131,21 +132,21 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 
 | 类型 | 适用站点 | 判定线索（`title` / `subtitle` / `description` / 目录结构） | 技能目录 |
 |---|---|---|---|
-| `blog` | 博客、专栏、随笔、评测、教程型内容站 | 定期发布文章；有「随笔 / 专栏 / 评测 / 手记 / 笔记」等词；有按时间或主题分组的文章目录 | `.agents/blog/` |
-| `novel` | 小说、剧本、诗集等文学创作 | 「长篇 / 连载 / 章节 / 人物 / 情节 / 剧」；目录按卷、章、幕划分；文章篇幅长且有连续情节 | `.agents/novel/<subtype>/` |
-| `website` | 产品站、机构站、落地页、FAQ 站 | 「产品 / 服务 / 方案 / 定价 / 关于我们 / 常见问题」；目录是功能页而非文章集 | `.agents/website/` |
-| `tech` | 技术博客、工程文档、教程与源码说明站 | 「架构 / 源码 / 部署 / 性能 / 踩坑 / API / 实现」；含代码块、命令、配置文件；目录含 `docs/` `api/` `guide/` | `.agents/tech/` |
-| `book` | 读书、书评、书摘、书单、读书笔记站 | 「书单 / 书评 / 读后感 / 笔记 / 摘录 / 共读」；以书为单位组织内容，常见作者 / 译者 / 出版社 / ISBN 等字段 | `.agents/book/` |
+| `blog` | 博客、专栏、随笔、评测、教程型内容站 | 定期发布文章；有「随笔 / 专栏 / 评测 / 手记 / 笔记」等词；有按时间或主题分组的文章目录 | `<source>/.agents/blog/` |
+| `novel` | 小说、剧本、诗集等文学创作 | 「长篇 / 连载 / 章节 / 人物 / 情节 / 剧」；目录按卷、章、幕划分；文章篇幅长且有连续情节 | `<source>/.agents/novel/<subtype>/` |
+| `website` | 产品站、机构站、落地页、FAQ 站 | 「产品 / 服务 / 方案 / 定价 / 关于我们 / 常见问题」；目录是功能页而非文章集 | `<source>/.agents/website/` |
+| `tech` | 技术博客、工程文档、教程与源码说明站 | 「架构 / 源码 / 部署 / 性能 / 踩坑 / API / 实现」；含代码块、命令、配置文件；目录含 `docs/` `api/` `guide/` | `<source>/.agents/tech/` |
+| `book` | 读书、书评、书摘、书单、读书笔记站 | 「书单 / 书评 / 读后感 / 笔记 / 摘录 / 共读」；以书为单位组织内容，常见作者 / 译者 / 出版社 / ISBN 等字段 | `<source>/.agents/book/` |
 
-**混合站点的处理**：先定「主类型」，再跨目录借用其它类型的技能。例如「技术博客里夹了三篇书评」→ 主类型 `tech`，书评部分调用 `.agents/book/book-review.md`。
+**混合站点的处理**：先定「主类型」，再跨目录借用其它类型的技能。例如「技术博客里夹了三篇书评」→ 主类型 `tech`，书评部分调用 `<source>/.agents/book/book-review.md`。
 
 **小说类型的子目录**：`novel` 下再分三个子类型目录，判定规则见「步骤 1b」。
 
 | 子类型 | 技能目录 | 核心差异 |
 |---|---|---|
-| `online` | `.agents/novel/online/` | 连载节奏：黄金三章、爽点密度、章末钩子、金手指与升级体系 |
-| `western-illusion` | `.agents/novel/western-illusion/` | 世界观自洽：魔法体系与代价、种族与势力、位阶标尺、冒险旅程 |
-| `simple` | `.agents/novel/simple/` | 通用基线：人物驱动、生活细节、克制表达、情感张力 |
+| `online` | `<source>/.agents/novel/online/` | 连载节奏：黄金三章、爽点密度、章末钩子、金手指与升级体系 |
+| `western-illusion` | `<source>/.agents/novel/western-illusion/` | 世界观自洽：魔法体系与代价、种族与势力、位阶标尺、冒险旅程 |
+| `simple` | `<source>/.agents/novel/simple/` | 通用基线：人物驱动、生活细节、克制表达、情感张力 |
 
 > 子类型不同，规范差异很大：**不要跨子类型混用技能文件**，需要时以 `simple` 为基线再叠加对应子类型的专项要求。
 
@@ -153,7 +154,7 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 
 ## 2. 技能清单
 
-### `.agents/blog/` — 博客与内容创作
+### `<source>/.agents/blog/` — 博客与内容创作
 
 | 技能 | 何时使用 |
 |---|---|
@@ -164,7 +165,7 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 | `style-editor.md` | 稿件需要审校、去除冗余与「AI 味」时 |
 | `related-post-finder.md` | 需要找同主题旧文、建立内链、判断内容是否重复时 |
 
-### `.agents/novel/online/` — 网文（连载爽文）
+### `<source>/.agents/novel/online/` — 网文（连载爽文）
 
 | 技能 | 何时使用 |
 |---|---|
@@ -176,7 +177,7 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 | `scene-tension-score.md` | 需要评估章节节奏、爽点密度与追读动力时 |
 | `continuity-audit.md` | 需要检查战力、等级、道具与时间线是否自洽时 |
 
-### `.agents/novel/western-illusion/` — 西方奇幻
+### `<source>/.agents/novel/western-illusion/` — 西方奇幻
 
 | 技能 | 何时使用 |
 |---|---|
@@ -188,7 +189,7 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 | `scene-tension-score.md` | 需要评估战斗与探索场景的张力时 |
 | `continuity-audit.md` | 需要检查魔法规则、地图、位阶与势力关系是否自洽时 |
 
-### `.agents/novel/simple/` — 普通小说（现实向基线）
+### `<source>/.agents/novel/simple/` — 普通小说（现实向基线）
 
 | 技能 | 何时使用 |
 |---|---|
@@ -200,7 +201,7 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 | `scene-tension-score.md` | 需要评估场景张力与情感强度时 |
 | `continuity-audit.md` | 需要检查时间线、生活细节与视角信息越界时 |
 
-### `.agents/website/` — 站点与产品页
+### `<source>/.agents/website/` — 站点与产品页
 
 | 技能 | 何时使用 |
 |---|---|
@@ -211,7 +212,7 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 | `navigation-design.md` | 需要设计导航、面包屑、站点层级时 |
 | `performance-checklist.md` | 需要体检加载速度与 Core Web Vitals 时 |
 
-### `.agents/tech/` — 技术写作与工程
+### `<source>/.agents/tech/` — 技术写作与工程
 
 | 技能 | 何时使用 |
 |---|---|
@@ -222,7 +223,7 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 | `debug-diagnosis.md` | 需要定位故障、复盘事故时 |
 | `tech-post-writer.md` | 需要把实现过程写成技术文章时 |
 
-### `.agents/book/` — 阅读与书评
+### `<source>/.agents/book/` — 阅读与书评
 
 | 技能 | 何时使用 |
 |---|---|
@@ -264,31 +265,32 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 
 ```text
 <项目根>/
-├── AGENTS.md              ← 本文件（安装到项目根，作为 AI 的总入口）
-├── .agents/               ← 技能库与记忆（安装到项目根）
-│   ├── blog/  book/  tech/  website/
-│   ├── novel/             ← 小说按子类型再分目录
-│   │   └── online/  western-illusion/  simple/
-│   └── memories/          ← 跨会话记忆（AI 运行时创建，按类别分文件，见 §5）
 ├── .workshop/             ← 可选：创作资产库（设定卡 / 地名 / 关系 / 候选 / 图谱，见 §5.5）
-├── posts/                 ← 内容源目录
+├── <source>/              ← 源目录（src/ 或 posts/）
+│   ├── AGENTS.md          ← 本文件（安装到源目录，作为 AI 的总入口）
+│   ├── .agents/           ← 技能库与记忆（安装到源目录）
+│   │   ├── blog/  book/  tech/  website/
+│   │   ├── novel/         ← 小说按子类型再分目录
+│   │   │   └── online/  western-illusion/  simple/
+│   │   ├── skills/        ← 同源技能镜像（仅示例内容带；不参与构建）
+│   │   └── memories/      ← 跨会话记忆（AI 运行时创建，按类别分文件，见 §5）
 │   ├── SUMMARY.md         ← 主 SUMMARY.md：站点标题 / 副标题 / 描述 / cover / logo
-│   └── .agents/skills/    ← 同源技能镜像（不参与构建，供随站点分发）
+│   └── …                  ← 文章 / 卷 / 章
 ├── camus.yaml             ← 站点配置
 └── theme/                 ← 主题模板
 ```
 
-- **技能权威副本**是 `.agents/<type>/**/*.md`；`posts/.agents/skills/` 是同一套技能的随站分发镜像。
-- `posts/.agents/skills/` 内的文件带 `visibility: hidden`，**不会**出现在构建产物中。
-- `.agents/memories/` 由 AI 在运行中创建与维护，不属于安装包内容，也不参与构建。
+- **技能权威副本**是 `<source>/.agents/<type>/**/*.md`；`posts/.agents/skills/` 是同一套技能的随站分发镜像。
+- `AGENTS.md` 与任意 `.agents/` 目录在构建时强制忽略（与 `private` 同级），不会出现在构建产物中。
+- `<source>/.agents/memories/` 由 AI 在运行中创建与维护，不属于安装包内容，也不参与构建。
 - `.workshop/` 为可选的创作资产库，存在时按 §5.5 读取；不存在不视为错误，也不参与构建。
-- 若项目根已存在自定义 `AGENTS.md`，安装时会提示冲突并终止复制；请自行合并，或用 `--force` 覆盖。
+- 若源目录已存在自定义 `AGENTS.md`，安装时会提示冲突并终止复制；请自行合并，或用 `--force` 覆盖。
 
 ---
 
 ## 5. 记忆（memories）
 
-> 跨会话需要保留的信息，**分门别类写成独立文件**放在项目根的 `.agents/memories/` 下；下次运行先读再干活。
+> 跨会话需要保留的信息，**分门别类写成独立文件**放在源目录的 `<source>/.agents/memories/` 下；下次运行先读再干活。
 
 ### 5.1 何时写入
 
@@ -313,18 +315,18 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 
 ### 5.3 读写规则
 
-1. **先读后写**：每次运行先读 `.agents/memories/` 中已有的文件；目录不存在就跳过，不视为错误。
+1. **先读后写**：每次运行先读 `<source>/.agents/memories/` 中已有的文件；目录不存在就跳过，不视为错误。
 2. **增量更新**：只改受影响的条目，不整篇重写；每条记录写清「依据 / 日期 / 确认状态」。
 3. **冲突以正文为准**：记忆是工作缓存，不是事实来源；与正文或用户新指令冲突时，以正文 / 新指令为准，并同步修正记忆。
 4. **控制体量**：单文件过大（经验值：超过约 200 行）就按主题拆分，避免把记忆写成第二部作品。
 5. **不写机密**：密码、令牌、密钥、他人隐私不写入记忆。
-6. **不影响构建**：`.agents/memories/` 不在源目录（`posts/` 或 `src/`）内，不会被扫描或发布。
+6. **不影响构建**：`.agents/` 即使在源目录内也会被构建强制忽略（与 `private` 同级），不会被扫描或发布。
 
 ### 5.4 创作进度回顾
 
-小说技能（`.agents/novel/<subtype>/*.md`）都带「创作进度」一节（位于「何时使用」与「输入」之间）；执行任何小说任务前先做一次回顾，再进入技能正文。
+小说技能（`<source>/.agents/novel/<subtype>/*.md`）都带「创作进度」一节（位于「何时使用」与「输入」之间）；执行任何小说任务前先做一次回顾，再进入技能正文。
 
-1. **数据源**：`.agents/memories/`（尤其 `outline.md`）、源目录（`posts/`，不存在时 `src/`）的卷 / 章（或篇 / 章）文件，以及可选的 `.workshop/`（见 §5.5）。
+1. **数据源**：`<source>/.agents/memories/`（尤其 `outline.md`）、源目录（`src/` 或 `posts/`）的卷 / 章（或篇 / 章）文件，以及可选的 `.workshop/`（见 §5.5）。
 2. **统计口径**：卷数 / 章数、已完成章节、总字数与章均字数、最近更新时间、伏笔（埋 / 收 / 未收）、人物 / 地点 / 关系 / 候选条目数、`.workshop` 设定卡数。
 3. **输出**：一句话阶段判断 + 数据表 + 当前进度 + 1–3 项待续事项（模板见各技能的「创作进度」）。
 4. **来源与诚实**：每项数值注明来源（文件、记忆或 `.workshop`）；取不到就写「未记录」，不估算、不编造。
@@ -349,14 +351,28 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 
 `.workshop/` 是资产库，不是事实来源：与正文冲突时以正文为准，并把差异记入 `continuity.md`；不要静默采信任何一方。
 
+### 5.6 评价类技能与 `.git`
+
+评审 / 评价类技能（`code-review`、`architecture-review`、`*-audit`、`*-score`、`continuity-audit`、`readability-score` 等）在项目根（通常为 `<source>/..`）存在 `.git/` 时，不能只看用户贴出的片段，必须结合仓库状态与记忆做一次综合评价。
+
+1. **判断**：只检查项目根是否存在 `.git/`；不存在就跳过本节，按原技能执行。
+2. **只读**：`git` 只用于读取，不执行 `add` / `commit` / `reset` / `checkout` / `clean` 等写操作。
+3. **读状态**：至少读取 `git status --short`、`git diff --stat`、`git diff`（未暂存）与 `git diff --cached`（已暂存）；需要时读 `git log -1 --oneline` 确认基线。
+4. **读记忆**：按任务读 `<source>/.agents/memories/` 中相关文件（`project.md`、`preferences.md`、`style.md`、`outline.md`、`continuity.md` 等）。
+5. **综合判断**：把「当前改动」与「记忆中的项目目标、偏好、结构、约定」对照，评价范围、一致性、连续性、风险与验证情况。
+6. **诚实**：git 命令不可用、仓库无改动或输出为空时如实说明；不得编造 diff、提交记录或文件名。
+7. **不改仓库**：评价结论只写进交付物或 `<source>/.agents/memories/`，不自动提交。
+
+输出至少包含：改动概览（文件 / 行数）、与记忆的一致性、风险项、验证情况、明确结论。
+
 ---
 
 ## 6. 与 Camus 的衔接
 
 - 内容写入 `posts/`（或 `src/`），目录需要标题就放一个 `SUMMARY.md`；新建文章可用 `camus --create <path>`。
 - 构建：`camus --build`；只校验配置与目录：`camus --check`（加 `--fix` 自动补 `title` / `create-time` / `SUMMARY.md`）。
-- 修改 `SUMMARY.md` 的 front matter 可设置 `title`、`subtitle`、`description`、`cover`、`logo`；项目类型与小说子类型**不写入配置**，由 AI 首次运行时推断并记入 `.agents/memories/project.md`。
-- 写作前先看站点已有文章，避免选题重复（可用 `.agents/blog/related-post-finder.md`）。
+- 修改 `SUMMARY.md` 的 front matter 可设置 `title`、`subtitle`、`description`、`cover`、`logo`；项目类型与小说子类型**不写入配置**，由 AI 首次运行时推断并记入 `<source>/.agents/memories/project.md`。
+- 写作前先看站点已有文章，避免选题重复（可用 `<source>/.agents/blog/related-post-finder.md`）。
 
 ---
 

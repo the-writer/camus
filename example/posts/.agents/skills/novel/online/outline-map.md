@@ -24,11 +24,11 @@ visibility: hidden
 
 ## 创作进度
 
-> 本技能的第一步是进度回顾：从 `.agents/memories/` 与作品数据源汇总「写到哪、写了多少、还差什么」，再进入具体工作。口径与模板见 `AGENTS.md` §5.4。
+> 本技能的第一步是进度回顾：下文用 `<source>` 指源目录（`src/` 或 `posts/`）；从 `<source>/.agents/memories/` 与作品数据源汇总「写到哪、写了多少、还差什么」，再进入具体工作。口径与模板见 `AGENTS.md` §5.4。
 
 ### 回顾步骤
 
-1. **读记忆**：先读 `.agents/memories/project.md`、`outline.md`，再按需读 `characters.md`、`world.md`、`continuity.md`、`preferences.md`、`style.md`；目录或文件不存在就跳过，不视为错误。
+1. **读记忆**：先读 `<source>/.agents/memories/project.md`、`outline.md`，再按需读 `characters.md`、`world.md`、`continuity.md`、`preferences.md`、`style.md`；目录或文件不存在就跳过，不视为错误。
 2. **扫数据**：扫描源目录（`posts/`，不存在则 `src/`）的卷 / 章文件；若存在 `.workshop/`，按 `AGENTS.md` §5.5 读取设定卡、地名、关系与候选条目。
 3. **统计**：按下表统计卷 / 章 / 字数、最近更新、伏笔回收、人物与设定条目；所有数值给出「来源」，无法从文件得到时标「未记录」，不估算、不编造。
 4. **对齐**：记忆与正文冲突时以正文为准；回顾结论写回 `outline.md`（进度、伏笔）及受影响的类别文件。
@@ -58,7 +58,7 @@ visibility: hidden
 
 | 输入 | 说明 | 缺失时 |
 |---|---|---|
-| 记忆 | `.agents/memories/` 中的 `outline.md`、`characters.md`、`world.md`、`continuity.md` | 缺失时从正文与 `.workshop` 重建，并标注「推断」 |
+| 记忆 | `<source>/.agents/memories/` 中的 `outline.md`、`characters.md`、`world.md`、`continuity.md` | 缺失时从正文与 `.workshop` 重建，并标注「推断」 |
 | 正文 | `posts/`（不存在则 `src/`）下的卷 / 章文件 | 无正文时按「只有大纲」模式分析，明确说明覆盖范围 |
 | 主 SUMMARY.md | 站点元信息与目录结构 | 缺失时只按文件路径与标题分析 |
 | `.workshop/`（可选） | 设定卡、地名、关系、候选与图谱 | 不存在时跳过，不视为错误 |
@@ -105,9 +105,9 @@ visibility: hidden
 | `sheets.ini` | 人物 / 候选速查（INI） | 与 `sheets.md` 交叉核对，冲突以 `sheets.md` 为准 |
 | `overview.md` | 可为空 | 空文件直接跳过 |
 
-**冲突优先级**：正文 > 用户新指令 > `.agents/memories/` > `.workshop/`。冲突处必须标注「正文与卡片不一致」并给出处理建议，不能静默采信任何一方。
+**冲突优先级**：正文 > 用户新指令 > `<source>/.agents/memories/` > `.workshop/`。冲突处必须标注「正文与卡片不一致」并给出处理建议，不能静默采信任何一方。
 
-AI **只读** `.workshop/`，不修改这些文件；核对结论写回 `.agents/memories/`（`outline.md`、`characters.md`、`world.md`、`continuity.md`）。
+AI **只读** `.workshop/`，不修改这些文件；核对结论写回 `<source>/.agents/memories/`（`outline.md`、`characters.md`、`world.md`、`continuity.md`）。
 
 ## 输出格式
 

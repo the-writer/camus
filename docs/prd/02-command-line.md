@@ -18,16 +18,16 @@ camus [选项] [--workdir <目录>]
 | `-v` | `--version` | 无 | 打印版本、构建信息与 git hash 后退出 0 | `main.cpp:91` |
 |  | `--update` | 可选值：`check`（默认 `install`） | 请求最新 release 的 `latest.json`。`install`（裸 `--update` 等价）：有新版本时实时显示进度并下载到系统临时目录，随后打印并执行安装命令（macOS `installer -pkg <file> -target CurrentUserHomeDirectory` 加 `sudo ln -sf <运行期目录>/bin/camus /usr/local/bin/camus`；Linux `.deb`/`.rpm` 分别用 `sudo dpkg -i`/`sudo rpm -Uvh`）；`check`：仅输出下载链接（`curl -LO <地址>`），不下载、不安装。已是最新或执行成功返回 0，请求/下载/安装失败 1；取值非法时打印错误并返回 1 | `main.cpp`、`update.cpp` |
 | `-b` | `--build` | 无 | 构建站点；不指定时默认不构建 | `main.cpp` |
-| `-c` | `--copy` | 无 | 把精简资源复制到 `<workdir>/assets`（创建 `assets/css`、`assets/js`、空 `assets/fonts` 并复制 `style.css`、`camus.js`）；工作目录已存在 `src/` 或 `posts/` 时不再注入示例 `posts/`；同时把 AI 技能安装到工作目录根部（`AGENTS.md` 与 `.agents/`，见 §11），并在完成后打印复制结果表格（见 §8.2.5）；不触发构建，除非同时指定 `--build` | `main.cpp` |
+| `-c` | `--copy` | 无 | 把精简资源复制到 `<workdir>/assets`（创建 `assets/css`、`assets/js`、空 `assets/fonts` 并复制 `style.css`、`camus.js`）；工作目录已存在 `src/` 或 `posts/` 时不再注入示例 `posts/`；同时把 AI 技能安装到源目录根部（`<source>/AGENTS.md` 与 `<source>/.agents/`，见 §11），并在完成后打印复制结果表格（见 §8.2.5）；不触发构建，除非同时指定 `--build` | `main.cpp` |
 |  | `--theme` | 可选值：主题名 | 仅与 `--copy` 搭配：无值时复制整个 `theme/`，有值时只复制 `theme/<name>/` 到 `<workdir>/theme`；同时复制最小 assets（`style.css`、`camus.js`）并创建空 `fonts/`，不补齐示例文件，也不执行 `--full` | `main.cpp` |
 |  | `--full` | 无 | 与 `--copy` 搭配时复制平台数据目录的完整资源树到 `.camus` | `main.cpp` |
-| `-f` | `--force` | 无 | `--copy` 时覆盖目标（`assets` 或 `--full` 的 `.camus`）中已存在的同名资源；安装 AI 技能时覆盖工作目录根部内容不同的 `AGENTS.md` 与 `.agents/` 文件（见 §11.4.2） | `main.cpp` |
+| `-f` | `--force` | 无 | `--copy` 时覆盖目标（`assets` 或 `--full` 的 `.camus`）中已存在的同名资源；安装 AI 技能时覆盖源目录中内容不同的 `AGENTS.md` 与 `.agents/` 文件（见 §11.4.2） | `main.cpp` |
 | `-d` | `--debug` | 无 | 开启调试日志 | `main.cpp:11` |
 | `-W` | `--watch` | 无 | 监听文件变化并自动重建，同时启动本地服务与控制面板（隐含 `--build`） | `main.cpp:11` |
 | `-D` | `--dryrun` | 无 | 干跑：不写任何输出文件 | `main.cpp:12` |
 | `-C` | `--check` | 无 | 校验配置、资源与 PDF 设置，并执行一次干跑构建后以表格输出检查报告（汇总 / 最终渲染产物树 / 输出目录当前内容 / Front Matter / Fixes / Issues）；不写文件 | `main.cpp` |
 |  | `--fix` | 无 | 仅配合 `--check`：自动补全文章缺失的 `title` / `create-time`（时间取文件创建时间，macOS 为 birth time，其它平台回退修改时间），并创建缺失的 `SUMMARY.md`；不改动格式错误（`(invalid)`）的文件；在 `Fixes:` 区块打印修复记录。`--fix` 未搭配 `--check` 时报错返回 1 | `main.cpp`、`writer.cpp` |
-|  | `--new` | 目录字符串 | 创建目录（相对 `--workdir` 或绝对路径），从平台数据目录安装示例文件（`camus.yaml`、`posts`、`.gitignore`、`Justfile`，含 AI 技能安装到项目根目录），并继续执行 `--repo`；不触发构建，除非同时指定 `--build` | `main.cpp` |
+|  | `--new` | 目录字符串 | 创建目录（相对 `--workdir` 或绝对路径），从平台数据目录安装示例文件（`camus.yaml`、`posts`、`.gitignore`、`Justfile`，含 AI 技能安装到源目录根部），并继续执行 `--repo`；不触发构建，除非同时指定 `--build` | `main.cpp` |
 | `--create` | 路径字符串 | 在源目录（`src/` 优先，其次 `posts/`）下创建文章：最后一级视为文件名（自动补 `.md`），缺失目录递归创建，并写入模板（`title`（文件名含 `-` 且出现过数字时取最后一个 `-` 之后的片段，否则用文件名）、当前 UTC 时间的 `create-time`，不再自动写入正文标题）；每个新建目录同时生成 `SUMMARY.md`（Front Matter 仅 `title: <目录名>`，目录名同样去除 `01-` 之类的排序前缀，已存在则不覆盖）；文件已存在时不覆盖。不触发构建 | `main.cpp` |
 |  | `--repo` | 可选值：远程地址 | 在 `--workdir` 执行 `git init`；提供值时设置 `origin`（已存在则更新），不提供时只 init | `main.cpp` |
 |  | `--open` | 可选值：`project`（默认）/`runtime`/`<项目 ID>`/`<项目名>` | 只打开目录，不触发构建：`project` 用 VS Code 打开工作目录（要求工作目录是合法 camus 项目，即含 `camus.yaml`；打开成功后把项目路径与项目名记录到 `<运行期目录>/projects.json`），`runtime` 用系统文件管理器打开运行期目录（安装包写入主题与资源的目录，目录不存在时不会自动创建，直接报错返回 1），`<项目 ID>`（纯数字）或 `<项目名>` 打开已记录项目（数字未命中时报错返回 1）；其它未知值打印 WARN 并按 `project` 处理。与 `--build` 同用时构建成功后再打开 | `main.cpp`、`open.cpp` |
@@ -71,7 +71,7 @@ flowchart TD
     PGM -->|失败| PF[返回 1]
     PGM -->|成功| AG{--new / --copy?}
     PJ -->|否| AG
-    AG -->|是| AGT[install_agents: AGENTS.md 与 .agents/ 安装到工作目录根部]
+    AG -->|是| AGT[check_agents: 源目录根部技能冲突预检]
     AG -->|否| NW2{--new?}
     AGT -->|技能文件冲突| AF[返回 1]
     AGT -->|成功| NW2
@@ -84,8 +84,13 @@ flowchart TD
     TH -->|否| COPY[copy_resources: 最小到 assets/, --full 到 .camus]
     CT -->|失败| CF[返回 1]
     COPY -->|失败| CF
-    CT -->|成功| PR[打印复制结果表格]
-    COPY -->|成功| PR
+    CT -->|成功| AGI[install_agents: AGENTS.md 与 .agents/ 安装到源目录根部]
+    COPY -->|成功| AGI
+    CP -->|否| AGI
+    AGI -->|失败| CF
+    AGI -->|成功| PRINT{--copy?}
+    PRINT -->|是| PR[打印复制结果表格]
+    PRINT -->|否| R{--repo?}
     PR --> R{--repo?}
     CP -->|否| R
     R -->|是| GIT[git init; 有值则设置 origin]
@@ -121,7 +126,7 @@ flowchart TD
 - `--new <dir>` 先把目标解析为「`--workdir` 下的相对路径」或绝对路径并创建，随后安装示例文件：补齐 `camus.yaml`、`posts`（含 `SUMMARY.md`、`posts/private/`）、`.gitignore` 与 `Justfile`。之后若指定 `--repo` 再初始化仓库；需要构建时另加 `--build`。
 - `--create <path>` 在源目录下创建文章：源目录按 `src/` → `posts/` → 默认 `src/` 探测（与构建一致）。路径必须是相对路径且不含 `.` / `..` 段，最后一级为文件名，未以 `.md` 结尾时自动补 `.md`，缺失父目录递归创建；对本次新建的每个目录（不含源目录本身）生成 `SUMMARY.md`，内容为 `---\ntitle: <目录名>\n---`（目录名与文章名使用同一规则：含 `-` 且出现过数字时取最后一个 `-` 之后的片段），已存在的 `SUMMARY.md` 不覆盖；目标文件已存在时打印告警但不覆盖，仍返回 0。新建文章模板为 `---\ntitle: <名称>\ncreate-time: <UTC 时间>\n---\n`：`<名称>` 取文件名（去扩展名），当名称含 `-` 且包含数字时取最后一个 `-` 之后的部分（用于去掉 `01-` 之类的排序前缀），正文留空、不再写入 `## 标题`。
 - `--new` 安装的示例文件包括工作目录根部的 `posts`（含各目录的 `SUMMARY.md` 与空的 `posts/private/`）、`camus.yaml`、`.gitignore`、`Justfile`，同名路径已存在则保持不动；`posts/private/` 每次都会确保存在（该行为与 `--copy` 不同，见 §8.2.2）。
-- `-c` / `--new` 在上述复制动作**之前**先把 AI 技能安装到工作目录根部：数据目录 `SKILLS/AGENTS.md` → `<workdir>/AGENTS.md`，`SKILLS/<类型>/…` → `<workdir>/.agents/<类型>/…`（详见 §11.4）。目标已存在且内容与来源一致时按已安装处理（可重复执行）；内容不同且未指定 `-f` 时打印冲突路径并终止复制，返回 1；指定 `-f` 时覆盖。
+- `-c` / `--new` 先做 AI 技能冲突预检，复制动作完成后再安装到源目录根部（优先已有 `src/`，其次已有 `posts/`，否则默认 `posts/`）：数据目录 `SKILLS/AGENTS.md` → `<source>/AGENTS.md`，`SKILLS/<类型>/…` → `<source>/.agents/<类型>/…`（详见 §11.4）。目标已存在且内容与来源一致时按已安装处理（可重复执行）；内容不同且未指定 `-f` 时打印冲突路径并终止复制，返回 1；指定 `-f` 时覆盖。
 - `-c` 默认最小复制：只创建 `<workdir>/assets/css`、`assets/js`、`assets/fonts`，并从数据目录复制 `style.css`、`camus.js`；`fonts/` 只创建空目录（合并查找，无需复制内置字体），随后补齐工作目录根部缺失的示例文件。
 - `-c` 在补齐根部示例文件时遵循「已有源目录不注入示例文章」：工作目录已存在 `src/` 或 `posts/` 时，跳过 `posts`（也不再创建 `posts/private/`）；其余 `camus.yaml` / `.gitignore` / `Justfile` 仍按缺失补齐。
 - `-c --full` 复制完整资源（`theme/`、`assets/`、`posts/`（含各目录的 `SUMMARY.md` 与 `posts/private/`）、`camus.yaml`、`.gitignore`、`Justfile`）到 `.camus`，并按上一条规则补齐工作目录根部缺失的示例文件。
@@ -166,7 +171,7 @@ Build Time: 2025-07-24 15:44:00 hash=<40 位 git hash>
 | 参数解析失败 | 1 | `main.cpp:102` |
 | 无文章（目录树为空） | 1 | `writer.cpp:812`（非 watch 模式） |
 | 安装/复制失败（数据目录无资源或复制异常） | 1 | `install_templates` / `copy_resources` 返回 1 |
-| AI 技能安装冲突（工作目录根部 `AGENTS.md` 或 `.agents/` 中存在内容不同的同名文件） | 1 | `install_agents` 返回 1 |
+| AI 技能安装冲突（源目录根部 `AGENTS.md` 或 `.agents/` 中存在内容不同的同名文件） | 1 | `check_agents` / `install_agents` 返回 1 |
 | `git init` / remote 设置失败 | 1 | `init_repository` 返回 1 |
 | `--check` 发现错误 | 1 | `writer::check()` 返回 1 |
 | `--open` 打开失败 / 目标不是合法 camus 项目 / 项目 ID 不存在 | 1 | `open_target` 返回 1（仅非 watch 模式退出） |

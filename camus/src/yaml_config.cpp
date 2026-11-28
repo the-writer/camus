@@ -26,10 +26,11 @@ namespace camus::config
 {
 	namespace
 	{
-		bool path_contains_private(const std::filesystem::path &path)
+		bool path_is_ignored(const std::filesystem::path &path)
 		{
 			for (const auto &part : path) {
-				if (part.filename() == CAMUS_PRIVATE_DIR) {
+				if (const std::filesystem::path name = part.filename();
+					name == CAMUS_PRIVATE_DIR || name == CAMUS_AGENTS_DIR) {
 					return true;
 				}
 			}
@@ -1033,13 +1034,22 @@ namespace camus::config
 			}
 
 			if (it->is_directory()) {
-				if (it->path().filename() == CAMUS_PRIVATE_DIR) {
+				if (const std::filesystem::path dirname = it->path().filename();
+					dirname == CAMUS_PRIVATE_DIR || dirname == CAMUS_AGENTS_DIR) {
 					it.disable_recursion_pending();
 				}
 				continue;
 			}
 
-			if (!it->is_regular_file() || it->path().filename() != CAMUS_SUMMARY_NAME) {
+			if (!it->is_regular_file()) {
+				continue;
+			}
+
+			if (it->path().filename() == CAMUS_AGENTS_FILE) {
+				continue;
+			}
+
+			if (it->path().filename() != CAMUS_SUMMARY_NAME) {
 				continue;
 			}
 
@@ -1049,7 +1059,7 @@ namespace camus::config
 										 ? "/"
 										 : filesystem::clean_path(relative_dir.generic_string(), "/");
 
-			if (path_contains_private(path)) {
+			if (path_is_ignored(path)) {
 				continue;
 			}
 
@@ -1118,8 +1128,8 @@ namespace camus::config
 				}
 
 				const std::string path = filesystem::clean_path(item["path"].as<std::string>(), "/");
-				if (path_contains_private(path)) {
-					logging::warn("ignore transfer using private directory path={}", path);
+				if (path_is_ignored(path)) {
+					logging::warn("ignore transfer using ignored directory path={}", path);
 					continue;
 				}
 

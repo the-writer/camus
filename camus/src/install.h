@@ -40,10 +40,14 @@ namespace camus
 	// 缺失的父目录会被递归创建；文件已存在时不覆盖。返回 0 表示成功，非 0 表示失败
 	int create_article(const std::filesystem::path &workdir, const std::string &path);
 
-	// 把 AI 技能安装到工作目录根部：数据目录 SKILLS/AGENTS.md → <workdir>/AGENTS.md，
-	// SKILLS/<类型>/… → <workdir>/.agents/<类型>/…。同名且内容不同的文件视为冲突，
-	// 提示冲突路径并终止复制（不写入任何文件）；force 为真时覆盖同名文件。
-	// report 非空时追加本次复制结果。返回 0 表示成功（或已安装且内容一致），
-	// 非 0 表示冲突终止或失败
+	// 把 AI 技能安装到源目录根部（优先已有 src，其次已有 posts，否则默认 posts）：
+	// SKILLS/AGENTS.md → <source>/AGENTS.md，SKILLS/<类型>/… → <source>/.agents/<类型>/…。
+	// 同名且内容不同的文件视为冲突，提示冲突路径并终止复制（不写入任何文件）；
+	// force 为真时覆盖同名文件。report 非空时追加本次复制结果。返回 0 表示成功
+	// （或已安装且内容一致），非 0 表示冲突终止或失败。
 	int install_agents(const std::filesystem::path &workdir, bool force, copy_report *report = nullptr);
+
+	// 只做 install_agents 的冲突预检，不写入任何文件；供调用方在其它复制动作前
+	// 提前终止，避免留下半安装状态。返回 0 表示无冲突，非 0 表示有冲突或失败。
+	int check_agents(const std::filesystem::path &workdir, bool force = false);
 } // namespace camus

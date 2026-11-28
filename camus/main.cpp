@@ -183,11 +183,12 @@ int main(const int argc, char **argv)
 			}
 		}
 
-		if (arg.exist("new") || arg.exist("copy")) {
-			// AI 技能安装到工作目录根部：存在同名且内容不同的文件时终止复制，
+		const bool agents_requested = arg.exist("new") || arg.exist("copy");
+		if (agents_requested) {
+			// AI 技能安装到源目录（src 或 posts）根部；先做冲突预检，
 			// 放在其它复制动作之前，保证冲突时不会留下半安装状态。
-			if (const int agents = camus::install_agents(cmd.workdir, arg.exist("force"), &copy_rows); agents != 0) {
-				return agents;
+			if (camus::check_agents(cmd.workdir, arg.exist("force")) != 0) {
+				return 1;
 			}
 		}
 
@@ -210,7 +211,15 @@ int main(const int argc, char **argv)
 			if (copied != 0) {
 				return copied;
 			}
+		}
 
+		if (agents_requested) {
+			if (const int agents = camus::install_agents(cmd.workdir, arg.exist("force"), &copy_rows); agents != 0) {
+				return agents;
+			}
+		}
+
+		if (arg.exist("copy")) {
 			camus::print_copy_report(copy_rows);
 		}
 

@@ -23,11 +23,11 @@ visibility: hidden
 
 ## 创作进度
 
-> 本技能的第一步是进度回顾：从 `.agents/memories/` 与作品数据源汇总「写到哪、写了多少、还差什么」，再进入具体工作。口径与模板见 `AGENTS.md` §5.4。
+> 本技能的第一步是进度回顾：下文用 `<source>` 指源目录（`src/` 或 `posts/`）；从 `<source>/.agents/memories/` 与作品数据源汇总「写到哪、写了多少、还差什么」，再进入具体工作。口径与模板见 `AGENTS.md` §5.4。
 
 ### 回顾步骤
 
-1. **读记忆**：先读 `.agents/memories/project.md`、`outline.md`，再按需读 `characters.md`、`world.md`、`continuity.md`、`preferences.md`、`style.md`；目录或文件不存在就跳过，不视为错误。
+1. **读记忆**：先读 `<source>/.agents/memories/project.md`、`outline.md`，再按需读 `characters.md`、`world.md`、`continuity.md`、`preferences.md`、`style.md`；目录或文件不存在就跳过，不视为错误。
 2. **扫数据**：扫描源目录（`posts/`，不存在则 `src/`）的篇 / 章文件；若存在 `.workshop/`，按 `AGENTS.md` §5.5 读取设定卡、地名、关系与候选条目。
 3. **统计**：按下表统计篇 / 章 / 字数、最近更新、伏笔回收、人物与设定条目；所有数值给出「来源」，无法从文件得到时标「未记录」，不估算、不编造。
 4. **对齐**：记忆与正文冲突时以正文为准；回顾结论写回 `outline.md`（进度、伏笔）及受影响的类别文件。

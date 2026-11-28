@@ -38,11 +38,10 @@ namespace
 	constexpr const char *copy_skipped_installed = "skipped (already installed)";
 	constexpr const char *copy_skipped_missing = "skipped (missing in source)";
 
-	// AI 技能：数据目录 SKILLS/ 下的 AGENTS.md 安装到工作目录根部，
-	// 其余子目录（按项目类型划分）安装到工作目录下的 .agents/。
+	// AI 技能：数据目录 SKILLS/ 下的 AGENTS.md 与类型子目录安装到源目录
+	// （优先已有 src，其次已有 posts，否则默认为 posts）根部：
+	// <source>/AGENTS.md、<source>/.agents/<类型>/…。
 	constexpr const char *skills_dir_name = "SKILLS";
-	constexpr const char *agents_dir_name = ".agents";
-	constexpr const char *agents_entry_name = "AGENTS.md";
 
 	// 目录 / 文件显示名：含 '-' 且出现过数字时，取最后一个 '-' 之后的片段，去掉 01- 之类的排序前缀。
 	std::string strip_order_prefix(std::string name)
@@ -174,16 +173,31 @@ This directory is excluded from builds.
 		return config.empty() ? std::filesystem::path{} : config.parent_path();
 	}
 
-	// 收集技能文件与目标路径的对应关系：AGENTS.md 落到工作目录根部，
-	// 其余子目录落到 <workdir>/.agents/<子目录>/ 下。
+	// 源目录探测与构建保持一致：优先 src，其次 posts；两者都不存在时默认 posts，
+	// 因为 --new 安装的示例内容在 posts/ 下。
+	std::filesystem::path agents_target_dir(const std::filesystem::path &workdir)
+	{
+		if (std::filesystem::is_directory(workdir / "src")) {
+			return workdir / "src";
+		}
+
+		if (std::filesystem::is_directory(workdir / "posts")) {
+			return workdir / "posts";
+		}
+
+		return workdir / "posts";
+	}
+
+	// 收集技能文件与目标路径的对应关系：AGENTS.md 落到源目录根部，
+	// 其余子目录落到 <source>/.agents/<子目录>/ 下。
 	std::vector<std::pair<std::filesystem::path, std::filesystem::path>>
-	collect_agents_files(const std::filesystem::path &source, const std::filesystem::path &workdir)
+	collect_agents_files(const std::filesystem::path &source, const std::filesystem::path &target_root)
 	{
 		std::vector<std::pair<std::filesystem::path, std::filesystem::path>> files;
 
-		const std::filesystem::path agents_md = source / agents_entry_name;
+		const std::filesystem::path agents_md = source / CAMUS_AGENTS_FILE;
 		if (std::filesystem::is_regular_file(agents_md)) {
-			files.emplace_back(agents_md, workdir / agents_entry_name);
+			files.emplace_back(agents_md, target_root / CAMUS_AGENTS_FILE);
 		}
 
 		for (const auto &entry : std::filesystem::directory_iterator(source)) {
@@ -191,7 +205,7 @@ This directory is excluded from builds.
 				continue;
 			}
 
-			const std::filesystem::path base = workdir / agents_dir_name / entry.path().filename();
+			const std::filesystem::path base = target_root / CAMUS_AGENTS_DIR / entry.path().filename();
 			for (const auto &file : std::filesystem::recursive_directory_iterator(entry.path())) {
 				if (std::filesystem::is_regular_file(file.path())) {
 					files.emplace_back(file.path(), base / std::filesystem::relative(file.path(), entry.path()));
@@ -200,6 +214,44 @@ This directory is excluded from builds.
 		}
 
 		return files;
+	}
+
+	std::vector<std::filesystem::path> find_agents_conflicts(
+		const std::vector<std::pair<std::filesystem::path, std::filesystem::path>> &files, const bool force
+	)
+	{
+		std::vector<std::filesystem::path> conflicts;
+		for (const auto &[from, to] : files) {
+			if (!std::filesystem::exists(to)) {
+				continue;
+			}
+
+			if (force || filesystem::read_file(from.string(), true) == filesystem::read_file(to.string(), true)) {
+				continue;
+			}
+
+			conflicts.push_back(to);
+		}
+
+		return conflicts;
+	}
+
+	int report_agents_conflicts(const std::vector<std::filesystem::path> &conflicts)
+	{
+		if (conflicts.empty()) {
+			return 0;
+		}
+
+		for (const auto &path : conflicts) {
+			logging::error("agents file already exists path={}", filesystem::path_abs(path));
+		}
+
+		logging::error(
+			"agents installation aborted: {} conflicting file(s), remove or rename them, "
+			"or run with --force to overwrite",
+			conflicts.size()
+		);
+		return 1;
 	}
 } // namespace
 
@@ -456,6 +508,22 @@ namespace camus
 		return 0;
 	}
 
+	int check_agents(const std::filesystem::path &workdir, const bool force)
+	{
+		const std::filesystem::path source = paths::find_resource(skills_dir_name);
+		if (source.empty() || !std::filesystem::is_directory(source)) {
+			return 0;
+		}
+
+		try {
+			const auto files = collect_agents_files(source, agents_target_dir(workdir));
+			return report_agents_conflicts(find_agents_conflicts(files, force));
+		} catch (const std::exception &e) {
+			logging::error("agents precheck failed error={}", e.what());
+			return 1;
+		}
+	}
+
 	int install_agents(const std::filesystem::path &workdir, const bool force, copy_report *report)
 	{
 		const std::filesystem::path source = paths::find_resource(skills_dir_name);
@@ -465,7 +533,8 @@ namespace camus
 		}
 
 		try {
-			const auto files = collect_agents_files(source, workdir);
+			const std::filesystem::path target_root = agents_target_dir(workdir);
+			const auto files = collect_agents_files(source, target_root);
 			if (files.empty()) {
 				logging::warn("ai skills are empty, skip agents installation");
 				return 0;
@@ -473,29 +542,7 @@ namespace camus
 
 			// 预检冲突：目标已存在且内容不同视为冲突，先全部检查完再决定是否复制，
 			// 避免出现「一半新文件 + 一半旧文件」的中间状态。
-			std::vector<std::filesystem::path> conflicts;
-			for (const auto &[from, to] : files) {
-				if (!std::filesystem::exists(to)) {
-					continue;
-				}
-
-				if (force || filesystem::read_file(from.string(), true) == filesystem::read_file(to.string(), true)) {
-					continue;
-				}
-
-				conflicts.push_back(to);
-			}
-
-			if (!conflicts.empty()) {
-				for (const auto &path : conflicts) {
-					logging::error("agents file already exists path={}", filesystem::path_abs(path));
-				}
-
-				logging::error(
-					"agents installation aborted: {} conflicting file(s), remove or rename them, "
-					"or run with --force to overwrite",
-					conflicts.size()
-				);
+			if (const auto conflicts = find_agents_conflicts(files, force); report_agents_conflicts(conflicts) != 0) {
 				return 1;
 			}
 
@@ -518,8 +565,8 @@ namespace camus
 
 			logging::info(
 				"agents installed at '{}' and '{}'",
-				filesystem::path_abs(workdir / agents_entry_name),
-				filesystem::path_abs(workdir / agents_dir_name)
+				filesystem::path_abs(target_root / CAMUS_AGENTS_FILE),
+				filesystem::path_abs(target_root / CAMUS_AGENTS_DIR)
 			);
 		} catch (const std::exception &e) {
 			logging::error("agents installation failed error={}", e.what());

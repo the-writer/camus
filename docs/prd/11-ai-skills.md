@@ -34,7 +34,7 @@ example/posts/.agents/skills/         # 唯一来源（随示例内容分发，�
 |---|---|---|
 | `blog` | 博客、专栏、随笔、评测 | `topic-ideation`（选题灵感）、`outline-builder`（结构大纲）、`hook-writer`（标题/开头/摘要）、`readability-score`（可读性评分）、`style-editor`（文风审校与 AI 味清理）、`related-post-finder`（同类文章查找与内链） |
 | `website` | 产品站、机构站、落地页 | `content-inventory`（内容盘点与信息架构）、`copy-rewrite`（页面文案改写）、`accessibility-audit`（可访问性审查）、`seo-audit`（SEO 与结构化数据）、`navigation-design`（导航与目录结构）、`performance-checklist`（性能与 Core Web Vitals） |
-| `tech` | 技术博客、工程文档 | `architecture-review`（架构评审）、`code-review`（代码评审清单）、`api-design`（接口设计与契约）、`test-strategy`（测试策略）、`debug-diagnosis`（故障定位与复盘）、`tech-post-writer`（技术文章写作） |
+| `tech` | 技术博客、工程文档 | `architecture-review`（架构评审；有 `.git` 时结合当前改动与记忆）、`code-review`（代码评审清单；有 `.git` 时综合评价当前修改）、`api-design`（接口设计与契约）、`test-strategy`（测试策略）、`debug-diagnosis`（故障定位与复盘）、`tech-post-writer`（技术文章写作） |
 | `book` | 读书、书评、书摘 | `book-mapper`（书籍地图）、`key-idea-extractor`（核心观点与卡片）、`reading-notes`（结构化读书笔记）、`comparable-books`（同类书籍查找与对比）、`book-review`（书评写作）、`reading-plan`（阅读计划与进度） |
 
 小说类型按子类型分发，三套技能文件名一致、内容按体裁改写：
@@ -48,7 +48,7 @@ example/posts/.agents/skills/         # 唯一来源（随示例内容分发，�
 ### 11.1.2 内容来源唯一性
 
 - `example/posts/.agents/skills/` 是技能内容的**唯一来源**，直接由构建期复制到安装包，不使用符号链接。
-- `example/posts/.agents/skills/**/*.md` 全部带 Front Matter `visibility: hidden`，因此**不出现在构建产物与目录页**中（见 §4.4）；`.agents/` 目录因子节点被移除而一并被裁剪。
+- `example/posts/.agents/skills/**/*.md` 全部带 Front Matter `visibility: hidden`；此外构建会强制忽略任意 `.agents/` 目录与 `AGENTS.md` 文件（见 §4.1），因此技能内容不会出现在构建产物与目录页中。
 - 修改技能内容只需改 `example/posts/.agents/skills/` 下的文件，构建后自动同步到安装包。
 
 ## 11.2 项目类型判定
@@ -57,7 +57,7 @@ example/posts/.agents/skills/         # 唯一来源（随示例内容分发，�
 
 ```mermaid
 flowchart TD
-    A[读取 .agents/memories/ 中的既有记忆] --> B[读取源目录根部的 SUMMARY.md]
+    A[读取源目录 .agents/memories/ 中的既有记忆] --> B[读取源目录根部的 SUMMARY.md]
     B --> C{按标题/描述/目录结构/正文样本可唯一推断?}
     C -->|是| D[确定项目类型]
     C -->|否/证据冲突| E[列出候选类型并询问用户, 等待回答]
@@ -69,7 +69,7 @@ flowchart TD
     H --> H2[汇总进度与创作数据<br/>可选读取 .workshop]
     H2 --> I
     I --> J[小说技能先输出进度回顾, 再按执行步骤产出/自检]
-    J --> K[按需把长期信息写回 .agents/memories/]
+    J --> K[按需把长期信息写回源目录 .agents/memories/]
 ```
 
 ### 11.2.1 判定信号
@@ -79,7 +79,7 @@ flowchart TD
 | `title` / `subtitle` / `description` | 推断站点性质（文章集 / 产品页 / 工程文档 / 读书 / 文学创作） |
 | 目录结构 | 按时间或主题分组 → `blog`；按卷 / 章 / 幕划分 → `novel`；功能页而非文章集 → `website`；含 `docs/` / `api/` → `tech`；以书为单位 → `book` |
 | 正文样本 | 读首篇文章 / 首章的标题与开头，确认体裁与读者预期 |
-| 既有记忆 | `.agents/memories/project.md` 中上次推断并确认的类型；与当前线索冲突时以当前正文为准 |
+| 既有记忆 | 源目录 `.agents/memories/project.md` 中上次推断并确认的类型；与当前线索冲突时以当前正文为准 |
 | 混合站点 | 先定主类型，再跨目录借用其它类型的技能 |
 
 > `SUMMARY.md` 的 Front Matter 只承载站点元信息（§3.5.1 的 title/subtitle/description/cover/logo），**不写项目类型**；`type` / `novel-type` 不是受支持的配置键。
@@ -95,7 +95,7 @@ flowchart TD
 | `simple` | 「短篇 / 中篇 / 家庭 / 职场 / 日常」；冲突来自人物处境，不依赖类型套路 | `.agents/novel/simple/` |
 
 - 子类型同样**不写入配置**，按上表线索从正文样本推断；证据不足时按 §11.2.3 询问用户。
-- 推断结果写入 `.agents/memories/project.md`，后续运行直接复用。
+- 推断结果写入源目录 `.agents/memories/project.md`，后续运行直接复用。
 
 ### 11.2.3 强制输出与询问规则
 
@@ -115,22 +115,23 @@ flowchart TD
 - macOS `productbuild` 中 `SKILLS` 属于 `Resources` 组件；Linux DEB 与 macOS DragNDrop 同为资源安装目标。
 - `SKILLS/` 缺失时（例如旧版安装包）`install_agents` 打印 WARN 并跳过，不影响其它安装动作。
 
-## 11.4 安装到项目根目录
+## 11.4 安装到源目录
 
 ### 11.4.1 触发条件与映射
 
-`--new`、`--copy` 两种操作都会把 AI 技能安装到**项目根目录**：
+`--new`、`--copy` 两种操作都会把 AI 技能安装到**源目录根部**（`src/` 或 `posts/`，下文记为 `<source>`）：
 
-| 来源（数据目录 `SKILLS/`） | 目标（工作目录） |
+| 来源（数据目录 `SKILLS/`） | 目标（源目录） |
 |---|---|
-| `AGENTS.md` | `<workdir>/AGENTS.md` |
-| `blog/`、`website/`、`tech/`、`book/` 下的全部文件 | `<workdir>/.agents/<类型>/<文件>` |
-| `novel/<子类型>/` 下的全部文件 | `<workdir>/.agents/novel/<子类型>/<文件>` |
+| `AGENTS.md` | `<source>/AGENTS.md` |
+| `blog/`、`website/`、`tech/`、`book/` 下的全部文件 | `<source>/.agents/<类型>/<文件>` |
+| `novel/<子类型>/` 下的全部文件 | `<source>/.agents/novel/<子类型>/<文件>` |
 
-- 该动作在其它复制动作**之前**执行（`camus/main.cpp`），冲突时不会留下半安装状态。
+- **源目录选择**：优先已存在的 `src/`，其次已存在的 `posts/`；两者都不存在时默认 `posts/`（与 `--new` 安装的示例内容一致；单独 `--theme` 时也会为技能创建 `posts/`）。
+- **执行顺序**：冲突预检在其它复制动作**之前**执行（`check_agents`），实际写入在模板 / 资源复制**之后**（`install_agents`），避免提前创建 `posts/` 导致 `--new` 跳过示例内容；有冲突时不会留下半安装状态。
 - 安装来源按 `paths::find_resource("SKILLS")` 解析：优先工作目录 `.camus/SKILLS`，其次平台数据目录 `SKILLS`。
-- 技能文件不影响构建：`<workdir>/AGENTS.md` 与 `<workdir>/.agents/` 不在源目录（`src/` 或 `posts/`）内，不参与目录树扫描。
-- 安装动作**不创建** `<workdir>/.agents/memories/`；该目录由 AI 在首次运行时按需创建（见 §11.6），不会被安装或 `--force` 覆盖。
+- 构建强制忽略源目录内的任意 `AGENTS.md` 文件与任意层级的 `.agents/` 目录（与 `private` 同级处理，见 §4.1），因此它们不会被扫描、渲染或发布。
+- 安装动作**不创建** `<source>/.agents/memories/`；该目录由 AI 在首次运行时按需创建（见 §11.6），不会被安装或 `--force` 覆盖。
 
 ### 11.4.2 冲突处理
 
@@ -144,13 +145,13 @@ flowchart TD
 冲突提示形如：
 
 ```text
-[ERRO] agents file already exists path=/path/to/site/AGENTS.md
+[ERRO] agents file already exists path=/path/to/site/posts/AGENTS.md
 [ERRO] agents installation aborted: 1 conflicting file(s), remove or rename them, or run with --force to overwrite
 ```
 
 ### 11.4.3 持久性
 
-- `<workdir>/AGENTS.md` 与 `<workdir>/.agents/` 持久于磁盘，刷新与重启不丢失。
+- `<source>/AGENTS.md` 与 `<source>/.agents/` 持久于磁盘，刷新与重启不丢失。
 - 删除后可用 `--copy` / `--new` 重新安装；内容被用户修改后再次安装会触发冲突，需改名或使用 `--force`。
 - 数据目录中的 `SKILLS/` 由安装包持久化，升级安装包会覆盖同名文件。
 
@@ -166,17 +167,18 @@ flowchart TD
 6. 「参考资料」只放已核验可达的链接，并写明链接提供什么。
 7. 涉及事实断言（数据、引文、版本、行为）不得编造；无法核实处标注「待核实」。
 8. 小说技能的进度回顾必须注明数据来源，取不到就写「未记录」；`.workshop/` 存在时按 §11.8 交叉核对，不存在时不视为错误。
+9. 评审 / 评价类技能在项目根存在 `.git/` 时，按 §11.9 读取当前改动并结合记忆做综合评价；git 只读，不自动提交。
 
-## 11.6 记忆（`.agents/memories/`）
+## 11.6 记忆（源目录 `.agents/memories/`）
 
-AI 需要跨会话保留的信息，按类别写成独立文件放在**项目根**的 `.agents/memories/` 下；总纲 `AGENTS.md` 规定首次运行先读、结束后按需写回。
+AI 需要跨会话保留的信息，按类别写成独立文件放在**源目录**（`src/` 或 `posts/`）的 `.agents/memories/` 下；总纲 `AGENTS.md` 规定首次运行先读、结束后按需写回。
 
 | 项 | 值 |
 |---|---|
-| 位置 | `<workdir>/.agents/memories/` |
+| 位置 | `<source>/.agents/memories/`（`src/` 或 `posts/` 下的 `.agents/`，与安装的 `AGENTS.md` 同级） |
 | 创建者 | AI 在首次运行时创建（安装包不提供、`--new` / `--copy` 不复制） |
 | 持久性 | 持久于磁盘；与 `AGENTS.md`、`.agents/` 互不影响 |
-| 是否参与构建 | 不参与：不在源目录（`posts/` 或 `src/`）内，不被扫描或发布 |
+| 是否参与构建 | 不参与：`.agents/` 在源目录内也会被构建强制忽略（与 `private` 同级） |
 | 是否会被安装覆盖 | 不会：`install_agents` 只写 `AGENTS.md` 与各类型技能目录，不触碰 `memories/` |
 
 ### 11.6.1 文件分类
@@ -212,7 +214,7 @@ AI 需要跨会话保留的信息，按类别写成独立文件放在**项目根
 
 | 数据源 | 读取内容 | 缺失时 |
 |---|---|---|
-| `.agents/memories/` | `project.md`、`outline.md` 必读；按需读 `characters.md`、`world.md`、`continuity.md`、`preferences.md`、`style.md` | 目录或文件不存在就跳过，不视为错误 |
+| `<source>/.agents/memories/` | `project.md`、`outline.md` 必读；按需读 `characters.md`、`world.md`、`continuity.md`、`preferences.md`、`style.md` | 目录或文件不存在就跳过，不视为错误 |
 | 源目录 | `posts/`（不存在则 `src/`）下的卷 / 章（或篇 / 章）文件 | 无正文时按「只有大纲」模式回顾，并注明覆盖范围 |
 | `.workshop/`（可选） | 设定卡、地名、关系、候选、图谱（见 §11.8） | 不存在时跳过；进度表中 `.workshop` 设定卡标「无」 |
 
@@ -253,7 +255,7 @@ AI 需要跨会话保留的信息，按类别写成独立文件放在**项目根
 
 - 进度与创作数据的**快照**写入 `outline.md`，持久于磁盘，刷新 / 重启不丢失；统计值可从源目录重新计算，快照只是上次回顾的结果。
 - 本次任务改变进度、伏笔或设定时，增量更新 `outline.md` 与对应类别文件；不得整篇重写。
-- 冲突优先级：正文 > 用户新指令 > `.agents/memories/` > `.workshop/`；冲突处必须标注，不静默采信。
+- 冲突优先级：正文 > 用户新指令 > `<source>/.agents/memories/` > `.workshop/`；冲突处必须标注，不静默采信。
 - 取不到的数值一律写「未记录」，**不估算、不编造**。
 
 ## 11.8 创作脉络与 `.workshop` 交叉分析
@@ -289,6 +291,24 @@ AI 需要跨会话保留的信息，按类别写成独立文件放在**项目根
 ### 11.8.3 交叉核对与冲突处理
 
 - 核对四类差异：**正文有、卡片没有**；**卡片有、正文没用**；**关系不一致**；**候选 / 地标闲置**。
-- 冲突优先级：正文 > 用户新指令 > `.agents/memories/` > `.workshop/`。
-- AI **不修改** `.workshop/`（由外部工具维护），只把结论写回 `.agents/memories/`（`outline.md`、`characters.md`、`world.md`、`continuity.md`）。
+- 冲突优先级：正文 > 用户新指令 > `<source>/.agents/memories/` > `.workshop/`。
+- AI **不修改** `.workshop/`（由外部工具维护），只把结论写回 `<source>/.agents/memories/`（`outline.md`、`characters.md`、`world.md`、`continuity.md`）。
 - 输出必须包含：结构地图（mermaid）、分卷 / 阶段表、线索台账、人物弧线、`.workshop` 交叉核对表、缺口与风险、1–3 项下一步。
+
+## 11.9 评价类技能的 git 综合评价
+
+> 实现：技能总纲 `AGENTS.md` §5.6；示例见 `tech/code-review.md` 与 `tech/architecture-review.md`。
+
+评审 / 评价类技能（`code-review`、`architecture-review`、`*-audit`、`*-score`、`continuity-audit`、`readability-score` 等）在**项目根存在 `.git/`** 时，不能只评价用户贴出的片段，必须把「当前改动 + 仓库基线 + 记忆」合起来看。
+
+| 项 | 要求 |
+|---|---|
+| 判断 | 只检查项目根是否存在 `.git/`；不存在就跳过本节，按原技能执行 |
+| 只读 | `git` 只用于读取，不执行 `add` / `commit` / `reset` / `checkout` / `clean` 等写操作 |
+| 读取状态 | 至少读取 `git status --short`、`git diff --stat`、`git diff`（未暂存）、`git diff --cached`（已暂存）；需要时读 `git log -1 --oneline` 确认基线 |
+| 读取记忆 | 按任务读 `<source>/.agents/memories/` 中的 `project.md`、`preferences.md`、`style.md`、`outline.md`、`continuity.md` 等 |
+| 综合评价 | 对照记忆评价改动范围、一致性、连续性、风险与验证情况；评价「改动本身」与「是否符合项目目标 / 记忆」要分开写 |
+| 诚实 | git 不可用、仓库无改动或输出为空时如实说明；不得编造 diff、文件名或提交记录 |
+| 不改仓库 | 评价结论只写进交付物或 `<source>/.agents/memories/`，不自动提交 |
+
+输出至少包含：改动概览（文件 / 行数 / 暂存状态）、与记忆的一致性、风险项、验证情况、明确结论。

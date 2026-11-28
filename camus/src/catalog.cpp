@@ -34,8 +34,9 @@ namespace camus::catalog
 			}
 
 			if (std::filesystem::is_directory(entry.path())) {
-				if (entry.path().filename() == CAMUS_PRIVATE_DIR) {
-					logging::debug("skip private directory name={}", filesystem::path_abs(entry.path()));
+				if (const std::filesystem::path dirname = entry.path().filename();
+					dirname == CAMUS_PRIVATE_DIR || dirname == CAMUS_AGENTS_DIR) {
+					logging::debug("skip ignored directory name={}", filesystem::path_abs(entry.path()));
 					continue;
 				}
 
@@ -46,7 +47,7 @@ namespace camus::catalog
 				}
 			} else if (std::filesystem::is_regular_file(entry.path())) {
 				if (const std::filesystem::path filename = entry.path().filename();
-					filename == CAMUS_SUMMARY_NAME) {
+					filename == CAMUS_SUMMARY_NAME || filename == CAMUS_AGENTS_FILE) {
 					logging::debug("skip metadata file name={}", filesystem::path_abs(entry.path()));
 					continue;
 				}

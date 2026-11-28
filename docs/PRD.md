@@ -25,7 +25,7 @@
 - **模板引擎**：HTML 使用 inja，Markdown 使用 cmark-gfm；主题由 `theme/{name}/{home,page,stats,friends}.html` 组成，PDF 模板与样式位于 `theme/pdf/{page.html,style.css,fonts.css}`，字体使用站点 `assets/fonts/`，本地 `theme/` 可覆盖数据目录中的默认主题与 PDF 资源（详见 §5）。
 - **安全清理**：构建前清空输出目录；当输出目录文件数超过 200 时拒绝自动删除并以致命错误退出，避免误删（详见 §6.1）。
 - **干跑模式**：`-D/--dryrun` 下所有写文件操作被跳过，用于检查配置与渲染流程（详见 §6.9）。
-- **AI 技能库与记忆**：一套按项目类型（`blog` / `novel` / `website` / `tech` / `book`，小说再分 `online` / `western-illusion` / `simple` 三个子类型）组织的 Markdown 工作规范，随安装包放到平台数据目录 `SKILLS/`（与 `theme/` 同级）；`--new` / `--copy` 会把 `AGENTS.md` 与 `.agents/` 安装到项目根目录，同名且内容不同的文件会提示并终止复制。项目类型不写在配置里，由 AI 首次运行时推断，并把需要跨会话保留的上下文按类别写入 `.agents/memories/`；小说技能统一带「创作进度」回顾，并提供 `outline-map` 脉络分析（可读取项目根的 `.workshop/` 设定资产库）（详见 §11）。
+- **AI 技能库与记忆**：一套按项目类型（`blog` / `novel` / `website` / `tech` / `book`，小说再分 `online` / `western-illusion` / `simple` 三个子类型）组织的 Markdown 工作规范，随安装包放到平台数据目录 `SKILLS/`（与 `theme/` 同级）；`--new` / `--copy` 会把 `AGENTS.md` 与 `.agents/` 安装到源目录（`src/` 或 `posts/`）根部，同名且内容不同的文件会提示并终止复制；构建时强制忽略源目录内的 `AGENTS.md` 与 `.agents/`（与 `private` 同级）。项目类型不写在配置里，由 AI 首次运行时推断，并把需要跨会话保留的上下文按类别写入源目录的 `.agents/memories/`；小说技能统一带「创作进度」回顾，并提供 `outline-map` 脉络分析（可读取项目根的 `.workshop/` 设定资产库）；评审 / 评价类技能在项目存在 `.git/` 时结合当前改动与记忆做综合评价（详见 §11）。
 
 ## 文档清单与阅读指南
 
