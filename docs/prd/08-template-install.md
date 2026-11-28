@@ -30,7 +30,7 @@
 ├── SKILLS/                   # AI 技能库（与 theme 同级，见 §11.3）
 │   ├── AGENTS.md             # 技能总纲：项目类型判定流程与技能索引
 │   ├── {blog,website,tech,book}/*.md    # 24 个技能文件
-│   └── novel/{online,western-illusion,simple}/*.md    # 18 个小说技能文件
+│   └── novel/{online,western-illusion,simple}/*.md    # 21 个小说技能文件
 ├── assets/                    # 默认静态资源（css/js/fonts/imgs/robots.txt 等）
 │   ├── css/style.css          # 公共样式入口，默认空文件
 │   ├── js/camus.js           # 公共脚本入口，默认空文件
