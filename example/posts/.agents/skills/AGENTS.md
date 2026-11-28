@@ -8,7 +8,7 @@ visibility: hidden
 > 本文件安装在**项目根**的 `.agents/AGENTS.md`；技能与记忆统一位于项目根 `.agents/`。
 > 技能文件按项目类型分目录存放于 `.agents/<type>/`，小说类型再按子类型分目录存放于 `.agents/novel/<subtype>/`；
 > 每次任务都必须先读 `.agents/memories/` 记忆、完成「项目类型判定」，再加载对应技能。
-> 项目根另有安装时写入的短文件 `AGENTS.md`，只负责提示先读本文件；所有规则以本文件为准。
+> 项目根另有安装时写入的短文件 `AGENTS.md`，只负责提示先读本文件；所有规则以本文件为准。AI 身份、性格与能力概览见 `.agents/PROMPT.md`。
 
 ---
 
@@ -322,6 +322,7 @@ B. western-illusion —— 有魔法体系、种族与公会设定，按冒险�
 <项目根>/
 ├── AGENTS.md              ← 短入口：提示先读 .agents/AGENTS.md
 ├── .agents/               ← 技能库与记忆（安装到项目根）
+│   ├── PROMPT.md          ← 身份、性格与能力说明（内容创作助手）
 │   ├── AGENTS.md          ← 本文件（技能总纲）
 │   ├── shared/            ← 公共片段：通用规则 / 记忆 / .workshop / git 评审 / 小说脉络
 │   ├── blog/  book/  tech/  website/

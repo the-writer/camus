@@ -21,7 +21,8 @@
 
 ```text
 example/posts/.agents/skills/         # 唯一来源（随示例内容分发，不参与构建）
-├── AGENTS.root.md                    # 项目根短入口：提示先读 .agents/AGENTS.md
+├── AGENTS.root.md                    # 项目根短入口：提示先读 .agents/PROMPT.md 与 AGENTS.md
+├── PROMPT.md                         # AI 身份与能力说明（内容创作助手）
 ├── AGENTS.md                         # 总纲：强制工作流 + 类型判定 + 技能索引 + 通用规范
 ├── shared/                           # 公共片段（通用规则 / 记忆 / .workshop / git 评审 / 小说公共块）
 ├── blog/                             # 6 个技能
@@ -64,6 +65,7 @@ example/posts/.agents/skills/         # 唯一来源（随示例内容分发，�
 
 - `example/posts/.agents/skills/` 是技能内容的**唯一来源**，直接由构建期复制到安装包，不使用符号链接。
 - `shared/` 是跨技能公共片段层：通用规则、记忆与用户画像、`.workshop` 契约、git 评审、小说脉络 / 人物 / 连续性公共块。技能文件只写自身特有内容，通用规则变化只改 `shared/`。
+- `PROMPT.md` 是 AI 身份、性格与能力说明（内容创作助手，灵动活泼的二次元少女人格），只写“是谁 / 什么性格 / 能做什么 / 怎么协作”，不重复 `AGENTS.md` 的工作流、纪律与记忆规则。
 - 技能文件（`AGENTS.md` 与各类型目录下的 `*.md`）带 Front Matter `visibility: hidden`；项目根短入口 `AGENTS.root.md` 不含 Front Matter（它只安装为项目根 `AGENTS.md`，不进入 `.agents/`）。此外构建会强制忽略任意 `.agents/` 目录与 `AGENTS.md` 文件（见 §4.1），因此技能内容不会出现在构建产物与目录页中。
 - 修改技能内容只需改 `example/posts/.agents/skills/` 下的文件，构建后自动同步到安装包。
 
@@ -154,7 +156,8 @@ flowchart TD
 
 | 来源（数据目录 `SKILLS/`） | 目标 |
 |---|---|
-| `AGENTS.root.md` | `<workdir>/AGENTS.md`（短入口，提示先读 `.agents/AGENTS.md`） |
+| `AGENTS.root.md` | `<workdir>/AGENTS.md`（短入口，提示先读 `.agents/PROMPT.md` 与 `.agents/AGENTS.md`） |
+| `PROMPT.md` | `<workdir>/.agents/PROMPT.md`（AI 身份、性格与能力说明） |
 | `AGENTS.md` | `<workdir>/.agents/AGENTS.md`（技能总纲） |
 | `shared/` 下的全部文件 | `<workdir>/.agents/shared/<文件>`（公共片段） |
 | `blog/`、`website/`、`tech/`、`book/` 下的全部文件 | `<workdir>/.agents/<类型>/<文件>` |
@@ -191,7 +194,7 @@ flowchart TD
 
 ### 11.4.3 持久性
 
-- `<workdir>/AGENTS.md` 与 `<workdir>/.agents/` 持久于磁盘，刷新与重启不丢失。
+- `<workdir>/AGENTS.md`、`<workdir>/.agents/PROMPT.md` 与 `<workdir>/.agents/` 持久于磁盘，刷新与重启不丢失。
 - 删除后可用 `--copy` / `--new` 重新安装；内容被用户修改后再次安装会触发冲突，需改名或使用 `--force`（`--copy` 下项目根 `AGENTS.md` 已存在时跳过并报错，`--force` 才覆盖）。
 - 数据目录中的 `SKILLS/` 由安装包持久化，升级安装包会覆盖同名文件。
 

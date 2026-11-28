@@ -47,6 +47,9 @@ namespace
 	// 只提示 AI 先读项目根 .agents/ 下的技能总纲。
 	constexpr const char *root_agents_file_name = "AGENTS.root.md";
 
+	// 项目根 .agents/ 下的身份说明：SKILLS/PROMPT.md → <workdir>/.agents/PROMPT.md。
+	constexpr const char *prompt_file_name = "PROMPT.md";
+
 	// 目录 / 文件显示名：含 '-' 且出现过数字时，取最后一个 '-' 之后的片段，去掉 01- 之类的排序前缀。
 	std::string strip_order_prefix(std::string name)
 	{
@@ -191,6 +194,11 @@ This directory is excluded from builds.
 		const std::filesystem::path agents_md = source / CAMUS_AGENTS_FILE;
 		if (std::filesystem::is_regular_file(agents_md)) {
 			files.emplace_back(agents_md, agents_dir / CAMUS_AGENTS_FILE);
+		}
+
+		const std::filesystem::path prompt = source / prompt_file_name;
+		if (std::filesystem::is_regular_file(prompt)) {
+			files.emplace_back(prompt, agents_dir / prompt_file_name);
 		}
 
 		for (const auto &entry : std::filesystem::directory_iterator(source)) {
@@ -633,7 +641,7 @@ namespace camus
 				std::filesystem::path key = to;
 				const std::filesystem::path relative = to.lexically_relative(agents_root);
 				if (!relative.empty() && !relative.generic_string().starts_with("..") &&
-					relative != std::filesystem::path(CAMUS_AGENTS_FILE)) {
+					!relative.parent_path().empty()) {
 					key = to.parent_path();
 				}
 

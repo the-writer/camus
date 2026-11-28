@@ -28,7 +28,8 @@
 ├── theme/{tomato,pixel}/search.html
 ├── theme/pdf/{page.html,style.css,fonts.css}   # PDF 模板、打印样式与字体样式
 ├── SKILLS/                   # AI 技能库（与 theme 同级，见 §11.3）
-│   ├── AGENTS.root.md        # 项目根短入口：只提示先读 .agents/AGENTS.md
+│   ├── AGENTS.root.md        # 项目根短入口：提示先读 .agents/PROMPT.md 与 AGENTS.md
+│   ├── PROMPT.md             # AI 身份、性格与能力说明（内容创作助手）
 │   ├── AGENTS.md             # 技能总纲：强制工作流、类型判定与技能索引
 │   ├── shared/               # 公共片段：通用规则 / 记忆 / .workshop / git 评审 / 小说公共块
 │   ├── {blog,website,tech,book}/*.md    # 24 个技能文件
@@ -149,7 +150,8 @@ flowchart TD
 
 | 来源（数据目录 `SKILLS/`） | 目标 |
 |---|---|
-| `AGENTS.root.md` | `<workdir>/AGENTS.md`（短入口，只提示先读 `.agents/AGENTS.md`） |
+| `AGENTS.root.md` | `<workdir>/AGENTS.md`（短入口，只提示先读 `.agents/PROMPT.md` 与 `.agents/AGENTS.md`） |
+| `PROMPT.md` | `<workdir>/.agents/PROMPT.md`（AI 身份、性格与能力说明） |
 | `AGENTS.md` | `<workdir>/.agents/AGENTS.md` |
 | `shared/` 下的全部文件 | `<workdir>/.agents/shared/<文件>` |
 | `blog/`、`website/`、`tech/`、`book/` 下的全部文件 | `<workdir>/.agents/<类型>/<文件>` |
@@ -170,7 +172,7 @@ flowchart TD
 
 | 列 | 内容 |
 |---|---|
-| `Item` | 复制项的相对位置，**只到目录级别**：`AGENTS.md`（项目根短入口）、`.agents/AGENTS.md`、`.agents/shared`、`.agents/<类型>`（同一技能目录下的文件合并为一行，不列出文件）、`assets/css`、`assets/js`、`assets/fonts`、`posts`、`posts/private`、`camus.yaml`、`.gitignore`、`Justfile`、`.camus/<顶层条目>`、`theme`、`theme/<name>` |
+| `Item` | 复制项的相对位置，**只到目录级别**：`AGENTS.md`（项目根短入口）、`.agents/PROMPT.md`、`.agents/AGENTS.md`、`.agents/shared`、`.agents/<类型>`（同一技能目录下的文件合并为一行，不列出文件）、`assets/css`、`assets/js`、`assets/fonts`、`posts`、`posts/private`、`camus.yaml`、`.gitignore`、`Justfile`、`.camus/<顶层条目>`、`theme`、`theme/<name>` |
 | `Result` | 按状态着色：`copied` / `created` 绿色，`overwritten` / `merged` 黄色，`kept` 灰色，`skipped …` 红色。取值为 `copied` / `overwritten` / `created` / `kept` / `merged` / `skipped (exists)` / `skipped (source exists)` / `skipped (already installed)` / `skipped (missing in source)`；同一目录下多个文件的聚合结果按「有新增 → `copied`；仅内容变化 → `overwritten`；全部一致 → `kept`」计算 |
 | `Target` | 目标目录相对 `<workdir>` 的路径（由 `print_copy_report(report, workdir)` 传入基准目录） |
 
@@ -185,6 +187,7 @@ assets/fonts            kept     assets/fonts
 posts                   copied   posts
 posts/private           kept     posts/private
 camus.yaml              copied   camus.yaml
+.agents/PROMPT.md       copied   .agents/PROMPT.md
 .agents/AGENTS.md        copied   .agents/AGENTS.md
 .agents/shared          copied   .agents/shared
 .agents/website         copied   .agents/website
